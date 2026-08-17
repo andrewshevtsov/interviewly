@@ -1,0 +1,37 @@
+# Docker Compose для ЛОКАЛЬНОЙ РАЗРАБОТКИ. Сейчас поднимает только frontend.
+#
+# Быстрый старт:
+#   cp .env.example .env
+#   docker compose up --build
+#
+# Дальше:
+#   frontend: http://localhost:3000/health
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: ${FRONTEND_PORT:-3000}
+      # Задел на будущее — куда фронту стучаться за API, когда backend
+      # появится в docker
+      NEXT_PUBLIC_API_URL: http://localhost:${BACKEND_PORT:-4000}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    volumes:
+      # Весь монорепозиторий пробрасывается внутрь — правки в src/ на хосте
+      # сразу видны в контейнере (hot-reload через tsx watch внутри).
+      - .:/app
+      # Именованные volumes поверх node_modules — ЭТО ВАЖНО. Без них
+      # bind-mount выше перекрыл бы node_modules, установленные ВНУТРИ
+      # образа при сборке, пустой (или чужой, host-специфичной) версией
+      # с хоста. Так контейнерные node_modules остаются нетронутыми.
+      - frontend_node_modules:/app/apps/frontend/node_modules
+      - frontend_root_node_modules:/app/node_modules
+
+volumes:
+  frontend_node_modules:
+  frontend_root_node_modules:

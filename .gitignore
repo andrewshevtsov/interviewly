@@ -1,0 +1,33 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+build/
+.next/
+out/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# ide
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# misc
+.DS_Store
+coverage/
+*.tsbuildinfo
+
+# prisma (генерируется)
+apps/backend/generated/
+
