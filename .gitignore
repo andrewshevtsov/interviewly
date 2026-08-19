@@ -30,4 +30,5 @@ coverage/
 
 # prisma (генерируется)
 apps/backend/generated/
+pnpm-lock*
 
