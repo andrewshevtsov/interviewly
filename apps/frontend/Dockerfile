@@ -17,7 +17,7 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/backend/package.json ./apps/backend/package.json
 COPY apps/frontend/package.json ./apps/frontend/package.json
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install 
 
 COPY . .
 
