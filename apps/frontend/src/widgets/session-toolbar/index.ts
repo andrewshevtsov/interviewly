@@ -1,14 +1,29 @@
 // Слой widgets: композиция из нескольких features/entities в один блок UI.
 // Разрешено импортировать features, entities, shared.
-import { hintsRemaining } from "@/features/join-session";
-import { describeSessionLevel } from "@/entities/session";
-import { formatUserLevel, type User } from "@/entities/user";
+import {hintsRemaining} from "@/features/join-session";
+import {describeSessionLevel} from "@/entities/session";
+import {formatUserLevel, type User} from "@/entities/user";
 
+/**
+ *
+ */
 export interface SessionToolbarProps {
+
+  /**
+   *
+   */
   usedHints: number;
+
+  /**
+   *
+   */
   currentUser: User;
 }
 
+/**
+ *
+ * @param props
+ */
 export function buildToolbarState(props: SessionToolbarProps) {
   return {
     hintsLeft: hintsRemaining(props.usedHints),
