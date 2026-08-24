@@ -1,5 +1,10 @@
 packages:
   - "apps/*"
+# pnpm блокирует install/postinstall-скрипты зависимостей без явного разрешения.
+# Prisma CLI и engines разрешены здесь, чтобы подготовить платформенные бинарники
+# для generate/migrate; esbuild и unrs-resolver нужны существующим frontend-tools.
 allowBuilds:
+  "@prisma/engines": true
   esbuild: true
+  prisma: true
   unrs-resolver: true

@@ -1,0 +1,68 @@
+// Тип, способ доступа и жизненный цикл сессии хранятся в PostgreSQL как enum.
+enum SessionType {
+  BUSINESS
+  MOCK
+}
+
+enum SessionAccess {
+  OPEN
+  PASSWORD
+  INVITE
+}
+
+enum SessionStatus {
+  DRAFT
+  SCHEDULED
+  READY
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+model Session {
+  id String @default(uuid()) @db.Uuid
+
+  ownerId String @db.Uuid
+  owner   User   @relation(fields: [ownerId], references: [id])
+
+  type            SessionType   @default(BUSINESS)
+  access          SessionAccess @default(INVITE)
+  // Для access=PASSWORD непустой хеш обязателен: это дополнительно защищено
+  // CHECK-ограничением Session_password_required в начальной миграции.
+  passwordHash    String?
+  status          SessionStatus @default(READY)
+  statusUpdatedAt DateTime      @default(now()) @db.Timestamptz(3)
+  scheduledAt     DateTime?     @db.Timestamptz(3)
+  startedAt       DateTime?     @db.Timestamptz(3)
+  endedAt         DateTime?     @db.Timestamptz(3)
+  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
+
+  participants SessionParticipant[]
+
+  @@id([id])
+}
+
+model SessionParticipant {
+  // Явная таблица связи User <-> Session. Составной первичный ключ ниже
+  // запрещает повторное участие одного пользователя в одной сессии.
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id])
+
+  sessionId String  @db.Uuid
+  session   Session @relation(fields: [sessionId], references: [id])
+
+  joinedAt       DateTime? @db.Timestamptz(3)
+  leftAt         DateTime? @db.Timestamptz(3)
+  reconnectCount Int       @default(0)
+  offlineSeconds Int       @default(0)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@id([userId, sessionId])
+  // Составной PK начинается с userId; отдельный индекс ускоряет обратный
+  // запрос — получение всех участников по sessionId.
+  @@index([sessionId])
+}
