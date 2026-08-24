@@ -5,7 +5,7 @@
 #   docker compose up --build
 #
 # Дальше:
-#   frontend: http://localhost:3000/health
+#   frontend: http://localhost:3000
 
 services:
   frontend:
@@ -19,11 +19,17 @@ services:
       # Задел на будущее — куда фронту стучаться за API, когда backend
       # появится в docker
       NEXT_PUBLIC_API_URL: http://localhost:${BACKEND_PORT:-4000}
+      # pnpm запускает проверку node_modules/lockfile перед каждой командой; если
+      # именованный volume с node_modules устарел (например, после добавления зависимости
+      # в package.json), pnpm хочет пересоздать node_modules и спрашивает подтверждение —
+      # но в контейнере нет TTY, и без CI=true команда падает с
+      # ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY вместо того, чтобы просто переустановить.
+      CI: "true"
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     volumes:
       # Весь монорепозиторий пробрасывается внутрь — правки в src/ на хосте
-      # сразу видны в контейнере (hot-reload через tsx watch внутри).
+      # сразу видны в контейнере (hot-reload через `next dev` внутри).
       - .:/app
       # Именованные volumes поверх node_modules — ЭТО ВАЖНО. Без них
       # bind-mount выше перекрыл бы node_modules, установленные ВНУТРИ

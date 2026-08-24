@@ -1,6 +1,3 @@
-
-
-
 ## Project setup
 
 ```bash

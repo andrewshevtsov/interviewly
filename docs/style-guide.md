@@ -4,13 +4,19 @@
 
 ## Форматирование
 
-Форматирование — через **Prettier**, конфиг в `.prettierrc.json` (+ `.prettierignore`).
-Отступы/переносы строк/EOL — через `.editorconfig`.
+Prettier настроен отдельно в каждом пакете — `apps/frontend/.prettierrc.json` и
+`apps/backend/.prettierrc` (+ соответствующие `.prettierignore`), в корне репозитория Prettier
+не установлен. Отступы/переносы строк/EOL для файлов корня — через `.editorconfig`.
 
 ```bash
-pnpm format        # применить форматирование ко всему репозиторию
-pnpm format:check  # проверить без изменений (для CI)
+pnpm --filter @app/frontend run format        # применить форматирование к frontend
+pnpm --filter @app/frontend run format:check  # проверить frontend без изменений (для CI)
+pnpm --filter @app/backend run format         # применить форматирование к backend
+pnpm --filter @app/backend run format:check   # проверить backend без изменений (для CI)
 ```
+
+Файлы в корне репозитория (README.md, docker-compose.yml, docs/, конфиги воркспейса и т.п.)
+форматируются вручную.
 
 ## Модульная система: чистый ESM
 

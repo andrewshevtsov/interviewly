@@ -23,7 +23,13 @@
 
 FSD и границы слоёв
 
-- Плагин `boundaries` следит за архитектурными границами: слои (`features`, `widgets`, `entities` и т.д.) могут импортировать только разрешённые слои. Для публичного доступа используйте `public-api` (баррели).
+- Правило `boundaries/dependencies` (плагин `eslint-plugin-boundaries`) проверяет цепочку `app → pages → widgets → features → entities → shared`: слой может импортировать только из того, что строго ниже него в этой цепочке. Резолвится через `settings["boundaries/elements"]` (не через устаревший ключ `settings.boundaries`) и `settings["import/resolver"]` (нужен отдельно от `import-x/resolver`, который используется для остального).
+
+Правила React и ESLint 10
+
+- `eslint-plugin-react@7.37.5` (последний релиз на момент написания) официально поддерживает ESLint только до `^9.7` и падает на нескольких правилах под ESLint 10 (`context.getFilename()` и `sourceCode.isSpaceBetweenTokens()` были удалены). Отключены: `react/jsx-filename-extension`, `react/jsx-tag-spacing`, `react/jsx-curly-spacing`, `react/jsx-one-expression-per-line`. Также `react.version` в settings зафиксирован строкой (`"19.2"`), а не `"detect"`, — автоопределение версии тоже падает на `getFilename()`.
+- `react/react-in-jsx-scope` и `react/prop-types` выключены: первое неактуально с automatic JSX runtime (React 17+, используется в Next.js), второе избыточно при TypeScript-пропсах.
+- Для файлов Next.js App Router (`app/**/{page,layout,...}.tsx`) точечно выключен `no-restricted-exports` — эти файлы обязаны использовать `export default` по требованию фреймворка.
 
 Форматирование и стиль (глобально)
 

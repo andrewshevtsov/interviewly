@@ -7,7 +7,7 @@
 ```bash
 cp .env.example .env
 docker compose up --build
-# http://localhost:3000/health
+# http://localhost:3000
 ```
 
 Исходники пробрасываются в контейнер bind-mount'ом (`.:/app`) для hot-reload; `node_modules`
