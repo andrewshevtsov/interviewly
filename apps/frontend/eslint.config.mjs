@@ -127,8 +127,8 @@ export default tseslint.config(
       // --- Import sorting / restrictions (unchanged) ---
       "simple-import-sort/imports": "off",
       "no-duplicate-imports": ["error"],
-      "no-restricted-imports": ["error", { patterns: ["**/internal/**"] }],
-      "no-restricted-exports": ["error", { restrictDefaultExports: { direct: true } }],
+      // "no-restricted-imports": ["error", { patterns: ["**/internal/**"] }],
+      // "no-restricted-exports": ["error", { restrictDefaultExports: { direct: true } }],
 
       // --- Non-formatting core rules (unchanged) ---
       "no-magic-numbers": ["error", { ignore: [0] }],

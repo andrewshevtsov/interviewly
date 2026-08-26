@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import "@/app/styles/global.css";
+import "@/styles/global.css";
 
 /**
  * Next.js page metadata for the whole app.

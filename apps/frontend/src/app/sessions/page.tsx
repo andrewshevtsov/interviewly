@@ -1,4 +1,4 @@
-import { SessionsListPage } from "@/pages/sessions-list-page";
+import { SessionsListPage } from "@/views/sessions-list-page";
 import { DEMO_SESSIONS } from "../demo-data";
 
 /**
