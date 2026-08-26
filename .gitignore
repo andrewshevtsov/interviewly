@@ -28,6 +28,6 @@ pnpm-debug.log*
 coverage/
 *.tsbuildinfo
 
-# prisma (генерируется)
-apps/backend/generated/
-
+# Prisma Client генерируется из schema командой `prisma generate`.
+# В git храним schema и migrations, но не производный generated-код.
+apps/backend/src/prisma/generated/
