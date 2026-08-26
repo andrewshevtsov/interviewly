@@ -4,8 +4,6 @@
   "sourceRoot": "src",
   "entryFile": "main",
   "compilerOptions": {
-    "deleteOutDir": false
-  
-    
+    "deleteOutDir": true
   }
 }
