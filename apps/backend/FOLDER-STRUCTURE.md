@@ -101,10 +101,16 @@ apps/
       prisma/
         prisma.module.ts
         prisma.service.ts
-        schema.prisma
+        generated/          # Prisma Client; генерируется и не коммитится
 
       tests/
         e2e/
+
+    prisma/
+      schema.prisma         # datasource и generator
+      models/               # доменные модели и enum
+      migrations/           # история SQL-миграций
+    prisma.config.ts        # пути схемы/миграций и DATABASE_URL для Prisma CLI
 ```
 
 ## Описание ключевых директорий
@@ -139,7 +145,9 @@ apps/
 
 ### `prisma/`
 
-Хранение Prisma schema, PrismaService и настройки доступа к PostgreSQL.
+Корневая `apps/backend/prisma/` хранит схему и историю миграций PostgreSQL.
+`src/prisma/` содержит интеграцию Prisma Client с NestJS; generated-код создаётся командой
+`prisma generate` и не хранится в git.
 
 ### `tests/`
 

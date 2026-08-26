@@ -1,13 +1,45 @@
-# Docker Compose для ЛОКАЛЬНОЙ РАЗРАБОТКИ. Сейчас поднимает только frontend.
+# Docker Compose для ЛОКАЛЬНОЙ РАЗРАБОТКИ. Сейчас поднимает frontend и postgres.
 #
-# Быстрый старт:
+# Быстрый старт всех Docker-сервисов:
 #   cp .env.example .env
 #   docker compose up --build
 #
+# Запуск только PostgreSQL в фоне:
+#   docker compose up -d postgres
+#
+# После первого запуска PostgreSQL:
+#   pnpm --filter backend exec prisma migrate dev
+#   pnpm --filter backend exec prisma generate
+#
 # Дальше:
-#   frontend: http://localhost:3000
+#   frontend: http://localhost:3000/health
+#   postgres: localhost:5432 (backend запускается локально, вне Docker,
+#             и подключается к postgres через DATABASE_URL из .env)
 
 services:
+  postgres:
+    # Alpine-образ меньше полного образа и достаточен для локальной разработки.
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      # Значения берутся из корневого .env; справа указаны dev-дефолты.
+      POSTGRES_USER: ${POSTGRES_USER:-interviewly}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-interviewly}
+      POSTGRES_DB: ${POSTGRES_DB:-interviewly}
+    ports:
+      # Слева порт Mac, справа стандартный порт PostgreSQL в контейнере.
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Именованный volume сохраняет таблицы между перезапусками контейнера.
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # Контейнер считается готовым только после ответа выбранной базы.
+      test:
+        ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-interviewly} -d ${POSTGRES_DB:-interviewly}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   frontend:
     build:
       context: .
@@ -41,3 +73,4 @@ services:
 volumes:
   frontend_node_modules:
   frontend_root_node_modules:
+  postgres_data:
