@@ -10,7 +10,7 @@
 | ----------------------------- | ------------------------------------------ | ---------------- |
 | ORM                           | Prisma                                     | ✅ зафиксировано |
 | Видео/WebRTC                  | Jitsi Meet (embed)                         |                  |
-| FSD-структура фронтенда       | app/pages/widgets/features/entities/shared | ✅ зафиксировано |
+| FSD-структура фронтенда       | app/views/widgets/features/entities/shared ([ADR](adr-fsd-views-vs-pages.md)) | ✅ зафиксировано |
 | Модульная система             | Чистый ESM (`"type": "module"` везде)      | ✅ зафиксировано |
 | Docker (локальная разработка) | docker-compose                             | ✅ зафиксировано |
 | Реалтайм редактор             |                                            |                  |

@@ -23,7 +23,7 @@
 
 FSD и границы слоёв
 
-- Правило `boundaries/dependencies` (плагин `eslint-plugin-boundaries`) проверяет цепочку `app → pages → widgets → features → entities → shared`: слой может импортировать только из того, что строго ниже него в этой цепочке. Резолвится через `settings["boundaries/elements"]` (не через устаревший ключ `settings.boundaries`) и `settings["import/resolver"]` (нужен отдельно от `import-x/resolver`, который используется для остального).
+- Правило `boundaries/dependencies` (плагин `eslint-plugin-boundaries`) проверяет цепочку `app → views → widgets → features → entities → shared`: слой может импортировать только из того, что строго ниже него в этой цепочке. Резолвится через `settings["boundaries/elements"]` (не через устаревший ключ `settings.boundaries`) и `settings["import/resolver"]` (нужен отдельно от `import-x/resolver`, который используется для остального). Слой страниц называется `views`, а не канонично-фсдшным `pages` — см. [docs/architecture/adr-fsd-views-vs-pages.md](../../docs/architecture/adr-fsd-views-vs-pages.md).
 
 Правила React и ESLint 10
 

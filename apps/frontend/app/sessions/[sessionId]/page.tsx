@@ -1,4 +1,4 @@
-import { InterviewSessionPage } from "@/pages/interview-session-page";
+import { InterviewSessionPage } from "@/views/interview-session-page";
 import { DEMO_USER } from "../../demo-data";
 
 /**

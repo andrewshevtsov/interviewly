@@ -7,13 +7,13 @@ Feature-Sliced Design.
 ## Текущее состояние
 
 - `app/` — Next.js App Router (роутинг, `layout.tsx`/`page.tsx`), **в корне пакета, а не в
-  `src/`**. Это сделано намеренно: если `src/app` существует, Next.js резолвит `src/` как базовую
-  директорию и для App, и для Pages Router — и начинает трактовать `src/pages` (слой FSD, а не
-  Next.js) как страницы Pages Router, из-за чего `next build` падает. Разместив `app/` в корне,
-  мы этого избегаем; `src/app` при этом остаётся FSD-слоем `app` для будущей композиции
-  (провайдеры и т.п.).
-- `pages/` — пустая плейсхолдер-папка в корне (см. [pages/README.md](pages/README.md)). Нужна,
-  чтобы Next.js резолвил Pages Router в неё (пустую) и не пытался использовать `src/pages`.
+  `src/`**; `src/app` остаётся FSD-слоем `app` для композиции (провайдеры, глобальные стили и
+  т.п.) — две разные вещи с одинаковым именем, физически разнесённые.
+- Слой FSD `pages` называется **`views`** (`src/views/*`), а не `pages` — специально, чтобы не
+  совпадать с зарезервированным именем каталога Next.js (`pages/`/`src/pages` = Pages Router).
+  Из-за этого не нужно ни выносить `app/` из `src/`, ни заводить пустую папку-заглушку — конфликта
+  просто не возникает, потому что каталога `pages` в проекте нет вообще. Подробности и рассмотренные
+  альтернативы — в [docs/architecture/adr-fsd-views-vs-pages.md](../../docs/architecture/adr-fsd-views-vs-pages.md).
 
 ## Пример роутинга
 
@@ -22,17 +22,17 @@ Feature-Sliced Design.
 ```
 app/
 ├── layout.tsx              # корневой layout: общая навигация (Interviewly → "/")
-├── page.tsx                 → @/pages/home-page             ("/")
+├── page.tsx                 → @/views/home-page             ("/")
 ├── demo-data.ts             # захардкоженные фикстуры user/sessions для примера, не часть FSD
 └── sessions/
     ├── layout.tsx           # вложенный layout: секция "Sessions" внутри корневого
-    ├── page.tsx              → @/pages/sessions-list-page    ("/sessions")
+    ├── page.tsx              → @/views/sessions-list-page    ("/sessions")
     └── [sessionId]/
-        └── page.tsx          → @/pages/interview-session-page ("/sessions/:sessionId")
+        └── page.tsx          → @/views/interview-session-page ("/sessions/:sessionId")
 ```
 
 Идея: файлы в `app/**` — тонкие "роуты", которые только читают URL/параметры и рендерят
-компонент из `src/pages/*` (слой FSD). Бизнес-логика и разметка живут в `src/pages`, а не в
+компонент из `src/views/*` (слой FSD). Бизнес-логика и разметка живут в `src/views`, а не в
 `app/`. Переходы между страницами — обычные `<Link href="...">` из `next/link` (см.
 `HomePage`, `SessionsListPage`, `InterviewSessionPage`); `app/sessions/layout.tsx` показывает
 вложенный layout — он оборачивает и список, и страницу конкретной сессии, не трогая
@@ -59,8 +59,8 @@ docker compose up --build          # из корня репозитория
 
 ```
 src/
-├── app/       # инициализация приложения, композиция pages (см. также app/ в корне пакета)
-├── pages/     # конкретные страницы (собирают widgets/features/entities)
+├── app/       # инициализация приложения, композиция views (см. также app/ в корне пакета)
+├── views/     # конкретные страницы (собирают widgets/features/entities)
 ├── widgets/   # крупные блоки UI из нескольких features/entities
 ├── features/  # пользовательские сценарии
 ├── entities/  # бизнес-сущности (session, user)
@@ -69,7 +69,7 @@ src/
 
 Правило: слой не может импортировать из того, что лежит **выше** него в этом списке
 (например, `entities` не может импортировать из `features`). Валидная цепочка импортов —
-`app → pages → widgets → features → entities → shared`, через алиас `@/*`. Это правило
+`app → views → widgets → features → entities → shared`, через алиас `@/*`. Это правило
 проверяется линтером (`eslint-plugin-boundaries`, правило `boundaries/dependencies`).
 
 ## Переменные окружения

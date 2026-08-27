@@ -29,8 +29,11 @@ pnpm --filter @app/backend run format:check   # проверить backend бе�
 
 ## Структура фронтенда: Feature-Sliced Design
 
-`apps/frontend/src` организован по слоям FSD (`app → pages → widgets → features → entities →
-shared`, сверху вниз — слой не должен импортировать из того, что лежит выше него).
+`apps/frontend/src` организован по слоям FSD (`app → views → widgets → features → entities →
+shared`, сверху вниз — слой не должен импортировать из того, что лежит выше него). Слой страниц
+называется `views`, а не «канонично» для FSD `pages` — так он не совпадает с зарезервированным
+именем каталога Next.js (`pages/`/`src/pages` = Pages Router). Подробности —
+[docs/architecture/adr-fsd-views-vs-pages.md](architecture/adr-fsd-views-vs-pages.md).
 
 ## Коммиты
 

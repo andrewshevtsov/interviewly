@@ -1,4 +1,4 @@
-// Слой pages: список сессий со ссылками на детальную страницу каждой.
+// Слой views: список сессий со ссылками на детальную страницу каждой.
 // Разрешено импортировать widgets, features, entities, shared.
 import Link from "next/link";
 import type { InterviewSession } from "@/entities/session";

@@ -1,7 +1,7 @@
-import { HomePage } from "@/pages/home-page";
+import { HomePage } from "@/views/home-page";
 
 /**
- * Next.js App Router root page ("/") - thin route file that renders the FSD "pages" layer.
+ * Next.js App Router root page ("/") - thin route file that renders the FSD "views" layer.
  * @returns {import('react').ReactNode} The home page.
  */
 export default function RootPage() {

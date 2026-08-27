@@ -1,4 +1,4 @@
-// Слой pages: собирает виджеты в конкретную страницу приложения.
+// Слой views: собирает виджеты в конкретную страницу приложения.
 // Разрешено импортировать widgets, features, entities, shared.
 import Link from "next/link";
 import { SessionToolbar } from "@/widgets/session-toolbar";

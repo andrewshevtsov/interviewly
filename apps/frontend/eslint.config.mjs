@@ -59,11 +59,12 @@ export default tseslint.config(
       react: { version: "19.2" },
       "boundaries/elements": [
         { type: "app", pattern: "src/app/*" },
-        // Next.js App Router itself lives at the project root, outside `src/`, so that it
-        // never shadows the FSD "pages" layer (see pages/README.md for why). It's still the
-        // FSD "app" layer, just a second location.
+        // Next.js App Router itself lives at the project root, outside `src/`. It's still
+        // the FSD "app" layer, just a second location.
         { type: "app", pattern: "app/*" },
-        { type: "pages", pattern: "src/pages/*" },
+        // Named "views" rather than "pages" specifically so it never collides with Next.js's
+        // own reserved `pages/`/`src/pages` directory (Pages Router) - see README.md.
+        { type: "views", pattern: "src/views/*" },
         { type: "widgets", pattern: "src/widgets/*" },
         { type: "features", pattern: "src/features/*" },
         { type: "entities", pattern: "src/entities/*" },
@@ -75,7 +76,7 @@ export default tseslint.config(
       // TypeScript rules are applied only to TS files via override below
 
       // --- FSD layer boundaries ---
-      // Valid import chain (per README): app -> pages -> widgets -> features -> entities -> shared.
+      // Valid import chain (per README): app -> views -> widgets -> features -> entities -> shared.
       // A layer may only import from layers strictly below it in that chain.
       "boundaries/dependencies": [
         "error",
@@ -85,7 +86,7 @@ export default tseslint.config(
             {
               from: { element: { type: "app" } },
               allow: [
-                { to: { element: { type: "pages" } } },
+                { to: { element: { type: "views" } } },
                 { to: { element: { type: "widgets" } } },
                 { to: { element: { type: "features" } } },
                 { to: { element: { type: "entities" } } },
@@ -93,7 +94,7 @@ export default tseslint.config(
               ],
             },
             {
-              from: { element: { type: "pages" } },
+              from: { element: { type: "views" } },
               allow: [
                 { to: { element: { type: "widgets" } } },
                 { to: { element: { type: "features" } } },
