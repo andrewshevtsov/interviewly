@@ -59,9 +59,6 @@ export default tseslint.config(
       react: { version: "19.2" },
       "boundaries/elements": [
         { type: "app", pattern: "src/app/*" },
-        // Next.js App Router itself lives at the project root, outside `src/`. It's still
-        // the FSD "app" layer, just a second location.
-        { type: "app", pattern: "app/*" },
         // Named "views" rather than "pages" specifically so it never collides with Next.js's
         // own reserved `pages/`/`src/pages` directory (Pages Router) - see README.md.
         { type: "views", pattern: "src/views/*" },
@@ -323,8 +320,8 @@ export default tseslint.config(
   // export - that's a framework requirement, not a style choice, so it's exempted here.
   {
     files: [
-      "app/**/{page,layout,loading,error,not-found,template,default,global-error}.tsx",
-      "app/**/route.ts",
+      "src/app/**/{page,layout,loading,error,not-found,template,default,global-error}.tsx",
+      "src/app/**/route.ts",
     ],
     rules: { "no-restricted-exports": "off" },
   },
