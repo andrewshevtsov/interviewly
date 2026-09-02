@@ -99,6 +99,7 @@ apps/
         integrations/
 
       prisma/
+        prisma-client-adapter.ts # общая настройка PostgreSQL-адаптера Prisma
         prisma.module.ts
         prisma.service.ts
         generated/          # Prisma Client; генерируется и не коммитится
@@ -110,6 +111,8 @@ apps/
       schema.prisma         # datasource и generator
       models/               # доменные модели и enum
       migrations/           # история SQL-миграций
+      seed.ts               # идемпотентное заполнение локальной БД
+      seed-data/            # тестовые пользователи, сессии и участия
     prisma.config.ts        # пути схемы/миграций и DATABASE_URL для Prisma CLI
 ```
 
@@ -148,6 +151,9 @@ apps/
 Корневая `apps/backend/prisma/` хранит схему и историю миграций PostgreSQL.
 `src/prisma/` содержит интеграцию Prisma Client с NestJS; generated-код создаётся командой
 `prisma generate` и не хранится в git.
+
+`prisma/seed.ts` заполняет локальную базу тестовыми данными из `prisma/seed-data/`.
+Seed использует `upsert`, поэтому повторный запуск не создаёт дубликаты.
 
 ### `tests/`
 
