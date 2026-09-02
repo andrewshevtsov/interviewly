@@ -1,7 +1,17 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "@/app/styles/global.css";
+
+const inter = Inter({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-inter",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
+});
 
 /**
  * Next.js page metadata for the whole app.
@@ -22,19 +32,16 @@ export interface RootLayoutProps {
 }
 
 /**
- * Next.js App Router root layout.
- * @param {RootLayoutProps} props - Props for the root layout.
- * @returns {ReactNode} Корневой layout с навигацией и дочерними страницами.
+ * Next.js App Router root layout. Navigation chrome lives per-section (see
+ * `@/views/home-page/Navbar` and `app/sessions/layout.tsx`), not here, since it differs between
+ * the marketing homepage and the app sections.
+ * @param {RootLayoutProps} props - Пропсы корневого layout.
+ * @returns {ReactNode} Корневой layout с дочерними страницами.
  */
 export default function RootLayout(props: RootLayoutProps) {
   return (
-    <html lang="ru">
-      <body>
-        <nav>
-          <Link href="/">Interviewly</Link>
-        </nav>
-        {props.children}
-      </body>
+    <html lang="ru" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+      <body>{props.children}</body>
     </html>
   );
 }

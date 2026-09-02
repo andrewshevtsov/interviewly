@@ -1,14 +1,63 @@
-@import "./reset.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
   color-scheme: light dark;
+  /* --- база --- */
+  --background: 222 47% 5%; /* #0A0D14 */
+  --foreground: 210 20% 97%; /* #F5F7FA */
+
+  --card: 222 33% 9%; /* #12151D */
+  --card-foreground: 210 20% 97%;
+
+  --popover: 222 33% 9%;
+  --popover-foreground: 210 20% 97%;
+
+  --border: 222 22% 16%; /* #1F2430 */
+  --input: 222 22% 16%;
+  --ring: 217 100% 65%; /* совпадает с primary */
+
+  --primary: 217 100% 65%; /* #4C8DFF */
+  --primary-foreground: 0 0% 100%;
+
+  /* --- secondary: светлая кнопка из hero ("Создать сессию") --- */
+  --secondary: 220 20% 92%; /* #E9ECF1 */
+  --secondary-foreground: 222 47% 11%;
+
+  --muted: 222 20% 14%;
+  --muted-foreground: 220 14% 60%; /* #8B93A5 */
+
+  --accent: 222 20% 14%;
+  --accent-foreground: 210 20% 97%;
+
+  /* --- семантика статусов (не входит в стандартный набор shadcn,
+     добавлено под конкретные бейджи из макета — см. Badge-варианты) --- */
+  --success: 142 69% 49%; /* #22C55E — "СВОБОДЕН", рейтинг, SYNCED */
+  --success-foreground: 0 0% 100%;
+
+  --warning: 38 92% 50%;
+  --warning-foreground: 222 47% 11%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  /* --- форма --- */
+  --radius: 0.75rem; /* ~12px — базовый радиус карточек */
 }
 
-body {
-  font-family:
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
+/* Радиусы отдельных категорий элементов — используются как
+   Tailwind-утилиты (см. tailwind.config), а не как отдельные
+   CSS-переменные shadcn (тех только --radius). */
+
+@layer base {
+  /* Preflight already sets border-width: 0 / border-style: solid on every element; this only
+     overrides its default border-color (currentColor) to the theme's border token. */
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
 }

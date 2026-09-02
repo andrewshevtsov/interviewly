@@ -2,6 +2,7 @@
 // живут рядом с роутами, которые их используют, а не в entities/shared.
 import type { User } from "@/entities/user";
 import type { InterviewSession } from "@/entities/session";
+import type { Profile, ProfileStatsData } from "@/entities/profile";
 
 export const DEMO_USER: User = {
   id: "u-1",
@@ -27,3 +28,19 @@ export const DEMO_SESSIONS: InterviewSession[] = [
     status: "completed",
   },
 ];
+
+export const DEMO_PROFILE: Profile = {
+  name: "Артём Соколов",
+  role: "Senior Frontend Engineer",
+  email: "artem@syntax.dev",
+  telegram: "@artem_dev",
+  level: "middle",
+  stack: ["React", "TypeScript"],
+  bio: "Гоняю по архитектуре фронта и алгоритмам. Люблю разбирать реальные кейсы.",
+};
+
+export const DEMO_PROFILE_STATS: ProfileStatsData = {
+  interviews: "81",
+  avgRating: "9.4",
+  topRank: "04",
+};

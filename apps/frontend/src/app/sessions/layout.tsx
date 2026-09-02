@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 
 /**
  * Props for {@link SessionsLayout}.
@@ -20,6 +21,9 @@ export interface SessionsLayoutProps {
 export default function SessionsLayout(props: SessionsLayoutProps) {
   return (
     <section>
+      <nav>
+        <Link href="/">Interviewly</Link>
+      </nav>
       <h2>Sessions</h2>
       {props.children}
     </section>

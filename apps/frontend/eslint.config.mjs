@@ -19,7 +19,16 @@ const baseDirectory = dirname(fileURLToPath(import.meta.url));
 
 export default tseslint.config(
   // --- Base rule sets (each already ships a flat config, no FlatCompat needed) ---
-  { ignores: ["eslint.config.mjs", "next.config.ts", "node_modules", ".next"] },
+  {
+    ignores: [
+      "eslint.config.mjs",
+      "next.config.ts",
+      "tailwind.config.ts",
+      "postcss.config.mjs",
+      "node_modules",
+      ".next",
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   importX.flatConfigs.recommended,
@@ -116,6 +125,12 @@ export default tseslint.config(
             },
             {
               from: { element: { type: "entities" } },
+              allow: [{ to: { element: { type: "shared" } } }],
+            },
+            // shared has no layer below it, but its own segments (ui/lib/config) may
+            // freely reference each other (e.g. shared/ui components using shared/lib/cn).
+            {
+              from: { element: { type: "shared" } },
               allow: [{ to: { element: { type: "shared" } } }],
             },
           ],
@@ -299,6 +314,16 @@ export default tseslint.config(
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/naming-convention": [
         "error",
+        {
+          // Destructured bindings (e.g. `const { className } = props`) are excluded from the
+          // UPPER_CASE-primitive-const rule below: the binding name comes from the source
+          // being destructured (a prop, an API response, ...), not chosen fresh like a real
+          // module-level constant, so forcing UPPER_CASE on it would be meaningless noise.
+          selector: "variable",
+          modifiers: ["const", "destructured"],
+          types: ["boolean", "string", "number"],
+          format: ["camelCase", "PascalCase", "UPPER_CASE"],
+        },
         {
           selector: "variable",
           modifiers: ["const"],
