@@ -1,0 +1,32 @@
+// Статусы учётной записи. При изменении status PostgreSQL-триггер из
+// начальной миграции автоматически обновляет statusUpdatedAt.
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DISABLED
+  ARCHIVED
+}
+
+model User {
+  id                    String     @default(uuid()) @db.Uuid
+  email                 String     @unique
+  emailVerifiedAt       DateTime?  @db.Timestamptz(3)
+  passwordHash          String?
+  firstName             String
+  lastName              String?
+  avatarPath            String?
+  timeZone              String?
+  isAdmin               Boolean    @default(false)
+  registrationCompleted Boolean    @default(false)
+  status                UserStatus @default(ACTIVE)
+  statusUpdatedAt       DateTime   @default(now()) @db.Timestamptz(3)
+  createdAt             DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime   @updatedAt @db.Timestamptz(3)
+
+  // Обратные стороны связей: сессии, созданные пользователем, и его участия.
+  // Отдельных столбцов для этих массивов в таблице User не создаётся.
+  ownedSessions         Session[]
+  sessionParticipations SessionParticipant[]
+
+  @@id([id])
+}
