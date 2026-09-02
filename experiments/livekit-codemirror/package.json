@@ -1,0 +1,20 @@
+{
+  "name": "livekit-codemirror",
+  "version": "1.0.0",
+  "description": "Local LiveKit, CodeMirror, and Yjs integration experiment",
+  "private": true,
+  "scripts": {
+    "build": "esbuild editor.js --bundle --format=esm --outfile=editor.bundle.js",
+    "dev": "node server.mjs"
+  },
+  "type": "module",
+  "dependencies": {
+    "@codemirror/lang-javascript": "^6.2.5",
+    "codemirror": "^6.0.2",
+    "esbuild": "^0.28.2",
+    "livekit-client": "^2.22.1",
+    "y-codemirror.next": "^0.3.6",
+    "y-websocket": "^3.1.0",
+    "yjs": "^13.6.32"
+  }
+}

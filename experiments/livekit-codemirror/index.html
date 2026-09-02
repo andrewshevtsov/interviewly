@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LiveKit + CodeMirror experiment</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, system-ui, sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #0b1020;
+        color: #edf1ff;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 18px;
+        border-bottom: 1px solid #26304c;
+      }
+      header strong {
+        margin-right: auto;
+      }
+      input {
+        width: min(28vw, 340px);
+        padding: 9px 11px;
+        color: inherit;
+        background: #141b30;
+        border: 1px solid #34405f;
+        border-radius: 8px;
+      }
+      button {
+        padding: 9px 13px;
+        color: inherit;
+        background: #4457db;
+        border: 0;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: #26304c;
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      #status {
+        min-width: 110px;
+        color: #aeb8d6;
+        font-size: 13px;
+      }
+      main {
+        display: grid;
+        grid-template-columns: minmax(280px, 38%) 1fr;
+        gap: 12px;
+        height: calc(100vh - 66px);
+        padding: 12px;
+      }
+      .panel {
+        overflow: hidden;
+        background: #11182a;
+        border: 1px solid #26304c;
+        border-radius: 12px;
+      }
+      .panel-title {
+        padding: 10px 12px;
+        color: #aeb8d6;
+        border-bottom: 1px solid #26304c;
+        font-size: 13px;
+      }
+      #media {
+        display: grid;
+        grid-auto-rows: minmax(160px, 1fr);
+        gap: 8px;
+        height: calc(100% - 38px);
+        padding: 8px;
+        overflow: auto;
+      }
+      .participant {
+        position: relative;
+        min-height: 180px;
+        overflow: hidden;
+        background: #080c16;
+        border-radius: 9px;
+      }
+      .participant video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .participant span {
+        position: absolute;
+        left: 8px;
+        bottom: 8px;
+        padding: 4px 7px;
+        background: #000a;
+        border-radius: 5px;
+        font-size: 12px;
+      }
+      #editor {
+        height: calc(100% - 38px);
+      }
+      .cm-editor {
+        height: 100%;
+        font-size: 15px;
+      }
+      .cm-scroller {
+        overflow: auto;
+      }
+      @media (max-width: 800px) {
+        header {
+          flex-wrap: wrap;
+        }
+        header strong {
+          width: 100%;
+        }
+        input {
+          flex: 1;
+          width: auto;
+          min-width: 180px;
+        }
+        main {
+          grid-template-columns: 1fr;
+          grid-template-rows: 42% 58%;
+          height: calc(100vh - 120px);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <strong>Interview room prototype</strong>
+      <input id="url" aria-label="LiveKit URL" placeholder="wss://your-project.livekit.cloud" />
+      <input
+        id="token"
+        aria-label="LiveKit token"
+        type="password"
+        placeholder="Participant token"
+      />
+      <button id="connect">Connect</button>
+      <button id="disconnect" class="secondary" disabled>Disconnect</button>
+      <span id="status">not connected</span>
+    </header>
+    <main>
+      <section class="panel">
+        <div class="panel-title">LiveKit media</div>
+        <div id="media"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-title">CodeMirror · JavaScript · Yjs collaborative</div>
+        <div id="editor"></div>
+      </section>
+    </main>
+
+    <script type="module" src="/editor.bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+    <script type="module">
+      const { Room, RoomEvent, Track } = window.LivekitClient;
+      const media = document.querySelector("#media");
+      const status = document.querySelector("#status");
+      const connectButton = document.querySelector("#connect");
+      const disconnectButton = document.querySelector("#disconnect");
+      let room;
+
+      function setStatus(message) {
+        status.textContent = message;
+      }
+
+      function addTrack(track, participant) {
+        if (track.kind === Track.Kind.Audio) {
+          media.append(track.attach());
+          return;
+        }
+        if (track.kind !== Track.Kind.Video) return;
+        const wrapper = document.createElement("div");
+        wrapper.className = "participant";
+        wrapper.dataset.trackSid = track.sid ?? "local";
+        const element = track.attach();
+        element.autoplay = true;
+        element.playsInline = true;
+        wrapper.append(element);
+        const label = document.createElement("span");
+        label.textContent = participant.identity || "participant";
+        wrapper.append(label);
+        media.append(wrapper);
+      }
+
+      function removeTrack(track) {
+        track.detach().forEach((element) => element.remove());
+        media.querySelector(`[data-track-sid="${track.sid}"]`)?.remove();
+      }
+
+      connectButton.addEventListener("click", async () => {
+        const url = document.querySelector("#url").value.trim();
+        const token = document.querySelector("#token").value.trim();
+        if (!url || !token) {
+          setStatus("URL + token required");
+          return;
+        }
+
+        connectButton.disabled = true;
+        setStatus("connecting…");
+        room = new Room({ adaptiveStream: true, dynacast: true });
+        room
+          .on(RoomEvent.TrackSubscribed, addTrack)
+          .on(RoomEvent.TrackUnsubscribed, removeTrack)
+          .on(RoomEvent.Disconnected, () => {
+            media.replaceChildren();
+            connectButton.disabled = false;
+            disconnectButton.disabled = true;
+            setStatus("disconnected");
+          });
+
+        try {
+          await room.connect(url, token);
+          await room.localParticipant.enableCameraAndMicrophone();
+          room.localParticipant.trackPublications.forEach((publication) => {
+            if (publication.track) addTrack(publication.track, room.localParticipant);
+          });
+          disconnectButton.disabled = false;
+          setStatus(`connected · ${room.name}`);
+        } catch (error) {
+          console.error(error);
+          await room.disconnect();
+          connectButton.disabled = false;
+          setStatus(`error: ${error.message}`);
+        }
+      });
+
+      disconnectButton.addEventListener("click", () => room?.disconnect());
+      window.addEventListener("beforeunload", () => room?.disconnect());
+    </script>
+  </body>
+</html>
