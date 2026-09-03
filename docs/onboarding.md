@@ -106,15 +106,6 @@ docker compose run --rm backend sh
 
 **Устранение проблем:**
 
-Если `pnpm install` медленный (< 50 KiB/s):
-```bash
-# Использовать быстрее mirror (npmmirror для Азии)
-pnpm config set registry https://cdn.npmmirror.com
-
-# Или добавить в Dockerfile перед install:
-RUN pnpm config set registry https://cdn.npmmirror.com
-```
-
 Если возникают конфликты node_modules:
 ```bash
 # Удалить локальные node_modules и пересоздать контейнер
@@ -179,13 +170,6 @@ docker compose restart
 docker compose up -d --build frontend
 ```
 
-**Просмотр логов:**
-```bash
-docker compose logs -f frontend      # Frontend логи в реальном времени
-docker compose logs -f backend       # Backend логи
-docker compose logs -f postgres      # База логи
-docker compose logs                  # Все логи, затем выход
-```
 
 **Проверка статуса:**
 ```bash
