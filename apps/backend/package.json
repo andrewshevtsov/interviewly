@@ -1,5 +1,5 @@
 {
-  "name": "backend",
+  "name": "@app/backend",
   "version": "0.0.1",
   "description": "",
   "author": "",
@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
+    "@nestjs/config": "^12.0.0",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
     "@prisma/adapter-pg": "^7.9.1",
