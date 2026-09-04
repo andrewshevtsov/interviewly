@@ -6,6 +6,7 @@ datasource db {
 
 generator client {
   provider     = "prisma-client"
+  envPath      = "./../../.env"
   // Сгенерированный код используется PrismaService, но не коммитится в git.
   // После изменения схемы обновите его командой `prisma generate`.
   output       = "../src/prisma/generated"

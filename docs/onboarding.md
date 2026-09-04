@@ -65,16 +65,54 @@ pnpm --filter @app/backend run dev    # http://localhost:4000
 
 ## Запуск через Docker
 
-`docker-compose.yml` поднимает `frontend` и `postgres` (подробности — в
+`docker-compose.yml` поднимает `frontend`, `backend` и `postgres` (подробности — в
 [docs/deployment.md](deployment.md)):
 
 ```bash
+# Подготовка (выполняется один раз)
 cp .env.example .env
+
+# Запуск всех сервисов
 docker compose up --build
+
+# Запуск только базы (фон)
+docker compose up -d postgres
+
+# Остановка всех сервисов
+docker compose down
+
+# Полная очистка (включая volumes)
+docker compose down -v
 ```
 
-`backend` пока не контейнеризован и запускается локально (см. выше), подключаясь к postgres
-через `localhost` — порт проброшен наружу.
+**Сервисы и порты:**
+- `frontend`: http://localhost:3000 (Next.js с hot-reload)
+- `backend`: http://localhost:4001 (NestJS API)
+- `postgres`: localhost:5432 (БД, доступна через `DATABASE_URL`)
+
+**Оптимизация:**
+- Общий `node_modules` volume (`node_modules`) разделяется между frontend и backend для экономии места
+- Bind mount (`.:/app`) позволяет видеть изменения кода в реальном времени
+- Автоматическая переустановка зависимостей при изменении `package.json`
+
+## Backend в Docker
+
+**Команда для отладки контейнера:**
+```bash
+docker exec -it interviewly-backend-1 sh
+# Или пересоздать с интерактивным shell:
+docker compose run --rm backend sh
+```
+
+**Устранение проблем:**
+
+Если возникают конфликты node_modules:
+```bash
+# Удалить локальные node_modules и пересоздать контейнер
+rm -rf node_modules apps/*/node_modules
+docker compose down -v
+docker compose up --build
+```
 
 ## Переменные окружения
 
@@ -113,6 +151,43 @@ pnpm --filter backend exec prisma migrate dev --name <короткое-назв�
 нужно изменить существующую структуру, создайте следующую миграцию. Ручные PostgreSQL
 `CHECK` и триггеры находятся в SQL миграций, потому что они не выражаются текущей
 Prisma-схемой полностью.
+
+## Docker Compose — практические сценарии
+
+**Первый запуск:**
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+**Быстрый перезапуск (без пересборки):**
+```bash
+docker compose restart
+```
+
+**Пересборка только frontend:**
+```bash
+docker compose up -d --build frontend
+```
+
+
+**Проверка статуса:**
+```bash
+docker compose ps                    # Список запущенных контейнеров
+docker compose top                   # Процессы внутри контейнеров
+```
+
+**Остановка:**
+```bash
+docker compose stop                  # Мягко остановить (сохранить state)
+docker compose down                  # Остановить и удалить контейнеры
+docker compose down -v               # + удалить volumes (БД будет пересоздана)
+```
+
+**Монорепозиторий в Docker:**
+- Все приложения (`frontend`, `backend`) используют одну Prisma schema из `apps/backend/prisma/`
+- Общий `node_modules` volume экономит место и согласованность версий
+- Если изменить `package.json` → Docker автоматически переустановит зависимости при `docker compose up`
 
 ## Проверка окружения
 

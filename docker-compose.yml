@@ -34,8 +34,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       # Контейнер считается готовым только после ответа выбранной базы.
-      test:
-        ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-interviewly} -d ${POSTGRES_DB:-interviewly}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-interviewly} -d ${POSTGRES_DB:-interviewly}" ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -45,32 +44,37 @@ services:
       context: .
       dockerfile: apps/frontend/Dockerfile
     restart: unless-stopped
-    environment:
-      NODE_ENV: development
-      PORT: ${FRONTEND_PORT:-3000}
-      # Задел на будущее — куда фронту стучаться за API, когда backend
-      # появится в docker
-      NEXT_PUBLIC_API_URL: http://localhost:${BACKEND_PORT:-4000}
-      # pnpm запускает проверку node_modules/lockfile перед каждой командой; если
-      # именованный volume с node_modules устарел (например, после добавления зависимости
-      # в package.json), pnpm хочет пересоздать node_modules и спрашивает подтверждение —
-      # но в контейнере нет TTY, и без CI=true команда падает с
-      # ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY вместо того, чтобы просто переустановить.
-      CI: "true"
+    env_file:
+      - ./.env
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      - 3000:3000
+    networks:
+      - interviewly-network
     volumes:
-      # Весь монорепозиторий пробрасывается внутрь — правки в src/ на хосте
-      # сразу видны в контейнере (hot-reload через `next dev` внутри).
       - .:/app
-      # Именованные volumes поверх node_modules — ЭТО ВАЖНО. Без них
-      # bind-mount выше перекрыл бы node_modules, установленные ВНУТРИ
-      # образа при сборке, пустой (или чужой, host-специфичной) версией
-      # с хоста. Так контейнерные node_modules остаются нетронутыми.
-      - frontend_node_modules:/app/apps/frontend/node_modules
-      - frontend_root_node_modules:/app/node_modules
+      - node_modules:/app/node_modules
 
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    restart: unless-stopped
+    env_file: ./.env
+    ports:
+      - "4001:4001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - interviewly-network
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+
+networks:
+  interviewly-network:
+    driver: bridge
 volumes:
-  frontend_node_modules:
-  frontend_root_node_modules:
+  node_modules:
   postgres_data:
+
