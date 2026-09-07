@@ -325,8 +325,15 @@ export default tseslint.config(
           format: ["camelCase", "PascalCase", "UPPER_CASE"],
         },
         {
+          // Scoped to module-level ("global") bindings only: a top-level `const` is a real,
+          // once-defined constant, unlike a function-local `const` (e.g. a `useState` pair,
+          // a computed intermediate value), which is just a variable that happens not to be
+          // reassigned. Without "global" here, every local primitive const - including array
+          // destructuring like `const [theme, setTheme] = useState(...)`, which the rule's
+          // "destructured" modifier does not cover (only object destructuring) - would need
+          // an eslint-disable comment to avoid a spurious UPPER_CASE requirement.
           selector: "variable",
-          modifiers: ["const"],
+          modifiers: ["const", "global"],
           types: ["boolean", "string", "number"],
           format: ["UPPER_CASE"],
         },

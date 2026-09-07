@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
+
+import { InlineScript } from "@/shared/ui/inline-script";
 import "@/app/styles/global.css";
 
 const inter = Inter({
@@ -40,7 +42,22 @@ export interface RootLayoutProps {
  */
 export default function RootLayout(props: RootLayoutProps) {
   return (
-    <html lang="ru" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+    <html
+      lang="ru"
+      data-theme="dark"
+      suppressHydrationWarning
+      className={`${inter.variable} ${jetbrainsMono.variable}`}
+    >
+      <head>
+        {/* Синхронно применяет сохранённую тему до первой отрисовки, чтобы избежать
+            мигания дефолтной (тёмной) темы. См. features/toggle-theme/ThemeToggle. */}
+        <InlineScript
+          html={
+            "(function(){try{var t=localStorage.getItem(\"theme\");" +
+            "if(t)document.documentElement.setAttribute(\"data-theme\",t)}catch(e){}})()"
+          }
+        />
+      </head>
       <body>{props.children}</body>
     </html>
   );

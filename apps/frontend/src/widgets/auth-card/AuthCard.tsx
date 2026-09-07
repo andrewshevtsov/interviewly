@@ -41,7 +41,6 @@ const TABS: TabOption[] = [
  * @returns {import('react').ReactNode} The auth card.
  */
 export function AuthCard() {
-  // eslint-disable-next-line @typescript-eslint/naming-convention -- useState pair, not a real constant
   const [activeTab, setActiveTab] = useState<AuthTab>("login");
 
   return (

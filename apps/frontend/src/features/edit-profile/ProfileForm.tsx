@@ -72,7 +72,6 @@ export interface ProfileFormProps {
  */
 export function ProfileForm(props: ProfileFormProps) {
   const { profile } = props;
-  // eslint-disable-next-line @typescript-eslint/naming-convention -- useState pair, not a real constant
   const [level, setLevel] = useState<ProfileLevel>(profile.level);
   const [stack, setStack] = useState<string[]>(profile.stack);
 
