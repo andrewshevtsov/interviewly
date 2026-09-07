@@ -1,5 +1,6 @@
 packages:
-  - "apps/*"
+  - "apps/frontend"
+  - "apps/backend"
 # pnpm блокирует install/postinstall-скрипты зависимостей без явного разрешения.
 # Prisma CLI и engines разрешены здесь, чтобы подготовить платформенные бинарники
 # для generate/migrate; esbuild и unrs-resolver нужны существующим frontend-tools.

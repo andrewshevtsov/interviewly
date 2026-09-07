@@ -9,15 +9,14 @@
     "node": ">=22.13.0"
   },
   "scripts": {
+    "back-dev": "pnpm --filter @app/backend run start:dev",
+    "front-dev": "pnpm --filter @app/frontend run dev",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r --if-present run typecheck",
     "prepare": "husky"
   },
   "devDependencies": {
-    "husky": "^9.1.7",
-    "prettier": "^3.9.6",
-    "tsx": "^4.23.12",
-    "typescript": "6.0.3"
+    "husky": "^9.1.7"
   }
 }
