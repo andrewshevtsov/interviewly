@@ -17,6 +17,6 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-EXPOSE 4001
+EXPOSE 3000
 
 CMD ["pnpm", "run", "front-dev"]
