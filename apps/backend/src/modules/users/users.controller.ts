@@ -16,11 +16,12 @@ import { UsersService } from './users.service.ts';
 import { CreateUserDto } from './dto/create-user.dto.ts';
 import { UpdateUserDto } from './dto/update-user.dto.ts';
 import { UserEntity } from './entities/user-entity.ts';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
 @Controller('users')
 @UseInterceptors(ClassSerializerInterceptor)
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @Post()
   create(@Body() dto: CreateUserDto): Promise<UserEntity> {
@@ -28,16 +29,19 @@ export class UsersController {
   }
 
   @Get()
+  @ApiBearerAuth()
   findAll(): Promise<UserEntity[]> {
     return this.usersService.findAll();
   }
 
   @Get(':id')
+  @ApiBearerAuth()
   findOne(@Param('id', ParseUUIDPipe) id: string): Promise<UserEntity> {
     return this.usersService.findOne(id);
   }
 
   @Patch(':id')
+  @ApiBearerAuth()
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateUserDto,
@@ -46,6 +50,7 @@ export class UsersController {
   }
 
   @Delete(':id')
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.usersService.remove(id);

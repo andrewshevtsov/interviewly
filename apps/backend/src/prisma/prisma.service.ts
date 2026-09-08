@@ -5,10 +5,9 @@ import { createPrismaAdapter } from './prisma-client-adapter.ts';
 @Injectable()
 export class PrismaService
   extends PrismaClient
-  implements OnModuleInit, OnModuleDestroy
-{
+  implements OnModuleInit, OnModuleDestroy {
   constructor() {
-    super({adapter: createPrismaAdapter()});
+    super({ adapter: createPrismaAdapter() });
   }
 
   async onModuleInit() {
