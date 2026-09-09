@@ -35,8 +35,8 @@ Seed предназначен для локальной разработки и 
 Проверить состояние схемы и миграций:
 
 ```bash
-pnpm --filter backend exec prisma validate
-pnpm --filter backend exec prisma migrate status
+pnpm --filter @app/backend exec prisma validate
+pnpm --filter @app/backend exec prisma migrate status
 ```
 
 Остановить контейнеры без удаления данных PostgreSQL:
@@ -59,7 +59,9 @@ $ pnpm run start:dev
 
 # production mode
 $ pnpm run start:prod
-```
+
+# docker compose in dev mode Backend-Frontend-PostgreSQL
+$ docker compose up
 
 ## Run tests
 
