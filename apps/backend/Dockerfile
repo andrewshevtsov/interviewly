@@ -17,6 +17,6 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-EXPOSE 4001  
+EXPOSE 4001
 
-CMD ["pnpm", "run", "back-dev"]
+CMD ["sh", "-c", "pnpm --filter @app/backend exec prisma generate && pnpm run back-dev"]
