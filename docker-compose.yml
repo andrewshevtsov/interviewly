@@ -61,7 +61,7 @@ services:
     restart: unless-stopped
     env_file: ./.env
     ports:
-      - 4001:4001
+      - 4000:4000
     depends_on:
       postgres:
         condition: service_healthy
