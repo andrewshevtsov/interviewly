@@ -9,15 +9,23 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
-    "incremental": true,
-    "strictNullChecks": true,    
+    "strictNullChecks": true,
     "emitDeclarationOnly": false,
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
     "noImplicitAny": false,
     "ignoreDeprecations": "6.0",
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "test", "**/*.spec.ts"]
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "test",
+    "**/*.spec.ts"
+  ]
 }
