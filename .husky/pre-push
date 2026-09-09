@@ -1,0 +1,31 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/validate-branch-name.sh"
+
+validated=false
+
+if [ ! -t 0 ]; then
+  while read -r local_ref local_sha remote_ref remote_sha; do
+    case "$local_ref" in
+      refs/tags/*) continue ;;
+    esac
+
+    if [ "$local_sha" = "0000000000000000000000000000000000000000" ]; then
+      continue
+    fi
+
+    branch="${local_ref#refs/heads/}"
+    case "$branch" in
+      refs/*) continue ;;
+    esac
+
+    validated=true
+    validate_branch_name "$branch" || exit 1
+  done
+fi
+
+if [ "$validated" = false ]; then
+  branch=$(git branch --show-current 2>/dev/null || git rev-parse --abbrev-ref HEAD 2>/dev/null)
+  validate_branch_name "$branch" || exit 1
+fi
+
+echo "✅ Имя ветки корректно"

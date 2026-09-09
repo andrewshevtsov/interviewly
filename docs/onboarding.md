@@ -38,11 +38,18 @@ pnpm --filter backend exec prisma migrate dev
 
 # 4. Сгенерировать Prisma Client для backend
 pnpm --filter backend exec prisma generate
+
+# 5. Заполнить локальную базу тестовыми данными (необязательно)
+pnpm --filter backend exec prisma db seed
 ```
 
 После этого PostgreSQL продолжает работать в Docker, а frontend и backend запускаются
 отдельными командами из следующего раздела. Остановить инфраструктуру можно командой
 `docker compose down`; данные PostgreSQL сохранятся в именованном volume `postgres_data`.
+
+Seed предназначен только для локальной разработки. Он создаёт 5 пользователей, 3 сессии
+и 6 участий в сессиях через `upsert`, поэтому повторный запуск обновляет те же записи и не
+создаёт дубликаты. Запускайте seed после применения миграций и генерации Prisma Client.
 
 ## Запуск приложений локально (без Docker)
 

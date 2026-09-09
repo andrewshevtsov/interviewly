@@ -9,6 +9,6 @@ generator client {
   // Сгенерированный код используется PrismaService, но не коммитится в git.
   // После изменения схемы обновите его командой `prisma generate`.
   output       = "../src/prisma/generated"
-  // Backend компилируется как CommonJS (см. apps/backend/tsconfig.json).
-  moduleFormat = "cjs"
+  // Backend компилируется как ESM (см. apps/backend/tsconfig.json).
+  moduleFormat = "esm"
 }

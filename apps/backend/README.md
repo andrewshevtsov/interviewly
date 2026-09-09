@@ -20,16 +20,23 @@ pnpm --filter backend exec prisma migrate dev
 
 # Сгенерировать Prisma Client
 pnpm --filter backend exec prisma generate
+
+# Заполнить локальную базу тестовыми данными
+pnpm --filter backend exec prisma db seed
 ```
 
 PostgreSQL доступен backend-приложению через `DATABASE_URL` из корневого `.env`. Prisma
 CLI запускается локально и подключается к PostgreSQL по адресу `localhost:5432`.
 
+Seed предназначен для локальной разработки и создаёт 5 пользователей, 3 сессии и 6
+участий в сессиях. Скрипт использует `upsert`, поэтому его можно безопасно запускать
+повторно после применения миграций.
+
 Проверить состояние схемы и миграций:
 
 ```bash
-pnpm --filter backend exec prisma validate
-pnpm --filter backend exec prisma migrate status
+pnpm --filter @app/backend exec prisma validate
+pnpm --filter @app/backend exec prisma migrate status
 ```
 
 Остановить контейнеры без удаления данных PostgreSQL:
@@ -52,7 +59,9 @@ $ pnpm run start:dev
 
 # production mode
 $ pnpm run start:prod
-```
+
+# docker compose in dev mode Backend-Frontend-PostgreSQL
+$ docker compose up
 
 ## Run tests
 

@@ -13,6 +13,8 @@ export default defineConfig({
   migrations: {
     // SQL-миграции хранятся рядом с главным schema.prisma и коммитятся в git.
     path: path.join('prisma', 'migrations'),
+    // Команда заполнения локальной базы идемпотентными тестовыми данными.
+    seed: 'tsx prisma/seed.ts',
   },
   datasource: {
     // Адрес PostgreSQL обязателен: env() сразу завершит команду с понятной

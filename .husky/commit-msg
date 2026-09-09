@@ -1,0 +1,55 @@
+#!/usr/bin/env sh
+
+commit_msg=$(cat "$1")
+
+first_line=$(echo "$commit_msg" | head -n 1)
+
+if echo "$first_line" | grep -qE '^Merge (branch|remote-tracking branch|commit) '; then
+  echo "✅ Пропуск проверки для автосгенерированного коммита мержа"
+  exit 0
+fi
+
+if ! echo "$first_line" | grep -qE '^[a-zA-Z]'; then
+  echo "❌ Ошибка: Первая строка коммита должна быть заголовком на английском"
+  echo "Формат: <ЗАГОЛОВОК>"
+  echo "Получено: $first_line"
+  exit 1
+fi
+
+second_line=$(echo "$commit_msg" | sed -n '2p')
+if [ -n "$second_line" ]; then
+  echo "❌ Ошибка: После заголовка должна быть пустая строка"
+  exit 1
+fi
+
+body_lines=$(echo "$commit_msg" | tail -n +3)
+if [ -z "$body_lines" ]; then
+  echo "❌ Ошибка: После пустой строки должны быть строки с маркерами изменений: [+], [-], [~], [!], [!!]"
+  exit 1
+fi
+
+if ! echo "$body_lines" | grep -qE '^\s*\[(\+|\-|\~|!{1,2})\]\s+'; then
+  echo "❌ Ошибка: После пустой строки должны быть строки с маркерами изменений: [+], [-], [~], [!], [!!]"
+  echo "Пример: [+] Описание изменения"
+  exit 1
+fi
+
+has_invalid_line=false
+while IFS= read -r line || [ -n "$line" ]; do
+  if [ -z "$line" ]; then
+    continue
+  fi
+  if ! echo "$line" | grep -qE '\[(\+|\-|\~|!{1,2})\]\s+'; then
+    has_invalid_line=true
+    echo "❌ Ошибка: Строка не содержит маркер изменений: $line"
+  fi
+done <<EOF
+$body_lines
+EOF
+
+if [ "$has_invalid_line" = true ]; then
+  echo "Все непустые строки после заголовка должны содержать маркер: [+], [-], [~], [!], [!!]"
+  exit 1
+fi
+
+echo "✅ Формат коммита корректен"
