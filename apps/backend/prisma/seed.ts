@@ -4,6 +4,7 @@ import { PrismaClient } from '../src/prisma/generated/client.ts';
 import usersSeedData from './seed-data/users.ts';
 import sessionsSeedData from './seed-data/sessions.ts';
 import participantsSeedData from './seed-data/session-participants.ts';
+import profilesSeedData from './seed-data/profiles.ts';
 
 // Тот же фактор, что и в AuthService, чтобы сид-хеши были неотличимы
 // от реальных регистраций.
@@ -87,9 +88,28 @@ async function main() {
     });
   }
 
+  for (const eachProfile of profilesSeedData) {
+    const userId = userIdByEmail.get(eachProfile.email);
+
+    await prisma.profile.upsert({
+      where: {
+        email: eachProfile.email,
+      },
+      update: {
+        ...eachProfile,
+        userId,
+      },
+      create: {
+        ...eachProfile,
+        userId,
+      },
+    });
+  }
+
   console.log(`Seeded ${userIdByEmail.size} users`);
   console.log(`Seeded ${sessionsSeedData.length} sessions`);
   console.log(`Seeded ${participantsSeedData.length} session participants`);
+  console.log(`Seeded ${profilesSeedData.length} profiles`);
 }
 
 main()

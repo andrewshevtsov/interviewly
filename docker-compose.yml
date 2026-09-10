@@ -21,11 +21,8 @@ services:
     # Alpine-образ меньше полного образа и достаточен для локальной разработки.
     image: postgres:17-alpine
     restart: unless-stopped
-    environment:
-      # Значения берутся из корневого .env; справа указаны dev-дефолты.
-      POSTGRES_USER: ${POSTGRES_USER:-interviewly}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-interviewly}
-      POSTGRES_DB: ${POSTGRES_DB:-interviewly}
+    env_file:
+      - ./.env
     ports:
       # Слева порт Mac, справа стандартный порт PostgreSQL в контейнере.
       - "${POSTGRES_PORT:-5432}:5432"

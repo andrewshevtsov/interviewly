@@ -16,7 +16,7 @@ import { UsersService } from './users.service.ts';
 import { CreateUserDto } from './dto/create-user.dto.ts';
 import { UpdateUserDto } from './dto/update-user.dto.ts';
 import { UserEntity } from './entities/user-entity.ts';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiProperty } from '@nestjs/swagger';
 
 @Controller('users')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -24,16 +24,19 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) { }
 
   @Post()
+  @ApiProperty()
   create(@Body() dto: CreateUserDto): Promise<UserEntity> {
     return this.usersService.create(dto);
   }
 
   @Get()
+  @ApiProperty()
   findAll(): Promise<UserEntity[]> {
     return this.usersService.findAll();
   }
 
   @Get(':id')
+  @ApiProperty()
   @ApiBearerAuth()
   findOne(@Param('id', ParseUUIDPipe) id: string): Promise<UserEntity> {
     return this.usersService.findOne(id);
@@ -41,6 +44,7 @@ export class UsersController {
 
   @Patch(':id')
   @ApiBearerAuth()
+  @ApiProperty()
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateUserDto,
@@ -49,6 +53,7 @@ export class UsersController {
   }
 
   @Delete(':id')
+  @ApiProperty()
   @ApiBearerAuth()
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
