@@ -29,7 +29,6 @@ export class UsersController {
   }
 
   @Get()
-  @ApiBearerAuth()
   findAll(): Promise<UserEntity[]> {
     return this.usersService.findAll();
   }
