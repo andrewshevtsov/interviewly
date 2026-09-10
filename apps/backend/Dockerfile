@@ -1,6 +1,6 @@
 FROM node:22-alpine
 
-RUN corepack enable && corepack prepare pnpm@11.21.0 --activate
+RUN corepack enable && corepack prepare pnpm@11.22.0 --activate
 
 WORKDIR /app
 ENV CI=true

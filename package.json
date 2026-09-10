@@ -11,6 +11,7 @@
   "scripts": {
     "back-dev": "pnpm --filter @app/backend run start:dev",
     "front-dev": "pnpm --filter @app/frontend run dev",
+    "prisma-generate": "pnpm --filter @app/backend prisma-generate",
     "format": "prettier --write .",
     "prisma-generate": "pnpm --filter @app/backend prisma-generate",
     "format:check": "prettier --check .",
