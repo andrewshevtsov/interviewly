@@ -7,7 +7,7 @@
 
 - Node.js `>=22.13.0` (зафиксировано в `engines` корневого `package.json`; для нативного ESM +
   decorators без предупреждений рекомендуется именно Node 22)
-- pnpm `11.21.0` — не обязательно ставить вручную: Corepack (идёт в комплекте с Node 20+)
+- pnpm `11.22.0` — не обязательно ставить вручную: Corepack (идёт в комплекте с Node 20+)
   сам поднимет нужную версию по полю `packageManager` в корневом `package.json`
 - Docker + Docker Compose — если нужно поднять сервисы в контейнерах
   вместо локального запуска
@@ -23,6 +23,11 @@ pnpm install
 `pnpm install` ставит зависимости для всех пакетов workspace (`apps/*`) одной командой.
 
 ## Подготовка PostgreSQL и Prisma
+
+Нужно только для запуска backend **локально, вне Docker** (раздел ниже). Если вы просто
+поднимаете всё через `docker compose up --build` (см. «Запуск через Docker»), пропустите
+этот раздел — миграции, генерацию Prisma Client и сиды сервис `backend` делает сам при
+каждом старте контейнера.
 
 После установки зависимостей подготовьте локальную базу перед запуском приложений:
 
@@ -65,7 +70,7 @@ pnpm --filter @app/backend run dev    # http://localhost:4000
 
 ## Запуск через Docker
 
-`docker-compose.yml` поднимает `frontend` и `postgres` (подробности — в
+`docker-compose.yml` поднимает `frontend`, `backend` и `postgres` (подробности — в
 [docs/deployment.md](deployment.md)):
 
 ```bash
@@ -73,8 +78,13 @@ cp .env.example .env
 docker compose up --build
 ```
 
-`backend` пока не контейнеризован и запускается локально (см. выше), подключаясь к postgres
-через `localhost` — порт проброшен наружу.
+Больше ничего готовить руками не нужно: сервис `backend` сам генерирует Prisma Client,
+применяет закоммиченные миграции (`prisma migrate deploy`) и заполняет базу сидами при
+каждом старте контейнера. `backend` подключается к `postgres` по имени сервиса в сети
+`interviewly-network` (см. `DATABASE_URL` в `.env.example`), а не через `localhost`.
+
+- frontend: http://localhost:3000
+- backend: http://localhost:4000
 
 ## Переменные окружения
 

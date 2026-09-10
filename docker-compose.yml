@@ -1,20 +1,21 @@
-# Docker Compose для ЛОКАЛЬНОЙ РАЗРАБОТКИ. Сейчас поднимает frontend и postgres.
+# Docker Compose для ЛОКАЛЬНОЙ РАЗРАБОТКИ. Поднимает frontend, backend и postgres.
 #
 # Быстрый старт всех Docker-сервисов:
 #   cp .env.example .env
 #   docker compose up --build
 #
-# Запуск только PostgreSQL в фоне:
+# Запуск только PostgreSQL в фоне (например, для локального запуска backend вне Docker):
 #   docker compose up -d postgres
 #
-# После первого запуска PostgreSQL:
-#   pnpm --filter backend exec prisma migrate dev
-#   pnpm --filter backend exec prisma generate
-#
 # Дальше:
-#   frontend: http://localhost:3000/health
-#   postgres: localhost:5432 (backend запускается локально, вне Docker,
-#             и подключается к postgres через DATABASE_URL из .env)
+#   frontend: http://localhost:3000
+#   backend:  http://localhost:4000
+#   postgres: localhost:5432 (при запуске в Docker backend подключается к postgres
+#             по имени сервиса "postgres" в сети interviewly-network; при локальном
+#             запуске backend вне Docker — через localhost, см. DATABASE_URL в .env)
+#
+# Сервис backend сам применяет миграции и сиды при каждом старте контейнера:
+# prisma generate && prisma migrate deploy && prisma db seed.
 
 services:
   postgres:
