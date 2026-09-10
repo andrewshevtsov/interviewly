@@ -1,8 +1,14 @@
+import * as bcrypt from 'bcrypt';
 import { createPrismaAdapter } from '../src/prisma/prisma-client-adapter.ts';
 import { PrismaClient } from '../src/prisma/generated/client.ts';
 import usersSeedData from './seed-data/users.ts';
 import sessionsSeedData from './seed-data/sessions.ts';
 import participantsSeedData from './seed-data/session-participants.ts';
+import profilesSeedData from './seed-data/profiles.ts';
+
+// Тот же фактор, что и в AuthService, чтобы сид-хеши были неотличимы
+// от реальных регистраций.
+const PASSWORD_SALT_ROUNDS = 12;
 
 const prisma = new PrismaClient({
   adapter: createPrismaAdapter(),
@@ -13,13 +19,17 @@ async function main() {
 
   const userIdByEmail = new Map<string, string>();
 
-  for (const eachUser of usersSeedData) {
+  for (const { password, ...eachUser } of usersSeedData) {
+    // Сырой пароль из сид-данных хешируем ровно как AuthService.register.
+    const passwordHash = await bcrypt.hash(password, PASSWORD_SALT_ROUNDS);
+    const userData = { ...eachUser, passwordHash };
+
     const user = await prisma.user.upsert({
       where: {
         email: eachUser.email,
       },
-      update: eachUser,
-      create: eachUser,
+      update: userData,
+      create: userData,
     });
 
     userIdByEmail.set(user.email, user.id);
@@ -78,9 +88,28 @@ async function main() {
     });
   }
 
+  for (const eachProfile of profilesSeedData) {
+    const userId = userIdByEmail.get(eachProfile.email);
+
+    await prisma.profile.upsert({
+      where: {
+        email: eachProfile.email,
+      },
+      update: {
+        ...eachProfile,
+        userId,
+      },
+      create: {
+        ...eachProfile,
+        userId,
+      },
+    });
+  }
+
   console.log(`Seeded ${userIdByEmail.size} users`);
   console.log(`Seeded ${sessionsSeedData.length} sessions`);
   console.log(`Seeded ${participantsSeedData.length} session participants`);
+  console.log(`Seeded ${profilesSeedData.length} profiles`);
 }
 
 main()
