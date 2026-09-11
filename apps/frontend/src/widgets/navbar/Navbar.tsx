@@ -77,13 +77,17 @@ export function Navbar() {
               </>
             )
             : (
-              <Link href="/auth" className="text-sm text-foreground hover:text-muted-foreground">
-                Войти
-              </Link>
+              <Button asChild size="sm" >
+                <Link href="/auth" className="text-sm text-foreground">
+                  Войти
+                </Link>
+              </Button>
             )}
-          <Button asChild size="sm">
-            <Link href="/sessions">Создать сессию</Link>
-          </Button>
+          {isAuthenticated && (
+            <Button asChild size="sm">
+              <Link href="/sessions">Создать сессию</Link>
+            </Button>
+          )}
         </div>
       </div>
     </header>
