@@ -6,6 +6,7 @@ import { ProfileStats } from "@/widgets/profile-stats";
 import { TelegramNotice } from "@/widgets/telegram-notice";
 import { ProfileForm } from "@/features/edit-profile";
 import type { Profile, ProfileStatsData } from "@/entities/profile";
+import { getServerTranslations } from "@/shared/i18n-server";
 
 /**
  * Props for {@link ProfilePage}.
@@ -28,16 +29,17 @@ export interface ProfilePageProps {
  * @param {ProfilePageProps} props - Props for the page.
  * @returns {import('react').ReactNode} The profile page.
  */
-export function ProfilePage(props: ProfilePageProps) {
+export async function ProfilePage(props: ProfilePageProps) {
   const { profile, stats } = props;
+  const t = await getServerTranslations("profile");
 
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-16">
-        <h1 className="text-3xl font-bold tracking-tight">Личный кабинет</h1>
-        <p className="mt-2 text-muted-foreground">Профиль и карточка, которую видят другие участники.</p>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+        <p className="mt-2 text-muted-foreground">{t("description")}</p>
 
         <div className="mt-10 grid gap-6 lg:grid-cols-[1fr_320px]">
           <ProfileForm profile={profile} />

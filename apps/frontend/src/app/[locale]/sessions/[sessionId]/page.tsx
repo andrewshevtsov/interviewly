@@ -1,8 +1,8 @@
 import { InterviewSessionPage } from "@/views/interview-session-page";
-import { DEMO_USER } from "../../demo-data";
+import { DEMO_USER } from "@/app/demo-data";
 
 /**
- * Props for the dynamic "/sessions/[sessionId]" route.
+ * Props for the localized dynamic session route.
  */
 export interface SessionPageProps {
   /**
@@ -13,12 +13,13 @@ export interface SessionPageProps {
      * Session ID captured from the URL segment.
      */
     sessionId: string;
+    /** Locale captured from the parent URL segment. */
+    locale: string;
   }>;
 }
 
 /**
- * Route "/sessions/[sessionId]" - renders the interview session page for
- * the session ID captured from the URL.
+ * Localized route that renders the interview session page.
  * @param {SessionPageProps} props - Next.js route props containing the dynamic params.
  * @returns {Promise<import('react').ReactNode>} The interview session page.
  */

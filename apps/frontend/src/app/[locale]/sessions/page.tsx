@@ -1,8 +1,8 @@
 import { SessionsListPage } from "@/views/sessions-list-page";
-import { DEMO_SESSIONS } from "../demo-data";
+import { DEMO_SESSIONS } from "@/app/demo-data";
 
 /**
- * Route "/sessions" - lists all demo interview sessions.
+ * Localized route that lists all demo interview sessions.
  * @returns {import('react').ReactNode} The sessions list page.
  */
 export default function Page() {

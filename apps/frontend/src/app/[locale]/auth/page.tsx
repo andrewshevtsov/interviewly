@@ -1,7 +1,7 @@
 import { AuthPage } from "@/views/auth-page";
 
 /**
- * Route "/auth" - login/registration screen.
+ * Localized login/registration route.
  * @returns {import('react').ReactNode} The auth page.
  */
 export default function Page() {

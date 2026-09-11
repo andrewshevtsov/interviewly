@@ -1,7 +1,17 @@
 // Слой views: список сессий со ссылками на детальную страницу каждой.
 // Разрешено импортировать widgets, features, entities, shared.
-import Link from "next/link";
 import type { InterviewSession } from "@/entities/session";
+import { getServerTranslations } from "@/shared/i18n-server";
+import { LocalizedLink } from "@/shared/ui/localized-link";
+
+const STATUS_MESSAGE_KEYS: Record<
+  InterviewSession["status"],
+  "scheduled" | "active" | "completed"
+> = {
+  scheduled: "scheduled",
+  active: "active",
+  completed: "completed",
+};
 
 /**
  * Props for {@link SessionsListPage}.
@@ -18,12 +28,16 @@ export interface SessionsListPageProps {
  * @param {SessionsListPageProps} props - Props for the page.
  * @returns {import('react').ReactNode} The sessions list page.
  */
-export function SessionsListPage(props: SessionsListPageProps) {
+export async function SessionsListPage(props: SessionsListPageProps) {
+  const t = await getServerTranslations("session");
+
   return (
     <ul>
       {props.sessions.map((session) => (
         <li key={session.id}>
-          <Link href={`/sessions/${session.id}`}>{`${session.title} (${session.status})`}</Link>
+          <LocalizedLink href={`/sessions/${session.id}`}>
+            {session.title} ({t(STATUS_MESSAGE_KEYS[session.status])})
+          </LocalizedLink>
         </li>
       ))}
     </ul>

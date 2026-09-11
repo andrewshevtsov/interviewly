@@ -6,9 +6,8 @@ Feature-Sliced Design.
 
 ## Текущее состояние
 
-- `app/` — Next.js App Router (роутинг, `layout.tsx`/`page.tsx`), **в корне пакета, а не в
-  `src/`**; `src/app` остаётся FSD-слоем `app` для композиции (провайдеры, глобальные стили и
-  т.п.) — две разные вещи с одинаковым именем, физически разнесённые.
+- `src/app/` — Next.js App Router (роутинг, `layout.tsx`/`page.tsx`) и точка композиции
+  приложения. Пользовательские страницы находятся под динамическим сегментом `[locale]`.
 - Слой FSD `pages` называется **`views`** (`src/views/*`), а не `pages` — специально, чтобы не
   совпадать с зарезервированным именем каталога Next.js (`pages/`/`src/pages` = Pages Router).
   Из-за этого не нужно ни выносить `app/` из `src/`, ни заводить пустую папку-заглушку — конфликта
@@ -20,29 +19,34 @@ Feature-Sliced Design.
 Демонстрационные роуты (для тех, кто впервые видит связку Next.js App Router + FSD):
 
 ```
-app/
-├── layout.tsx              # корневой layout: общая навигация (Interviewly → "/")
-├── page.tsx                 → @/views/home-page             ("/")
-├── demo-data.ts             # захардкоженные фикстуры user/sessions для примера, не часть FSD
-└── sessions/
-    ├── layout.tsx           # вложенный layout: секция "Sessions" внутри корневого
-    ├── page.tsx              → @/views/sessions-list-page    ("/sessions")
-    └── [sessionId]/
-        └── page.tsx          → @/views/interview-session-page ("/sessions/:sessionId")
+src/app/
+├── layout.tsx                # корневой HTML-layout и I18nProvider
+├── page.tsx                  # перенаправление "/" на локализованный URL
+├── demo-data.ts              # демонстрационные данные, не часть FSD
+└── [locale]/
+    ├── layout.tsx            # проверка поддерживаемой locale
+    ├── page.tsx              → @/views/home-page             ("/:locale")
+    ├── auth/page.tsx         → @/views/auth-page             ("/:locale/auth")
+    ├── profile/page.tsx      → @/views/profile-page          ("/:locale/profile")
+    └── sessions/
+        ├── layout.tsx        # layout секции сессий
+        ├── page.tsx          → @/views/sessions-list-page    ("/:locale/sessions")
+        └── [sessionId]/
+            └── page.tsx      → @/views/interview-session-page
 ```
 
 Идея: файлы в `app/**` — тонкие "роуты", которые только читают URL/параметры и рендерят
 компонент из `src/views/*` (слой FSD). Бизнес-логика и разметка живут в `src/views`, а не в
-`app/`. Переходы между страницами — обычные `<Link href="...">` из `next/link` (см.
-`HomePage`, `SessionsListPage`, `InterviewSessionPage`); `app/sessions/layout.tsx` показывает
-вложенный layout — он оборачивает и список, и страницу конкретной сессии, не трогая
-корневой `app/layout.tsx`.
+route-файлах. Внутренние переходы используют `LocalizedLink`, который добавляет текущую locale к
+адресу. Устройство интернационализации зафиксировано в
+[ADR](../../docs/architecture/adr-frontend-internationalization.md).
 
 ## Запуск
 
 ```bash
 pnpm --filter @app/frontend run dev
-# http://localhost:3000
+# http://localhost:3000/ru
+# http://localhost:3000/en
 ```
 
 ## Запуск через Docker

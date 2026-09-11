@@ -1,8 +1,8 @@
 import { ProfilePage } from "@/views/profile-page";
-import { DEMO_PROFILE, DEMO_PROFILE_STATS } from "../demo-data";
+import { DEMO_PROFILE, DEMO_PROFILE_STATS } from "@/app/demo-data";
 
 /**
- * Route "/profile" - the signed-in user's personal cabinet (editable profile and stats).
+ * Localized profile route.
  * @returns {import('react').ReactNode} The profile page.
  */
 export default function Page() {

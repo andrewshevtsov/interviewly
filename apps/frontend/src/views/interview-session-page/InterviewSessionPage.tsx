@@ -1,8 +1,9 @@
 // Слой views: собирает виджеты в конкретную страницу приложения.
 // Разрешено импортировать widgets, features, entities, shared.
-import Link from "next/link";
 import { SessionToolbar } from "@/widgets/session-toolbar";
 import type { User } from "@/entities/user";
+import { getServerTranslations } from "@/shared/i18n-server";
+import { LocalizedLink } from "@/shared/ui/localized-link";
 import { prepareInterviewSessionPage } from "./index";
 
 /**
@@ -25,16 +26,17 @@ export interface InterviewSessionPageProps {
  * @param {InterviewSessionPageProps} props - Props for the page.
  * @returns {import('react').ReactNode} The interview session page.
  */
-export function InterviewSessionPage(props: InterviewSessionPageProps) {
+export async function InterviewSessionPage(props: InterviewSessionPageProps) {
   const { user } = props;
   const state = prepareInterviewSessionPage(props.sessionId, user);
+  const t = await getServerTranslations("session");
 
   return (
     <main>
-      <Link href={"/sessions"}>← Back to sessions</Link>
-      <h1>Interview session</h1>
+      <LocalizedLink href="/sessions">← {t("backToSessions")}</LocalizedLink>
+      <h1>{t("title")}</h1>
       <SessionToolbar usedHints={0} currentUser={user} />
-      <p>{state.canJoin ? "You can join this session." : "This session cannot be joined."}</p>
+      <p>{state.canJoin ? t("canJoin") : t("cannotJoin")}</p>
     </main>
   );
 }
