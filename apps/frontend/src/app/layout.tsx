@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 
 import { InlineScript } from "@/shared/ui/inline-script";
+import { QueryProvider } from "@/shared/api/query-provider";
+import { AuthSessionInit } from "@/shared/api/auth-session-init";
 import "@/app/styles/global.css";
 
 const inter = Inter({
@@ -58,7 +60,12 @@ export default function RootLayout(props: RootLayoutProps) {
           }
         />
       </head>
-      <body>{props.children}</body>
+      <body>
+        <QueryProvider>
+          <AuthSessionInit />
+          {props.children}
+        </QueryProvider>
+      </body>
     </html>
   );
 }

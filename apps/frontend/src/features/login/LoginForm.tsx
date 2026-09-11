@@ -1,38 +1,80 @@
-// Слой features: форма входа - email и пароль.
-import type { SubmitEvent } from "react";
+"use client";
 
+// Слой features: форма входа - email и пароль.
+import { useMutation } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { useState, type SubmitEvent } from "react";
+
+import { setAccessToken } from "@/shared/api/access-token";
+import { authApi } from "@/shared/api/auth-api";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
-
-/**
- * Prevents the default full-page submit for this demo form (no backend wired up yet).
- * @param {SubmitEvent<HTMLFormElement>} event - The form submit event.
- * @returns {void}
- */
-function handleSubmit(event: SubmitEvent<HTMLFormElement>): void {
-  event.preventDefault();
-}
 
 /**
  * Login form: email and password fields.
  * @returns {import('react').ReactNode} The login form.
  */
 export function LoginForm() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const loginMutation = useMutation({
+    mutationFn: authApi.login,
+    /**
+     * Stores the new access token and redirects to the profile page.
+     * @param {{ accessToken: string }} tokens - The login response.
+     * @returns {void}
+     */
+    onSuccess: (tokens) => {
+      setAccessToken(tokens.accessToken);
+      router.push("/profile");
+    },
+  });
+
+  /**
+   * Submits the login form.
+   * @param {SubmitEvent<HTMLFormElement>} event - The form submit event.
+   * @returns {void}
+   */
+  function handleSubmit(event: SubmitEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    loginMutation.mutate({ email, password });
+  }
+
   return (
     <form className="space-y-5" onSubmit={handleSubmit}>
       <div className="space-y-2">
         <Label htmlFor="login-email">Email</Label>
-        <Input id="login-email" type="email" placeholder="you@company.dev" required />
+        <Input
+          id="login-email"
+          type="email"
+          placeholder="you@company.dev"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          required
+        />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="login-password">Пароль</Label>
-        <Input id="login-password" type="password" placeholder="••••••••" required />
+        <Input
+          id="login-password"
+          type="password"
+          placeholder="••••••••"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          required
+        />
       </div>
 
-      <Button type="submit" className="w-full">
-        Войти
+      {loginMutation.isError && (
+        <p className="text-sm text-destructive">Неверный email или пароль</p>
+      )}
+
+      <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+        {loginMutation.isPending ? "Входим…" : "Войти"}
       </Button>
     </form>
   );
