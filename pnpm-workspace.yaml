@@ -6,6 +6,8 @@ packages:
 # для generate/migrate; esbuild и unrs-resolver нужны существующим frontend-tools.
 allowBuilds:
   "@prisma/engines": true
+  '@scarf/scarf': false
+  bcrypt: false
   esbuild: true
   prisma: true
   unrs-resolver: true

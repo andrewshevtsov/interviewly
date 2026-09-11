@@ -25,8 +25,15 @@ pnpm --filter backend exec prisma generate
 pnpm --filter backend exec prisma db seed
 ```
 
-PostgreSQL доступен backend-приложению через `DATABASE_URL` из корневого `.env`. Prisma
-CLI запускается локально и подключается к PostgreSQL по адресу `localhost:5432`.
+PostgreSQL доступен backend-приложению через `DATABASE_URL` из корневого `.env`. Шаги выше
+(`prisma migrate dev`/`generate`/`db seed`) нужны только при запуске backend локально, вне
+Docker — тогда Prisma CLI подключается к PostgreSQL по адресу `localhost:5432` (порт
+проброшен наружу из контейнера `postgres`).
+
+Если вместо этого вы поднимаете backend через `docker compose up --build` (сервис
+`backend` в корневом `docker-compose.yml`), эти шаги выполнять не нужно: контейнер сам
+запускает `prisma generate && prisma migrate deploy && prisma db seed` при старте и
+подключается к `postgres` по имени сервиса внутри Docker-сети, а не через `localhost`.
 
 Seed предназначен для локальной разработки и создаёт 5 пользователей, 3 сессии и 6
 участий в сессиях. Скрипт использует `upsert`, поэтому его можно безопасно запускать
@@ -62,6 +69,7 @@ $ pnpm run start:prod
 
 # docker compose in dev mode Backend-Frontend-PostgreSQL
 $ docker compose up
+```
 
 ## Run tests
 

@@ -1,0 +1,21 @@
+enum ProfessionLevel {
+  junior
+  middle
+  senior
+}
+
+model Profile {
+  id        String            @id @default(uuid()) @db.Uuid
+  name      String
+  role      String
+  email     String            @unique
+  telegram  String?
+  level     ProfessionLevel
+  stack     String[]
+  bio       String?
+  userId    String?           @db.Uuid
+  createdAt DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime          @updatedAt @db.Timestamptz(3)
+
+  @@index([email])
+}
