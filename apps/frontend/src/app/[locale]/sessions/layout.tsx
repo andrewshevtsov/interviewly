@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
+
+import { getServerTranslations } from "@/shared/i18n-server";
+import { LocalizedLink } from "@/shared/ui/localized-link";
 
 /**
  * Props for {@link SessionsLayout}.
@@ -18,13 +20,15 @@ export interface SessionsLayoutProps {
  * @param {SessionsLayoutProps} props - Props for the sessions layout.
  * @returns {ReactNode} The sessions layout.
  */
-export default function SessionsLayout(props: SessionsLayoutProps) {
+export default async function SessionsLayout(props: SessionsLayoutProps) {
+  const t = await getServerTranslations("session");
+
   return (
     <section>
       <nav>
-        <Link href="/">Interviewly</Link>
+        <LocalizedLink href="/">Interviewly</LocalizedLink>
       </nav>
-      <h2>Sessions</h2>
+      <h2>{t("sessionsTitle")}</h2>
       {props.children}
     </section>
   );

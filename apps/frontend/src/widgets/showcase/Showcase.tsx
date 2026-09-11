@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/shared/ui/card";
+import { getServerTranslations } from "@/shared/i18n-server";
 
 /**
  * A participant shown in the homepage showcase grid.
@@ -34,11 +35,11 @@ interface Participant {
   status: "available" | "in-session" | "top-rated";
 }
 
-const STATUS_LABELS: Record<Participant["status"], string> = {
-  available: "СВОБОДЕН",
-  "in-session": "НА СЕССИИ",
-  "top-rated": "ТОП РЕЙТИНГА",
-};
+const STATUS_LABEL_KEYS = {
+  available: "available",
+  "in-session": "inSession",
+  "top-rated": "topRated",
+} as const;
 
 const PARTICIPANTS: Participant[] = [
   {
@@ -72,6 +73,9 @@ interface StatusBadgeProps {
    * The participant's current status.
    */
   status: Participant["status"];
+
+  /** Localized status label. */
+  label: string;
 }
 
 /**
@@ -80,19 +84,27 @@ interface StatusBadgeProps {
  * @returns {import('react').ReactNode} The status badge.
  */
 function StatusBadge(props: StatusBadgeProps) {
-  const { status } = props;
+  const { label, status } = props;
 
   if (status === "available") {
-    return <Badge variant="success">{STATUS_LABELS[status]}</Badge>;
+    return (
+      <Badge variant="success" className="uppercase">
+        {label}
+      </Badge>
+    );
   }
 
   if (status === "in-session") {
-    return <Badge variant="warning">{STATUS_LABELS[status]}</Badge>;
+    return (
+      <Badge variant="warning" className="uppercase">
+        {label}
+      </Badge>
+    );
   }
 
   return (
-    <Badge variant="outline" className="border-primary/40 text-primary">
-      {STATUS_LABELS[status]}
+    <Badge variant="outline" className="border-primary/40 uppercase text-primary">
+      {label}
     </Badge>
   );
 }
@@ -101,15 +113,17 @@ function StatusBadge(props: StatusBadgeProps) {
  * "Витрина участников" section: a grid of participant cards for finding a mock-interview partner.
  * @returns {import('react').ReactNode} The showcase section.
  */
-export function Showcase() {
+export async function Showcase() {
+  const t = await getServerTranslations("showcase");
+
   return (
     <section id="showcase" className="mx-auto max-w-6xl px-6 py-16">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Витрина участников</h2>
-          <p className="mt-2 text-muted-foreground">Найдите партнёра для пробного интервью по стеку и уровню.</p>
+          <h2 className="text-3xl font-bold tracking-tight">{t("title")}</h2>
+          <p className="mt-2 text-muted-foreground">{t("description")}</p>
         </div>
-        <Button variant="outline">Все карточки</Button>
+        <Button variant="outline">{t("allCards")}</Button>
       </div>
 
       <div className="mt-8 grid gap-6 md:grid-cols-3">
@@ -119,7 +133,10 @@ export function Showcase() {
               <Avatar className="h-12 w-12 bg-muted">
                 <AvatarFallback>{participant.name[0]}</AvatarFallback>
               </Avatar>
-              <StatusBadge status={participant.status} />
+              <StatusBadge
+                status={participant.status}
+                label={t(STATUS_LABEL_KEYS[participant.status])}
+              />
             </CardHeader>
 
             <CardContent className="space-y-3">
@@ -130,7 +147,11 @@ export function Showcase() {
 
               <div className="flex flex-wrap gap-2">
                 {participant.stack.map((tech) => (
-                  <Badge key={tech} variant="muted" className="rounded-md text-[10px] uppercase tracking-wide">
+                  <Badge
+                    key={tech}
+                    variant="muted"
+                    className="rounded-md text-[10px] uppercase tracking-wide"
+                  >
                     {tech}
                   </Badge>
                 ))}
@@ -139,7 +160,7 @@ export function Showcase() {
 
             <CardFooter>
               <Button variant="outline" className="w-full">
-                Откликнуться
+                {t("respond")}
               </Button>
             </CardFooter>
           </Card>
