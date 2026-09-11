@@ -24,8 +24,8 @@ interface NavLink {
 }
 
 const NAV_LINKS: NavLink[] = [
-  { label: "Витрина", href: "/#showcase" },
-  { label: "Лидерборд", href: "/#leaderboard" },
+  { label: "Витрина", href: "/showcase" },
+  { label: "Лидерборд", href: "/leaderboard" },
   { label: "История", href: "/sessions" },
   { label: "Кабинет", href: "/profile" },
 ];
@@ -66,7 +66,7 @@ export function Navbar() {
             Войти
           </Link>
           <Button asChild size="sm">
-            <Link href="/sessions">Создать сессию</Link>
+            <Link href="/sessions/new">Создать сессию</Link>
           </Button>
         </div>
       </div>

@@ -1,4 +1,6 @@
 // Слой widgets: секция "Витрина участников" - карточки партнёров для пробного интервью.
+import Link from "next/link";
+
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -107,9 +109,13 @@ export function Showcase() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Витрина участников</h2>
-          <p className="mt-2 text-muted-foreground">Найдите партнёра для пробного интервью по стеку и уровню.</p>
+          <p className="mt-2 text-muted-foreground">
+            Найдите партнёра для пробного интервью по стеку и уровню.
+          </p>
         </div>
-        <Button variant="outline">Все карточки</Button>
+        <Button asChild variant="outline">
+          <Link href="/showcase">Все карточки</Link>
+        </Button>
       </div>
 
       <div className="mt-8 grid gap-6 md:grid-cols-3">
@@ -130,7 +136,11 @@ export function Showcase() {
 
               <div className="flex flex-wrap gap-2">
                 {participant.stack.map((tech) => (
-                  <Badge key={tech} variant="muted" className="rounded-md text-[10px] uppercase tracking-wide">
+                  <Badge
+                    key={tech}
+                    variant="muted"
+                    className="rounded-md text-[10px] uppercase tracking-wide"
+                  >
                     {tech}
                   </Badge>
                 ))}

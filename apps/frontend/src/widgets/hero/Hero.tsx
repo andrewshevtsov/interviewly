@@ -29,10 +29,10 @@ export function Hero() {
 
         <div className="mt-8 flex flex-wrap gap-4">
           <Button asChild variant="secondary" size="lg">
-            <Link href="/sessions">Создать сессию</Link>
+            <Link href="/sessions/new">Создать сессию</Link>
           </Button>
           <Button asChild variant="outline" size="lg">
-            <Link href="#leaderboard">Лидерборд</Link>
+            <Link href="/leaderboard">Лидерборд</Link>
           </Button>
         </div>
       </div>
