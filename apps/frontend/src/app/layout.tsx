@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 
+import { I18nProvider } from "@/shared/i18n-context";
+import { getRequestLocale, getServerTranslations } from "@/shared/i18n-server";
 import { InlineScript } from "@/shared/ui/inline-script";
 import { QueryProvider } from "@/shared/api/query-provider";
 import { AuthSessionInit } from "@/shared/api/auth-session-init";
@@ -19,11 +21,16 @@ const jetbrainsMono = JetBrains_Mono({
 
 /**
  * Next.js page metadata for the whole app.
+ * @returns {Promise<Metadata>} Localized page metadata.
  */
-export const metadata: Metadata = {
-  title: "Interviewly",
-  description: "Сервис проведения технических и мок-интервью",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getServerTranslations("metadata");
+
+  return {
+    title: "Interviewly",
+    description: t("description"),
+  };
+}
 
 /**
  * Props for {@link RootLayout}.
@@ -42,10 +49,12 @@ export interface RootLayoutProps {
  * @param {RootLayoutProps} props - Пропсы корневого layout.
  * @returns {ReactNode} Корневой layout с дочерними страницами.
  */
-export default function RootLayout(props: RootLayoutProps) {
+export default async function RootLayout(props: RootLayoutProps) {
+  const locale = await getRequestLocale();
+
   return (
     <html
-      lang="ru"
+      lang={locale}
       data-theme="dark"
       suppressHydrationWarning
       className={`${inter.variable} ${jetbrainsMono.variable}`}
@@ -55,15 +64,15 @@ export default function RootLayout(props: RootLayoutProps) {
             мигания дефолтной (тёмной) темы. См. features/toggle-theme/ThemeToggle. */}
         <InlineScript
           html={
-            "(function(){try{var t=localStorage.getItem(\"theme\");" +
-            "if(t)document.documentElement.setAttribute(\"data-theme\",t)}catch(e){}})()"
+            "(function(){try{var t=localStorage.getItem('theme');" +
+            "if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})()"
           }
         />
       </head>
       <body>
         <QueryProvider>
           <AuthSessionInit />
-          {props.children}
+          <I18nProvider locale={locale}>{props.children}</I18nProvider>
         </QueryProvider>
       </body>
     </html>

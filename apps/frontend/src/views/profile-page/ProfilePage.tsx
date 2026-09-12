@@ -12,6 +12,8 @@ import { ProfileStats } from "@/widgets/profile-stats";
 import { TelegramNotice } from "@/widgets/telegram-notice";
 import { ProfileForm } from "@/features/edit-profile";
 import { EMPTY_PROFILE, profileApi, type ProfileStatsData } from "@/entities/profile";
+import { getLocalizedHref } from "@/shared/i18n";
+import { useLocale, useTranslations } from "@/shared/i18n-context";
 
 /**
  * Props for {@link ProfilePage}.
@@ -33,6 +35,9 @@ export interface ProfilePageProps {
 export function ProfilePage(props: ProfilePageProps) {
   const { stats } = props;
   const router = useRouter();
+  const locale = useLocale();
+  const common = useTranslations("common");
+  const t = useTranslations("profile");
 
   const profileQuery = useQuery({
     queryKey: ["profile", "me"],
@@ -42,21 +47,21 @@ export function ProfilePage(props: ProfilePageProps) {
 
   useEffect(() => {
     if (profileQuery.isError) {
-      router.replace("/auth");
+      router.replace(getLocalizedHref("/auth", locale));
     }
-  }, [profileQuery.isError, router]);
+  }, [profileQuery.isError, router, locale]);
 
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-16">
-        <h1 className="text-3xl font-bold tracking-tight">Личный кабинет</h1>
-        <p className="mt-2 text-muted-foreground">Профиль и карточка, которую видят другие участники.</p>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+        <p className="mt-2 text-muted-foreground">{t("description")}</p>
 
         {profileQuery.isPending
           ? (
-            <p className="mt-10 text-muted-foreground">Загружаем профиль…</p>
+            <p className="mt-10 text-muted-foreground">{common("loading")}</p>
           )
           : (
             <div className="mt-10 grid gap-6 lg:grid-cols-[1fr_320px]">

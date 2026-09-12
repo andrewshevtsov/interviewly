@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, type SubmitEvent } from "react";
 
 import { cn } from "@/shared/lib/cn";
+import { useTranslations } from "@/shared/i18n-context";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -25,13 +26,13 @@ interface LevelOption {
   /**
    * Level label.
    */
-  label: string;
+  labelKey: ProfileLevel;
 }
 
 const LEVELS: LevelOption[] = [
-  { id: "junior", label: "Junior" },
-  { id: "middle", label: "Middle" },
-  { id: "senior", label: "Senior" },
+  { id: "junior", labelKey: "junior" },
+  { id: "middle", labelKey: "middle" },
+  { id: "senior", labelKey: "senior" },
 ];
 
 const STACK_OPTIONS = [
@@ -66,6 +67,8 @@ export interface ProfileFormProps {
 export function ProfileForm(props: ProfileFormProps) {
   const { profile } = props;
   const queryClient = useQueryClient();
+  const common = useTranslations("common");
+  const t = useTranslations("profile");
 
   const [name, setName] = useState(profile.name);
   const [role, setRole] = useState(profile.role);
@@ -93,7 +96,9 @@ export function ProfileForm(props: ProfileFormProps) {
    * @returns {void}
    */
   function toggleStack(tech: string): void {
-    setStack((current) => (current.includes(tech) ? current.filter((item) => item !== tech) : [...current, tech]));
+    setStack((current) =>
+      current.includes(tech) ? current.filter((item) => item !== tech) : [...current, tech],
+    );
   }
 
   /**
@@ -110,17 +115,17 @@ export function ProfileForm(props: ProfileFormProps) {
     <Card className="p-8">
       <form className="space-y-6" onSubmit={handleSubmit}>
         <div className="space-y-2">
-          <Label htmlFor="profile-name">Имя и фамилия</Label>
+          <Label htmlFor="profile-name">{t("fullName")}</Label>
           <Input id="profile-name" value={name} onChange={(event) => setName(event.target.value)} required />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="profile-role">Роль</Label>
+          <Label htmlFor="profile-role">{t("role")}</Label>
           <Input id="profile-role" value={role} onChange={(event) => setRole(event.target.value)} required />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="profile-email">Email</Label>
+          <Label htmlFor="profile-email">{common("email")}</Label>
           <Input
             id="profile-email"
             type="email"
@@ -131,12 +136,12 @@ export function ProfileForm(props: ProfileFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="profile-telegram">Telegram</Label>
+          <Label htmlFor="profile-telegram">{common("telegram")}</Label>
           <Input id="profile-telegram" value={telegram} onChange={(event) => setTelegram(event.target.value)} />
         </div>
 
         <div className="space-y-2">
-          <Label>Уровень</Label>
+          <Label>{t("level")}</Label>
           <div className="flex gap-2">
             {LEVELS.map((item) => (
               <button
@@ -150,14 +155,14 @@ export function ProfileForm(props: ProfileFormProps) {
                     : "border-border text-muted-foreground hover:text-foreground",
                 )}
               >
-                {item.label}
+                <span className="capitalize">{t(item.labelKey)}</span>
               </button>
             ))}
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label>Стек</Label>
+          <Label>{t("stack")}</Label>
           <div className="flex flex-wrap gap-2">
             {STACK_OPTIONS.map((tech) => (
               <button key={tech} type="button" onClick={() => toggleStack(tech)}>
@@ -173,17 +178,15 @@ export function ProfileForm(props: ProfileFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="profile-bio">О себе (текст карточки)</Label>
+          <Label htmlFor="profile-bio">{t("bio")}</Label>
           <Textarea id="profile-bio" value={bio} onChange={(event) => setBio(event.target.value)} />
         </div>
 
-        {saveMutation.isError && (
-          <p className="text-sm text-destructive">Не удалось сохранить профиль. Попробуйте ещё раз.</p>
-        )}
-        {saveMutation.isSuccess && <p className="text-sm text-muted-foreground">Изменения сохранены.</p>}
+        {saveMutation.isError && <p className="text-sm text-destructive">{t("saveError")}</p>}
+        {saveMutation.isSuccess && <p className="text-sm text-muted-foreground">{t("saveSuccess")}</p>}
 
         <Button type="submit" disabled={saveMutation.isPending}>
-          {saveMutation.isPending ? "Сохраняем…" : "Сохранить изменения"}
+          {saveMutation.isPending ? t("savePending") : t("saveChanges")}
         </Button>
       </form>
     </Card>

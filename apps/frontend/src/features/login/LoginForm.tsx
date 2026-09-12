@@ -7,6 +7,8 @@ import { useState, type SubmitEvent } from "react";
 
 import { setAccessToken } from "@/shared/api/access-token";
 import { authApi } from "@/shared/api/auth-api";
+import { getLocalizedHref } from "@/shared/i18n";
+import { useLocale, useTranslations } from "@/shared/i18n-context";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -17,6 +19,9 @@ import { Label } from "@/shared/ui/label";
  */
 export function LoginForm() {
   const router = useRouter();
+  const locale = useLocale();
+  const common = useTranslations("common");
+  const auth = useTranslations("auth");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -29,7 +34,7 @@ export function LoginForm() {
      */
     onSuccess: (tokens) => {
       setAccessToken(tokens.accessToken);
-      router.push("/profile");
+      router.push(getLocalizedHref("/profile", locale));
     },
   });
 
@@ -46,11 +51,11 @@ export function LoginForm() {
   return (
     <form className="space-y-5" onSubmit={handleSubmit}>
       <div className="space-y-2">
-        <Label htmlFor="login-email">Email</Label>
+        <Label htmlFor="login-email">{common("email")}</Label>
         <Input
           id="login-email"
           type="email"
-          placeholder="you@company.dev"
+          placeholder={auth.raw("emailPlaceholder")}
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           required
@@ -58,23 +63,21 @@ export function LoginForm() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="login-password">Пароль</Label>
+        <Label htmlFor="login-password">{auth("password")}</Label>
         <Input
           id="login-password"
           type="password"
-          placeholder="••••••••"
+          placeholder={auth("passwordPlaceholder")}
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           required
         />
       </div>
 
-      {loginMutation.isError && (
-        <p className="text-sm text-destructive">Неверный email или пароль</p>
-      )}
+      {loginMutation.isError && <p className="text-sm text-destructive">{auth("loginError")}</p>}
 
       <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
-        {loginMutation.isPending ? "Входим…" : "Войти"}
+        {loginMutation.isPending ? auth("loginPending") : auth("login")}
       </Button>
     </form>
   );
