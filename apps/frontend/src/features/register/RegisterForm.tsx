@@ -34,7 +34,12 @@ export function RegisterForm() {
 
       <div className="space-y-2">
         <Label htmlFor="register-email">{common("email")}</Label>
-        <Input id="register-email" type="email" placeholder={auth("emailPlaceholder")} required />
+        <Input
+          id="register-email"
+          type="email"
+          placeholder={auth.raw("emailPlaceholder")}
+          required
+        />
       </div>
 
       <div className="space-y-2">

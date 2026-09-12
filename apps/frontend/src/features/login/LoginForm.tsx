@@ -29,7 +29,12 @@ export function LoginForm() {
     <form className="space-y-5" onSubmit={handleSubmit}>
       <div className="space-y-2">
         <Label htmlFor="login-email">{common("email")}</Label>
-        <Input id="login-email" type="email" placeholder={auth("emailPlaceholder")} required />
+        <Input
+          id="login-email"
+          type="email"
+          placeholder={auth.raw("emailPlaceholder")}
+          required
+        />
       </div>
 
       <div className="space-y-2">

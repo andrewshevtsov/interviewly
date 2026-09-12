@@ -37,7 +37,7 @@ export async function SessionFeedbackPage(props: SessionFeedbackPageProps) {
       <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-16">
         <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
         <p className="mt-2 text-muted-foreground">
-          {session("sessionLabel")} #{sessionNumber} {t("completedNotice")}
+          {session("sessionLabel")} #{sessionNumber}. {t("completedNotice")}
         </p>
 
         <div className="mt-10">

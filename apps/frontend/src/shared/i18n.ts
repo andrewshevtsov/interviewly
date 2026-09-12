@@ -14,6 +14,7 @@ export const LOCALE_COOKIE_NAME = "locale";
 export const REQUEST_LOCALE_HEADER_NAME = "x-interviewly-locale";
 
 const LOCALE_PATH_SEGMENT_INDEX = 1;
+const FIRST_CHARACTER_COUNT = 1;
 
 /** Translations of one message for every supported language. */
 export type Translation = Record<Locale, string>;
@@ -277,9 +278,16 @@ export type MessageGroupName = keyof typeof messages;
 export type MessageKey<Group extends MessageGroupName> = keyof (typeof messages)[Group];
 
 /** A translator restricted to one dictionary group. */
-export type Translator<Group extends MessageGroupName> = <Key extends MessageKey<Group>>(
-  key: Key,
-) => string;
+export interface Translator<Group extends MessageGroupName> {
+  <Key extends MessageKey<Group>>(key: Key): string;
+
+  /**
+   * Returns the message as written in the dictionary, without the automatic leading-capital
+   * applied by the default call. Only for values that must keep their exact casing (e.g. an
+   * email example) or that continue a sentence started by another translated string.
+   */
+  raw<Key extends MessageKey<Group>>(key: Key): string;
+}
 
 /**
  * Checks whether a value is one of the supported languages.
@@ -322,13 +330,28 @@ export function getLocalizedHref(href: string, locale: Locale): string {
 }
 
 /**
- * Returns a translated message from the dictionary.
+ * Capitalizes the first letter of a string, leaving the rest untouched. Locale-aware so it
+ * behaves correctly for every supported language, not just ASCII text.
+ * @param {string} text - Text to capitalize.
+ * @param {Locale} locale - Language the text is written in.
+ * @returns {string} `text` with its first letter capitalized.
+ */
+function capitalizeFirstLetter(text: string, locale: Locale): string {
+  if (!text) {
+    return text;
+  }
+
+  return text.charAt(0).toLocaleUpperCase(locale) + text.slice(FIRST_CHARACTER_COUNT);
+}
+
+/**
+ * Returns a message from the dictionary exactly as written, with no capitalization applied.
  * @param {string} group - Dictionary section.
  * @param {string} key - Message name within the section.
  * @param {Locale} locale - Language of the returned message.
- * @returns {string} Translated message.
+ * @returns {string} Translated message, in its original casing.
  */
-export function getMessage<Group extends MessageGroupName, Key extends MessageKey<Group>>(
+export function getRawMessage<Group extends MessageGroupName, Key extends MessageKey<Group>>(
   group: Group,
   key: Key,
   locale: Locale,
@@ -344,6 +367,23 @@ export function getMessage<Group extends MessageGroupName, Key extends MessageKe
 }
 
 /**
+ * Returns a translated message from the dictionary. The result always starts with a capital
+ * letter, so every dictionary entry can be written in lowercase and every call site (buttons,
+ * links, headings, paragraphs, ...) gets sentence-style capitalization for free.
+ * @param {string} group - Dictionary section.
+ * @param {string} key - Message name within the section.
+ * @param {Locale} locale - Language of the returned message.
+ * @returns {string} Translated message.
+ */
+export function getMessage<Group extends MessageGroupName, Key extends MessageKey<Group>>(
+  group: Group,
+  key: Key,
+  locale: Locale,
+): string {
+  return capitalizeFirstLetter(getRawMessage(group, key, locale), locale);
+}
+
+/**
  * Creates a translator bound to a language and dictionary group.
  * @param {string} group - Dictionary section.
  * @param {Locale} locale - Language of returned messages.
@@ -353,5 +393,13 @@ export function createTranslator<Group extends MessageGroupName>(
   group: Group,
   locale: Locale,
 ): Translator<Group> {
-  return (key) => getMessage(group, key, locale);
+  const translate = ((key) => getMessage(group, key, locale)) as Translator<Group>;
+
+  /**
+   * @param {string} key - Message name within the group.
+   * @returns {string} The message in its original casing.
+   */
+  translate.raw = (key) => getRawMessage(group, key, locale);
+
+  return translate;
 }
