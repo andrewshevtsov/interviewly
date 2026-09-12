@@ -5,6 +5,8 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import { I18nProvider } from "@/shared/i18n-context";
 import { getRequestLocale, getServerTranslations } from "@/shared/i18n-server";
 import { InlineScript } from "@/shared/ui/inline-script";
+import { QueryProvider } from "@/shared/api/query-provider";
+import { AuthSessionInit } from "@/shared/api/auth-session-init";
 import "@/app/styles/global.css";
 
 const inter = Inter({
@@ -68,7 +70,10 @@ export default async function RootLayout(props: RootLayoutProps) {
         />
       </head>
       <body>
-        <I18nProvider locale={locale}>{props.children}</I18nProvider>
+        <QueryProvider>
+          <AuthSessionInit />
+          <I18nProvider locale={locale}>{props.children}</I18nProvider>
+        </QueryProvider>
       </body>
     </html>
   );

@@ -54,6 +54,10 @@ export const messages = {
     confirmPassword: { ru: "повторите пароль", en: "confirm password" },
     fullName: { ru: "имя и фамилия", en: "full name" },
     fullNamePlaceholder: { ru: "Артём Соколов", en: "John Doe" },
+    firstName: { ru: "имя", en: "first name" },
+    firstNamePlaceholder: { ru: "Артём", en: "John" },
+    lastName: { ru: "фамилия", en: "last name" },
+    lastNamePlaceholder: { ru: "Соколов", en: "Doe" },
     emailPlaceholder: { ru: "you@company.dev", en: "you@company.dev" },
     passwordPlaceholder: { ru: "••••••••", en: "••••••••" },
     or: { ru: "или", en: "or" },
@@ -66,6 +70,17 @@ export const messages = {
       en: "By continuing, you agree to the",
     },
     termsOfService: { ru: "условиями сервиса", en: "terms of service" },
+    loginPending: { ru: "входим...", en: "signing in..." },
+    loginError: {
+      ru: "неверный email или пароль",
+      en: "invalid email or password",
+    },
+    registerPending: { ru: "создаём аккаунт...", en: "creating account..." },
+    registerError: {
+      ru: "не удалось зарегистрироваться. проверьте данные",
+      en: "couldn't sign up. check your details",
+    },
+    passwordMismatch: { ru: "пароли не совпадают", en: "passwords don't match" },
   },
   hero: {
     titleStart: { ru: "Проведи", en: "Run a" },
@@ -133,6 +148,12 @@ export const messages = {
     interviews: { ru: "интервью", en: "interviews" },
     averageRating: { ru: "средняя оценка", en: "average rating" },
     leaderboardPlace: { ru: "место в топе", en: "leaderboard place" },
+    savePending: { ru: "сохраняем...", en: "saving..." },
+    saveError: {
+      ru: "не удалось сохранить профиль. попробуйте ещё раз",
+      en: "couldn't save the profile. try again",
+    },
+    saveSuccess: { ru: "изменения сохранены", en: "changes saved" },
   },
   theme: {
     enableLight: { ru: "Включить светлую тему", en: "Enable light theme" },

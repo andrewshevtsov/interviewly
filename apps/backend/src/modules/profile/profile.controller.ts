@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Body,
   Patch,
   Delete,
@@ -13,10 +14,30 @@ import { CreateProfileDto } from './dto/create-profile.dto.ts';
 import { UpdateProfileDto } from './dto/update-profile.dto.ts';
 import { ApiBearerAuth, ApiProperty } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.ts';
+import { CurrentUser } from '../auth/decorators/current-user.decorator.ts';
 
 @Controller('profiles')
 export class ProfileController {
   constructor(private profileService: ProfileService) { }
+
+  // "me"-маршруты объявлены раньше `:id`, иначе Nest матчит `/profiles/me`
+  // как findOne(id="me").
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiProperty()
+  findMine(@CurrentUser('sub') userId: string) {
+    return this.profileService.findByUserId(userId);
+  }
+
+  @Put('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiProperty()
+  upsertMine(@CurrentUser('sub') userId: string, @Body() dto: CreateProfileDto) {
+    return this.profileService.upsertByUserId(userId, dto);
+  }
 
   @Post()
   @UseGuards(JwtAuthGuard)
