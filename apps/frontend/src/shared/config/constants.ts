@@ -2,3 +2,51 @@
 export const MAX_AI_HINTS_PER_SESSION = 3;
 export const SESSION_ID_LENGTH = 12;
 export const MAX_SESSION_SCORE = 10;
+
+/**
+ * Text/textarea fields on the profile card, in display order. `group` selects which
+ * `useTranslations()` namespace `lang` is looked up in ("common" vs "profile"), `name`
+ * is the `<input name="...">` used for `FormData`, and `type` picks the field element.
+ */
+export const PROFILE_FIELDS = [
+  {
+    id: "profile-name",
+    name: "name",
+    lang: "fullName",
+    group: "profile",
+    type: "text",
+    required: true,
+  },
+  {
+    id: "profile-role",
+    name: "role",
+    lang: "role",
+    group: "profile",
+    type: "text",
+    required: true,
+  },
+  {
+    id: "profile-email",
+    name: "email",
+    lang: "email",
+    group: "common",
+    type: "email",
+    required: true,
+  },
+  {
+    id: "profile-telegram",
+    name: "telegram",
+    lang: "telegram",
+    group: "common",
+    type: "text",
+    required: false,
+  },
+  {
+    id: "profile-bio",
+    name: "bio",
+    lang: "bio",
+    group: "profile",
+    type: "textarea",
+    required: false,
+  },
+] as const;

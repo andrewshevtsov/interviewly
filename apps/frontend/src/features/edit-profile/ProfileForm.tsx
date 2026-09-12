@@ -1,10 +1,15 @@
 "use client";
 
 // Слой features: форма профиля - редактируемые поля, уровень и стек.
+// Полностью неконтролируемая форма: значения читаются через FormData при submit,
+// без useState на поля. Уровень и стек - обычные radio/checkbox, стилизованные под
+// кнопки/бейджи через Tailwind `peer-checked:`, а не через JS-состояние.
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, type SubmitEvent } from "react";
+import type { SubmitEvent } from "react";
 
+import { PROFILE_FIELDS } from "@/shared/config/constants";
 import { cn } from "@/shared/lib/cn";
+import type { MessageKey } from "@/shared/i18n";
 import { useTranslations } from "@/shared/i18n-context";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -49,6 +54,15 @@ const STACK_OPTIONS = [
 ];
 
 /**
+ * Classes shared by the level/stack toggle "buttons": a `peer-checked:` variant makes the
+ * hidden radio/checkbox's checked state drive the visible style, instead of JS.
+ */
+const TOGGLE_UNCHECKED_CLASSES =
+  "border-border text-muted-foreground hover:text-foreground transition-colors";
+const TOGGLE_CHECKED_CLASSES =
+  "peer-checked:border-primary peer-checked:bg-primary peer-checked:text-primary-foreground";
+
+/**
  * Props for {@link ProfileForm}.
  */
 export interface ProfileFormProps {
@@ -70,13 +84,16 @@ export function ProfileForm(props: ProfileFormProps) {
   const common = useTranslations("common");
   const t = useTranslations("profile");
 
-  const [name, setName] = useState(profile.name);
-  const [role, setRole] = useState(profile.role);
-  const [email, setEmail] = useState(profile.email);
-  const [telegram, setTelegram] = useState(profile.telegram);
-  const [level, setLevel] = useState<ProfileLevel>(profile.level);
-  const [stack, setStack] = useState<string[]>(profile.stack);
-  const [bio, setBio] = useState(profile.bio);
+  /**
+   * Labels a text/textarea field from the right translation namespace.
+   * @param {(typeof PROFILE_FIELDS)[number]} field - Field descriptor from `PROFILE_FIELDS`.
+   * @returns {string} The field's translated label.
+   */
+  function fieldLabel(field: (typeof PROFILE_FIELDS)[number]): string {
+    return field.group === "common"
+      ? common(field.lang as MessageKey<"common">)
+      : t(field.lang as MessageKey<"profile">);
+  }
 
   const saveMutation = useMutation({
     mutationFn: profileApi.saveMine,
@@ -91,72 +108,67 @@ export function ProfileForm(props: ProfileFormProps) {
   });
 
   /**
-   * Toggles a stack tag on/off in the local selection.
-   * @param {string} tech - Tag to toggle.
-   * @returns {void}
-   */
-  function toggleStack(tech: string): void {
-    setStack((current) =>
-      current.includes(tech) ? current.filter((item) => item !== tech) : [...current, tech],
-    );
-  }
-
-  /**
-   * Submits the whole profile card for saving.
+   * Reads the whole card from the native form and submits it.
    * @param {SubmitEvent<HTMLFormElement>} event - The form submit event.
    * @returns {void}
    */
   function handleSubmit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
-    saveMutation.mutate({ name, role, email, telegram, level, stack, bio });
+
+    const formData = new FormData(event.currentTarget);
+    const { name, role, email, telegram, level, bio } = Object.fromEntries(formData) as Record<
+      "name" | "role" | "email" | "telegram" | "level" | "bio",
+      string
+    >;
+    const stack = formData.getAll("stack") as string[];
+
+    saveMutation.mutate({ name, role, email, telegram, level: level as ProfileLevel, stack, bio });
   }
 
   return (
     <Card className="p-8">
       <form className="space-y-6" onSubmit={handleSubmit}>
-        <div className="space-y-2">
-          <Label htmlFor="profile-name">{t("fullName")}</Label>
-          <Input id="profile-name" value={name} onChange={(event) => setName(event.target.value)} required />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="profile-role">{t("role")}</Label>
-          <Input id="profile-role" value={role} onChange={(event) => setRole(event.target.value)} required />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="profile-email">{common("email")}</Label>
-          <Input
-            id="profile-email"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="profile-telegram">{common("telegram")}</Label>
-          <Input id="profile-telegram" value={telegram} onChange={(event) => setTelegram(event.target.value)} />
-        </div>
+        {PROFILE_FIELDS.map((field) => (
+          <div key={field.id} className="space-y-2">
+            <Label htmlFor={field.id}>{fieldLabel(field)}</Label>
+            {field.type === "textarea"
+              ? (
+                <Textarea id={field.id} name={field.name} defaultValue={profile[field.name]} />
+              )
+              : (
+                <Input
+                  id={field.id}
+                  name={field.name}
+                  type={field.type}
+                  defaultValue={profile[field.name]}
+                  required={field.required}
+                />
+              )}
+          </div>
+        ))}
 
         <div className="space-y-2">
           <Label>{t("level")}</Label>
           <div className="flex gap-2">
             {LEVELS.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setLevel(item.id)}
-                className={cn(
-                  "rounded-md border px-4 py-2 text-sm font-medium transition-colors",
-                  level === item.id
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <span className="capitalize">{t(item.labelKey)}</span>
-              </button>
+              <label key={item.id} className="cursor-pointer">
+                <input
+                  type="radio"
+                  name="level"
+                  value={item.id}
+                  defaultChecked={profile.level === item.id}
+                  className="peer sr-only"
+                />
+                <span
+                  className={cn(
+                    "block rounded-md border px-4 py-2 text-sm font-medium capitalize",
+                    TOGGLE_UNCHECKED_CLASSES,
+                    TOGGLE_CHECKED_CLASSES,
+                  )}
+                >
+                  {t(item.labelKey)}
+                </span>
+              </label>
             ))}
           </div>
         </div>
@@ -165,21 +177,26 @@ export function ProfileForm(props: ProfileFormProps) {
           <Label>{t("stack")}</Label>
           <div className="flex flex-wrap gap-2">
             {STACK_OPTIONS.map((tech) => (
-              <button key={tech} type="button" onClick={() => toggleStack(tech)}>
+              <label key={tech} className="cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="stack"
+                  value={tech}
+                  defaultChecked={profile.stack.includes(tech)}
+                  className="peer sr-only"
+                />
                 <Badge
-                  variant={stack.includes(tech) ? "default" : "muted"}
-                  className="rounded-md px-3 py-1 text-xs font-mono uppercase tracking-wide"
+                  variant="muted"
+                  className={cn(
+                    "rounded-md px-3 py-1 text-xs font-mono uppercase tracking-wide",
+                    "peer-checked:border-transparent peer-checked:bg-primary peer-checked:text-primary-foreground",
+                  )}
                 >
                   {tech}
                 </Badge>
-              </button>
+              </label>
             ))}
           </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="profile-bio">{t("bio")}</Label>
-          <Textarea id="profile-bio" value={bio} onChange={(event) => setBio(event.target.value)} />
         </div>
 
         {saveMutation.isError && <p className="text-sm text-destructive">{t("saveError")}</p>}

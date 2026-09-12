@@ -22,11 +22,6 @@ export function RegisterForm() {
   const locale = useLocale();
   const common = useTranslations("common");
   const auth = useTranslations("auth");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [passwordMismatch, setPasswordMismatch] = useState(false);
 
   const registerMutation = useMutation({
@@ -50,6 +45,10 @@ export function RegisterForm() {
   function handleSubmit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
 
+    const formData = new FormData(event.currentTarget);
+    const { email, password, firstName, lastName, passwordConfirm } = Object.fromEntries(formData) as Record<
+    "email" | "password" | "firstName" | "lastName" | "passwordConfirm", 
+    string>;
     if (password !== passwordConfirm) {
       setPasswordMismatch(true);
 
@@ -73,8 +72,7 @@ export function RegisterForm() {
           id="register-first-name"
           type="text"
           placeholder={auth.raw("firstNamePlaceholder")}
-          value={firstName}
-          onChange={(event) => setFirstName(event.target.value)}
+          name="firstName"
           required
         />
       </div>
@@ -85,8 +83,7 @@ export function RegisterForm() {
           id="register-last-name"
           type="text"
           placeholder={auth.raw("lastNamePlaceholder")}
-          value={lastName}
-          onChange={(event) => setLastName(event.target.value)}
+          name="LastName"
         />
       </div>
 
@@ -96,8 +93,7 @@ export function RegisterForm() {
           id="register-email"
           type="email"
           placeholder={auth.raw("emailPlaceholder")}
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          name="email"
           required
         />
       </div>
@@ -108,8 +104,7 @@ export function RegisterForm() {
           id="register-password"
           type="password"
           placeholder={auth("passwordPlaceholder")}
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
+          name="password"
           minLength={8}
           required
         />
@@ -121,8 +116,7 @@ export function RegisterForm() {
           id="register-password-confirm"
           type="password"
           placeholder={auth("passwordPlaceholder")}
-          value={passwordConfirm}
-          onChange={(event) => setPasswordConfirm(event.target.value)}
+          name="passwordConfirm"
           minLength={8}
           required
         />

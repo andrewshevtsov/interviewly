@@ -3,8 +3,6 @@
 // Слой features: форма входа - email и пароль.
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useState, type SubmitEvent } from "react";
-
 import { setAccessToken } from "@/shared/api/access-token";
 import { authApi } from "@/shared/api/auth-api";
 import { getLocalizedHref } from "@/shared/i18n";
@@ -12,6 +10,7 @@ import { useLocale, useTranslations } from "@/shared/i18n-context";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
+import { SubmitEvent } from "react";
 
 /**
  * Login form: email and password fields.
@@ -22,8 +21,6 @@ export function LoginForm() {
   const locale = useLocale();
   const common = useTranslations("common");
   const auth = useTranslations("auth");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
 
   const loginMutation = useMutation({
     mutationFn: authApi.login,
@@ -45,6 +42,10 @@ export function LoginForm() {
    */
   function handleSubmit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
+
+    const formData = new FormData(event.currentTarget);
+    const { email, password } = Object.fromEntries(formData) as Record<
+    "email" | "password", string>;
     loginMutation.mutate({ email, password });
   }
 
@@ -56,8 +57,7 @@ export function LoginForm() {
           id="login-email"
           type="email"
           placeholder={auth.raw("emailPlaceholder")}
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          name="email"
           required
         />
       </div>
@@ -68,8 +68,7 @@ export function LoginForm() {
           id="login-password"
           type="password"
           placeholder={auth("passwordPlaceholder")}
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
+          name="password"
           required
         />
       </div>
