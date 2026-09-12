@@ -1,7 +1,10 @@
+"use client";
+
 // Слой features: форма входа - email и пароль.
 import type { SubmitEvent } from "react";
 
 import { Button } from "@/shared/ui/button";
+import { useTranslations } from "@/shared/i18n-context";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 
@@ -19,20 +22,33 @@ function handleSubmit(event: SubmitEvent<HTMLFormElement>): void {
  * @returns {import('react').ReactNode} The login form.
  */
 export function LoginForm() {
+  const common = useTranslations("common");
+  const auth = useTranslations("auth");
+
   return (
     <form className="space-y-5" onSubmit={handleSubmit}>
       <div className="space-y-2">
-        <Label htmlFor="login-email">Email</Label>
-        <Input id="login-email" type="email" placeholder="you@company.dev" required />
+        <Label htmlFor="login-email">{common("email")}</Label>
+        <Input
+          id="login-email"
+          type="email"
+          placeholder={auth.raw("emailPlaceholder")}
+          required
+        />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="login-password">Пароль</Label>
-        <Input id="login-password" type="password" placeholder="••••••••" required />
+        <Label htmlFor="login-password">{auth("password")}</Label>
+        <Input
+          id="login-password"
+          type="password"
+          placeholder={auth("passwordPlaceholder")}
+          required
+        />
       </div>
 
       <Button type="submit" className="w-full">
-        Войти
+        {auth("login")}
       </Button>
     </form>
   );

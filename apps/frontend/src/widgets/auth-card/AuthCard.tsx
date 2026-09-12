@@ -2,11 +2,12 @@
 
 // Слой widgets: карточка входа/регистрации - переключатель вкладок и текущая форма.
 import { useState } from "react";
-import Link from "next/link";
 
 import { cn } from "@/shared/lib/cn";
+import { useTranslations } from "@/shared/i18n-context";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
+import { LocalizedLink } from "@/shared/ui/localized-link";
 import { LoginForm } from "@/features/login";
 import { RegisterForm } from "@/features/register";
 
@@ -27,12 +28,12 @@ interface TabOption {
   /**
    * Tab label.
    */
-  label: string;
+  labelKey: "loginTab" | "registerTab";
 }
 
 const TABS: TabOption[] = [
-  { id: "login", label: "Вход" },
-  { id: "register", label: "Регистрация" },
+  { id: "login", labelKey: "loginTab" },
+  { id: "register", labelKey: "registerTab" },
 ];
 
 /**
@@ -42,6 +43,7 @@ const TABS: TabOption[] = [
  */
 export function AuthCard() {
   const [activeTab, setActiveTab] = useState<AuthTab>("login");
+  const t = useTranslations("auth");
 
   return (
     <Card className="w-full max-w-md p-8">
@@ -58,7 +60,7 @@ export function AuthCard() {
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {tab.label}
+            {t(tab.labelKey)}
           </button>
         ))}
       </div>
@@ -67,19 +69,19 @@ export function AuthCard() {
 
       <div className="mt-6 flex items-center gap-4 text-xs uppercase text-muted-foreground">
         <span className="h-px flex-1 bg-border" />
-        Или
+        {t("or")}
         <span className="h-px flex-1 bg-border" />
       </div>
 
       <Button variant="outline" className="mt-6 w-full">
-        Продолжить через Telegram
+        {t("continueWithTelegram")}
       </Button>
 
       <p className="mt-6 text-center text-xs text-muted-foreground">
-        Продолжая, вы соглашаетесь с{" "}
-        <Link href="#" className="text-primary hover:underline">
-          условиями сервиса
-        </Link>
+        {t("agreementPrefix")}{" "}
+        <LocalizedLink href="#" className="text-primary hover:underline">
+          {t("termsOfService")}
+        </LocalizedLink>
         .
       </p>
     </Card>
