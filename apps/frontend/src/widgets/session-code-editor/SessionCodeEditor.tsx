@@ -3,6 +3,7 @@
 // Слой widgets: редактор кода "Открытой сессии" - вкладки файлов, синхронизация и запуск.
 import { useState, type ReactNode } from "react";
 
+import { useTranslations } from "@/shared/i18n-context";
 import { cn } from "@/shared/lib/cn";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -63,12 +64,12 @@ function CodeLine(props: CodeLineProps) {
  * @returns {import('react').ReactNode} The Python code lines.
  */
 function PythonSource() {
+  const t = useTranslations("session");
+
   return (
     <>
       <CodeLine number={1}>
-        <span className="text-muted-foreground">
-          # Задача: развернуть односвязный список на месте
-        </span>
+        <span className="text-muted-foreground"># {t("exampleTask")}</span>
       </CodeLine>
       <CodeLine number={2}>
         <span className="text-primary">def</span> reverse_list(head):
@@ -103,12 +104,12 @@ function PythonSource() {
  * @returns {import('react').ReactNode} The TypeScript code lines.
  */
 function TypeScriptSource() {
+  const t = useTranslations("session");
+
   return (
     <>
       <CodeLine number={1}>
-        <span className="text-muted-foreground">
-          // Задача: развернуть односвязный список на месте
-        </span>
+        <span className="text-muted-foreground">// {t("exampleTask")}</span>
       </CodeLine>
       <CodeLine number={2}>
         <span className="text-primary">function</span> reverseList(head: ListNode | null) {"{"}
@@ -167,6 +168,7 @@ export function SessionCodeEditor(props: SessionCodeEditorProps) {
   const [activeFile, setActiveFile] = useState<EditorLanguage>("python");
   const [isRunning, setIsRunning] = useState(false);
   const [output, setOutput] = useState<string | null>(null);
+  const t = useTranslations("session");
 
   /**
    * Simulates running the active file: briefly shows a running state, then a canned output line.
@@ -207,9 +209,9 @@ export function SessionCodeEditor(props: SessionCodeEditorProps) {
         <span className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5 text-success">
             <span className="h-1.5 w-1.5 rounded-full bg-success" />
-            Synced
+            {t("synced")}
           </span>
-          {participantsCount} участника
+          {participantsCount} {t("participantsSuffix")}
         </span>
       </div>
 
@@ -218,18 +220,20 @@ export function SessionCodeEditor(props: SessionCodeEditorProps) {
       </div>
 
       {output && (
-        <p className="border-t border-border px-4 py-2 text-xs text-success">Вывод: {output}</p>
+        <p className="border-t border-border px-4 py-2 text-xs text-success">
+          {t("outputLabel")}: {output}
+        </p>
       )}
 
       <div className="flex items-center justify-between gap-4 border-t border-border px-4 py-3 text-xs">
-        <span className="text-muted-foreground">Подсветка синтаксиса и автокомплит включены.</span>
+        <span className="text-muted-foreground">{t("syntaxHint")}</span>
         <Button
           size="sm"
           className="uppercase tracking-wide"
           disabled={isRunning}
           onClick={handleRun}
         >
-          {isRunning ? "Выполняется…" : "Запустить код"}
+          {isRunning ? t("running") : t("runCode")}
         </Button>
       </div>
     </Card>

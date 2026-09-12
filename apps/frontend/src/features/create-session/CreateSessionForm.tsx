@@ -4,6 +4,8 @@
 import { useState, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
 
+import { getLocalizedHref } from "@/shared/i18n";
+import { useLocale, useTranslations } from "@/shared/i18n-context";
 import { cn } from "@/shared/lib/cn";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -57,9 +59,11 @@ export interface CreateSessionFormProps {
 export function CreateSessionForm(props: CreateSessionFormProps) {
   const { draft } = props;
   const router = useRouter();
+  const locale = useLocale();
   const [language, setLanguage] = useState<EditorLanguage>(draft.editorLanguage);
   const [isPrivate, setIsPrivate] = useState(draft.isPrivate);
   const [copied, setCopied] = useState(false);
+  const t = useTranslations("newSession");
 
   /**
    * Opens the newly created (demo) session.
@@ -68,7 +72,7 @@ export function CreateSessionForm(props: CreateSessionFormProps) {
    */
   function handleSubmit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
-    router.push(`/sessions/${DEMO_LAUNCHED_SESSION_ID}`);
+    router.push(getLocalizedHref(`/sessions/${DEMO_LAUNCHED_SESSION_ID}`, locale));
   }
 
   /**
@@ -89,12 +93,12 @@ export function CreateSessionForm(props: CreateSessionFormProps) {
     <Card className="p-8">
       <form className="space-y-6" onSubmit={handleSubmit}>
         <div className="space-y-2">
-          <Label htmlFor="session-title">Название</Label>
+          <Label htmlFor="session-title">{t("sessionTitleLabel")}</Label>
           <Input id="session-title" defaultValue={draft.title} />
         </div>
 
         <div className="space-y-2">
-          <Label>Язык редактора</Label>
+          <Label>{t("editorLanguageLabel")}</Label>
           <div className="flex gap-2">
             {LANGUAGES.map((item) => (
               <button
@@ -117,13 +121,13 @@ export function CreateSessionForm(props: CreateSessionFormProps) {
         <Card className="bg-muted/30 p-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="font-semibold">Закрытая сессия</p>
-              <p className="text-sm text-muted-foreground">Вход только по паролю.</p>
+              <p className="font-semibold">{t("privateSession")}</p>
+              <p className="text-sm text-muted-foreground">{t("privateSessionHint")}</p>
             </div>
             <Checkbox
               checked={isPrivate}
               onChange={(event) => setIsPrivate(event.target.checked)}
-              aria-label="Закрытая сессия"
+              aria-label={t("privateSession")}
             />
           </div>
 
@@ -131,7 +135,7 @@ export function CreateSessionForm(props: CreateSessionFormProps) {
         </Card>
 
         <div className="space-y-2">
-          <Label htmlFor="session-invite-link">Ссылка-приглашение</Label>
+          <Label htmlFor="session-invite-link">{t("inviteLinkLabel")}</Label>
           <div className="flex gap-2">
             <Input
               id="session-invite-link"
@@ -140,17 +144,15 @@ export function CreateSessionForm(props: CreateSessionFormProps) {
               className="font-mono text-muted-foreground"
             />
             <Button type="button" variant="outline" onClick={handleCopy}>
-              {copied ? "Скопировано" : "Копировать"}
+              {copied ? t("copied") : t("copy")}
             </Button>
           </div>
         </div>
 
-        <p className="text-sm text-muted-foreground">
-          Всем приглашённым Telegram-бот пришлёт уведомление о запуске сессии.
-        </p>
+        <p className="text-sm text-muted-foreground">{t("telegramNotice")}</p>
 
         <Button type="submit" size="lg" className="w-full">
-          Запустить сессию
+          {t("launchSession")}
         </Button>
       </form>
     </Card>

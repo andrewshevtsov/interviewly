@@ -3,6 +3,7 @@
 import { Footer } from "@/widgets/footer";
 import { Navbar } from "@/widgets/navbar";
 import { CreateSessionForm } from "@/features/create-session";
+import { getServerTranslations } from "@/shared/i18n-server";
 import type { NewSessionDraft } from "@/entities/session";
 
 /**
@@ -20,14 +21,16 @@ export interface NewSessionPageProps {
  * @param {NewSessionPageProps} props - Props for the page.
  * @returns {import('react').ReactNode} The new-session page.
  */
-export function NewSessionPage(props: NewSessionPageProps) {
+export async function NewSessionPage(props: NewSessionPageProps) {
+  const t = await getServerTranslations("newSession");
+
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
 
       <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-16">
-        <h1 className="text-3xl font-bold tracking-tight">Новая сессия</h1>
-        <p className="mt-2 text-muted-foreground">Настройте комнату и пригласите участников.</p>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+        <p className="mt-2 text-muted-foreground">{t("description")}</p>
 
         <div className="mt-10">
           <CreateSessionForm draft={props.draft} />

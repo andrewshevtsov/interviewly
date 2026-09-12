@@ -3,6 +3,7 @@
 // Слой widgets: видеопотоки участников "Открытой сессии" и кнопка AI-подсказки.
 import { useState } from "react";
 
+import { useTranslations } from "@/shared/i18n-context";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { hintsRemaining } from "@/features/join-session";
@@ -11,9 +12,14 @@ import { MAX_AI_HINTS_PER_SESSION } from "@/shared/config/constants";
 
 const HINT_INCREMENT = 1;
 
-const ROLE_LABELS: Record<SessionParticipantRole, string> = {
-  candidate: "Кандидат",
-  interviewer: "Интервьюер",
+const VIDEO_LABEL_KEYS: Record<SessionParticipantRole, "interviewerVideo" | "candidateVideo"> = {
+  interviewer: "interviewerVideo",
+  candidate: "candidateVideo",
+};
+
+const ROLE_LABEL_KEYS: Record<SessionParticipantRole, "interviewer" | "candidate"> = {
+  interviewer: "interviewer",
+  candidate: "candidate",
 };
 
 /**
@@ -33,12 +39,13 @@ interface VideoPanelProps {
  */
 function VideoPanel(props: VideoPanelProps) {
   const { participant } = props;
+  const t = useTranslations("session");
 
   return (
     <Card className="relative flex h-40 items-center justify-center bg-muted/40 text-xs tracking-wide text-muted-foreground">
-      Видеопоток
+      {t(VIDEO_LABEL_KEYS[participant.role])}
       <span className="absolute bottom-2 left-2 rounded-md bg-background/80 px-2 py-1 text-xs text-foreground">
-        {participant.name} ({ROLE_LABELS[participant.role]})
+        {participant.name} ({t(ROLE_LABEL_KEYS[participant.role])})
       </span>
     </Card>
   );
@@ -64,6 +71,7 @@ export function SessionVideoPanels(props: SessionVideoPanelsProps) {
   const { participants } = props;
   const [usedHints, setUsedHints] = useState(0);
   const remaining = hintsRemaining(usedHints);
+  const t = useTranslations("session");
 
   return (
     <aside className="flex w-full flex-col gap-4 border-r border-border p-4 md:w-80">
@@ -80,7 +88,7 @@ export function SessionVideoPanels(props: SessionVideoPanelsProps) {
           setUsedHints((count) => Math.min(MAX_AI_HINTS_PER_SESSION, count + HINT_INCREMENT))
         }
       >
-        Подсказка ИИ ({remaining}/{MAX_AI_HINTS_PER_SESSION})
+        {t("aiHint")} ({remaining}/{MAX_AI_HINTS_PER_SESSION})
       </Button>
     </aside>
   );

@@ -2,9 +2,10 @@
 
 // Слой widgets: верхняя панель "Открытой сессии" - бренд, номер сессии, таймер записи.
 import { useEffect, useState } from "react";
-import Link from "next/link";
 
+import { useTranslations } from "@/shared/i18n-context";
 import { Button } from "@/shared/ui/button";
+import { LocalizedLink } from "@/shared/ui/localized-link";
 
 const TIMER_TICK_MS = 1000;
 const SECONDS_PER_TICK = 1;
@@ -57,6 +58,7 @@ export interface SessionHeaderProps {
 export function SessionHeader(props: SessionHeaderProps) {
   const { sessionId, sessionNumber, accessCode } = props;
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const t = useTranslations("session");
 
   useEffect(() => {
     const timer = setInterval(
@@ -70,28 +72,30 @@ export function SessionHeader(props: SessionHeaderProps) {
   return (
     <header className="flex items-center justify-between border-b border-border px-6 py-3">
       <div className="flex items-center gap-3">
-        <Link href="/" className="flex items-center gap-2 font-bold tracking-tight">
+        <LocalizedLink href="/" className="flex items-center gap-2 font-bold tracking-tight">
           <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
             I
           </span>
           Interviewly
-        </Link>
+        </LocalizedLink>
         <span className="text-sm text-muted-foreground">
-          Сессия #{sessionNumber} · <span className="font-mono">{accessCode}</span>
+          {t("sessionLabel")} #{sessionNumber} · <span className="font-mono">{accessCode}</span>
         </span>
       </div>
 
       <div className="flex items-center gap-4">
         <span className="flex items-center gap-2 font-mono text-sm text-destructive">
           <span className="h-2 w-2 animate-pulse rounded-full bg-destructive" />
-          Запись {formatElapsed(elapsedSeconds)}
+          {t("recording")} {formatElapsed(elapsedSeconds)}
         </span>
         <Button
           asChild
           variant="outline"
           className="border-destructive/40 text-destructive hover:bg-destructive/10"
         >
-          <Link href={`/sessions/${sessionId}/feedback`}>Завершить</Link>
+          <LocalizedLink href={`/sessions/${sessionId}/feedback`}>
+            {t("endSession")}
+          </LocalizedLink>
         </Button>
       </div>
     </header>

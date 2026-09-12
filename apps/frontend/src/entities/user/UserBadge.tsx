@@ -20,5 +20,9 @@ export interface UserBadgeProps {
 export function UserBadge(props: UserBadgeProps) {
   const { user } = props;
 
-  return <span>{`${user.displayName} (${formatUserLevel(user)})`}</span>;
+  return (
+    <span>
+      {user.displayName} ({formatUserLevel(user)})
+    </span>
+  );
 }

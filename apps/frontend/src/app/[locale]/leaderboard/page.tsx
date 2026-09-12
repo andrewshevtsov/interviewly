@@ -1,5 +1,5 @@
 import { LeaderboardPage } from "@/views/leaderboard-page";
-import { DEMO_LEADERBOARD } from "../demo-data";
+import { DEMO_LEADERBOARD } from "@/app/demo-data";
 
 /**
  * Route "/leaderboard" - the full participant ranking screen.

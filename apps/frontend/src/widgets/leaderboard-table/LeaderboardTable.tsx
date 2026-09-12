@@ -1,4 +1,5 @@
 // Слой widgets: полная таблица "Лидерборд" - все участники, отсортированные по рейтингу.
+import { getServerTranslations } from "@/shared/i18n-server";
 import { cn } from "@/shared/lib/cn";
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
 import { Card } from "@/shared/ui/card";
@@ -21,16 +22,17 @@ export interface LeaderboardTableProps {
  * @param {LeaderboardTableProps} props - Props for the table.
  * @returns {import('react').ReactNode} The leaderboard table.
  */
-export function LeaderboardTable(props: LeaderboardTableProps) {
+export async function LeaderboardTable(props: LeaderboardTableProps) {
   const { entries } = props;
+  const t = await getServerTranslations("leaderboard");
 
   return (
     <Card className="divide-y divide-border">
       <div className="flex items-center gap-4 px-5 py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         <span className="w-8">#</span>
-        <span className="flex-1">Участник</span>
-        <span className="w-20 text-right">Интервью</span>
-        <span className="w-16 text-right">Рейтинг</span>
+        <span className="flex-1">{t("participantColumn")}</span>
+        <span className="w-20 text-right">{t("interviewsColumn")}</span>
+        <span className="w-16 text-right">{t("rating")}</span>
       </div>
 
       {entries.map((entry, index) => (

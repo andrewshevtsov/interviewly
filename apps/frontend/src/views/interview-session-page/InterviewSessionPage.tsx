@@ -5,15 +5,12 @@ import { SessionHeader } from "@/widgets/session-header";
 import { SessionVideoPanels } from "@/widgets/session-video-panels";
 import type { SessionParticipant } from "@/entities/session";
 import type { User } from "@/entities/user";
+import { getServerTranslations } from "@/shared/i18n-server";
 import { prepareInterviewSessionPage } from "./index";
 
 const SESSION_NUMBER = "4092";
 const ACCESS_CODE = "SECURE-77-X9";
-
-const PARTICIPANTS: SessionParticipant[] = [
-  { name: "Мария", role: "interviewer" },
-  { name: "Вы", role: "candidate" },
-];
+const INTERVIEWER_NAME = "Мария";
 
 /**
  * Props for {@link InterviewSessionPage}.
@@ -36,16 +33,24 @@ export interface InterviewSessionPageProps {
  * @param {InterviewSessionPageProps} props - Props for the page.
  * @returns {import('react').ReactNode} The interview session page.
  */
-export function InterviewSessionPage(props: InterviewSessionPageProps) {
+export async function InterviewSessionPage(props: InterviewSessionPageProps) {
   const state = prepareInterviewSessionPage(props.sessionId);
 
   if (!state.canJoin) {
+    const t = await getServerTranslations("interview");
+
     return (
       <main className="flex min-h-screen items-center justify-center px-6 text-center">
-        <p className="text-muted-foreground">Эту сессию нельзя открыть — проверьте ссылку.</p>
+        <p className="text-muted-foreground">{t("cannotOpenSession")}</p>
       </main>
     );
   }
+
+  const t = await getServerTranslations("session");
+  const participants: SessionParticipant[] = [
+    { name: INTERVIEWER_NAME, role: "interviewer" },
+    { name: t("you"), role: "candidate" },
+  ];
 
   return (
     <div className="flex h-screen flex-col">
@@ -56,9 +61,9 @@ export function InterviewSessionPage(props: InterviewSessionPageProps) {
       />
 
       <div className="flex flex-1 overflow-hidden">
-        <SessionVideoPanels participants={PARTICIPANTS} />
+        <SessionVideoPanels participants={participants} />
         <div className="flex flex-1 p-4">
-          <SessionCodeEditor participantsCount={PARTICIPANTS.length} />
+          <SessionCodeEditor participantsCount={participants.length} />
         </div>
       </div>
     </div>

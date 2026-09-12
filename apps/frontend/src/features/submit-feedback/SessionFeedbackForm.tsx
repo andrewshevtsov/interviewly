@@ -3,12 +3,14 @@
 // Слой features: форма обратной связи по завершённой сессии - оценка и заметки.
 import { useState, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 
+import { getLocalizedHref } from "@/shared/i18n";
+import { useLocale, useTranslations } from "@/shared/i18n-context";
 import { cn } from "@/shared/lib/cn";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Label } from "@/shared/ui/label";
+import { LocalizedLink } from "@/shared/ui/localized-link";
 import { Textarea } from "@/shared/ui/textarea";
 import { MAX_SESSION_SCORE } from "@/shared/config/constants";
 
@@ -38,8 +40,10 @@ export interface SessionFeedbackFormProps {
 export function SessionFeedbackForm(props: SessionFeedbackFormProps) {
   const { defaultScore } = props;
   const router = useRouter();
+  const locale = useLocale();
   const [score, setScore] = useState(defaultScore);
   const [isSaving, setIsSaving] = useState(false);
+  const t = useTranslations("feedback");
 
   /**
    * Simulates saving the feedback, then returns to "История".
@@ -49,7 +53,7 @@ export function SessionFeedbackForm(props: SessionFeedbackFormProps) {
   function handleSubmit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
     setIsSaving(true);
-    setTimeout(() => router.push("/sessions"), SAVE_REDIRECT_DELAY_MS);
+    setTimeout(() => router.push(getLocalizedHref("/sessions", locale)), SAVE_REDIRECT_DELAY_MS);
   }
 
   return (
@@ -57,7 +61,8 @@ export function SessionFeedbackForm(props: SessionFeedbackFormProps) {
       <form className="space-y-6" onSubmit={handleSubmit}>
         <div className="space-y-2">
           <Label>
-            Оценка: <span className="text-primary">{score}</span> / {MAX_SESSION_SCORE}
+            {t("scoreLabel")}: <span className="text-primary">{score}</span> /{" "}
+            {MAX_SESSION_SCORE}
           </Label>
           <div className="grid grid-cols-11 gap-1.5">
             {SCORE_OPTIONS.map((option) => (
@@ -79,26 +84,26 @@ export function SessionFeedbackForm(props: SessionFeedbackFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="feedback-strengths">Что получилось хорошо</Label>
-          <Textarea id="feedback-strengths" placeholder="Чистый код, проговаривал ход мыслей..." />
+          <Label htmlFor="feedback-strengths">{t("strengthsLabel")}</Label>
+          <Textarea id="feedback-strengths" placeholder={t("strengthsPlaceholder")} />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="feedback-growth-areas">Зоны роста</Label>
-          <Textarea id="feedback-growth-areas" placeholder="Крайние случаи, оценка сложности..." />
+          <Label htmlFor="feedback-growth-areas">{t("growthAreasLabel")}</Label>
+          <Textarea id="feedback-growth-areas" placeholder={t("growthAreasPlaceholder")} />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="feedback-notes">Личные заметки</Label>
-          <Textarea id="feedback-notes" placeholder="Что повторить перед следующим интервью..." />
+          <Label htmlFor="feedback-notes">{t("notesLabel")}</Label>
+          <Textarea id="feedback-notes" placeholder={t("notesPlaceholder")} />
         </div>
 
         <div className="flex gap-3">
           <Button type="submit" disabled={isSaving}>
-            {isSaving ? "Сохраняем…" : "Сохранить результат"}
+            {isSaving ? t("saving") : t("saveResult")}
           </Button>
           <Button asChild variant="outline">
-            <Link href="/sessions">К истории</Link>
+            <LocalizedLink href="/sessions">{t("backToHistory")}</LocalizedLink>
           </Button>
         </div>
       </form>

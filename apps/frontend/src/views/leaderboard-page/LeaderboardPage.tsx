@@ -3,6 +3,7 @@
 import { Footer } from "@/widgets/footer";
 import { LeaderboardTable } from "@/widgets/leaderboard-table";
 import { Navbar } from "@/widgets/navbar";
+import { getServerTranslations } from "@/shared/i18n-server";
 import type { LeaderboardEntry } from "@/entities/leaderboard";
 
 /**
@@ -20,16 +21,16 @@ export interface LeaderboardPageProps {
  * @param {LeaderboardPageProps} props - Props for the page.
  * @returns {import('react').ReactNode} The leaderboard page.
  */
-export function LeaderboardPage(props: LeaderboardPageProps) {
+export async function LeaderboardPage(props: LeaderboardPageProps) {
+  const t = await getServerTranslations("leaderboard");
+
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-16">
-        <h1 className="text-3xl font-bold tracking-tight">Лидерборд</h1>
-        <p className="mt-2 text-muted-foreground">
-          Топ участников по количеству проведённых интервью.
-        </p>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+        <p className="mt-2 text-muted-foreground">{t("description")}</p>
 
         <div className="mt-10">
           <LeaderboardTable entries={props.entries} />

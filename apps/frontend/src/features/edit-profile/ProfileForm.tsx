@@ -4,6 +4,7 @@
 import { useState, type SubmitEvent } from "react";
 
 import { cn } from "@/shared/lib/cn";
+import { useTranslations } from "@/shared/i18n-context";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -24,13 +25,13 @@ interface LevelOption {
   /**
    * Level label.
    */
-  label: string;
+  labelKey: ProfileLevel;
 }
 
 const LEVELS: LevelOption[] = [
-  { id: "junior", label: "Junior" },
-  { id: "middle", label: "Middle" },
-  { id: "senior", label: "Senior" },
+  { id: "junior", labelKey: "junior" },
+  { id: "middle", labelKey: "middle" },
+  { id: "senior", labelKey: "senior" },
 ];
 
 const STACK_OPTIONS = [
@@ -74,6 +75,8 @@ export function ProfileForm(props: ProfileFormProps) {
   const { profile } = props;
   const [level, setLevel] = useState<ProfileLevel>(profile.level);
   const [stack, setStack] = useState<string[]>(profile.stack);
+  const common = useTranslations("common");
+  const t = useTranslations("profile");
 
   /**
    * Toggles a stack tag on/off in the local selection.
@@ -81,34 +84,36 @@ export function ProfileForm(props: ProfileFormProps) {
    * @returns {void}
    */
   function toggleStack(tech: string): void {
-    setStack((current) => (current.includes(tech) ? current.filter((item) => item !== tech) : [...current, tech]));
+    setStack((current) =>
+      current.includes(tech) ? current.filter((item) => item !== tech) : [...current, tech],
+    );
   }
 
   return (
     <Card className="p-8">
       <form className="space-y-6" onSubmit={handleSubmit}>
         <div className="space-y-2">
-          <Label htmlFor="profile-name">Имя и фамилия</Label>
+          <Label htmlFor="profile-name">{t("fullName")}</Label>
           <Input id="profile-name" defaultValue={profile.name} />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="profile-role">Роль</Label>
+          <Label htmlFor="profile-role">{t("role")}</Label>
           <Input id="profile-role" defaultValue={profile.role} />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="profile-email">Email</Label>
+          <Label htmlFor="profile-email">{common("email")}</Label>
           <Input id="profile-email" type="email" defaultValue={profile.email} />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="profile-telegram">Telegram</Label>
+          <Label htmlFor="profile-telegram">{common("telegram")}</Label>
           <Input id="profile-telegram" defaultValue={profile.telegram} />
         </div>
 
         <div className="space-y-2">
-          <Label>Уровень</Label>
+          <Label>{t("level")}</Label>
           <div className="flex gap-2">
             {LEVELS.map((item) => (
               <button
@@ -122,14 +127,14 @@ export function ProfileForm(props: ProfileFormProps) {
                     : "border-border text-muted-foreground hover:text-foreground",
                 )}
               >
-                {item.label}
+                <span className="capitalize">{t(item.labelKey)}</span>
               </button>
             ))}
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label>Стек</Label>
+          <Label>{t("stack")}</Label>
           <div className="flex flex-wrap gap-2">
             {STACK_OPTIONS.map((tech) => (
               <button key={tech} type="button" onClick={() => toggleStack(tech)}>
@@ -145,11 +150,11 @@ export function ProfileForm(props: ProfileFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="profile-bio">О себе (текст карточки)</Label>
+          <Label htmlFor="profile-bio">{t("bio")}</Label>
           <Textarea id="profile-bio" defaultValue={profile.bio} />
         </div>
 
-        <Button type="submit">Сохранить изменения</Button>
+        <Button type="submit">{t("saveChanges")}</Button>
       </form>
     </Card>
   );

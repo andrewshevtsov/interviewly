@@ -1,5 +1,5 @@
 import { SessionFeedbackPage } from "@/views/session-feedback-page";
-import { DEMO_SESSION_HISTORY } from "../../../demo-data";
+import { DEMO_SESSION_HISTORY } from "@/app/demo-data";
 
 const DEMO_SESSION = DEMO_SESSION_HISTORY[0];
 

@@ -1,6 +1,7 @@
 // Слой widgets: секция "Лидерборд" - топ участников по числу проведённых интервью.
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
 import { Card } from "@/shared/ui/card";
+import { getServerTranslations } from "@/shared/i18n-server";
 
 /**
  * A single leaderboard row.
@@ -35,23 +36,33 @@ interface LeaderboardEntry {
 const ENTRIES: LeaderboardEntry[] = [
   { rank: "01", name: "Марк Ченов", role: "Senior Architect", sessions: "142", rating: "9.9/10" },
   { rank: "02", name: "София Родригес", role: "Fullstack Dev", sessions: "128", rating: "9.7/10" },
-  { rank: "03", name: "Мария Лебедева", role: "Systems Engineer", sessions: "95", rating: "9.5/10" },
+  {
+    rank: "03",
+    name: "Мария Лебедева",
+    role: "Systems Engineer",
+    sessions: "95",
+    rating: "9.5/10",
+  },
 ];
 
 /**
  * "Лидерборд" section: top participants ranked by sessions conducted.
  * @returns {import('react').ReactNode} The leaderboard section.
  */
-export function Leaderboard() {
+export async function Leaderboard() {
+  const t = await getServerTranslations("leaderboard");
+
   return (
     <section id="leaderboard" className="mx-auto max-w-3xl px-6 py-24 text-center">
-      <h2 className="text-3xl font-bold tracking-tight">Лидерборд</h2>
-      <p className="mt-2 text-muted-foreground">Топ участников по количеству проведённых интервью.</p>
+      <h2 className="text-3xl font-bold tracking-tight">{t("title")}</h2>
+      <p className="mt-2 text-muted-foreground">{t("description")}</p>
 
       <Card className="mt-10 divide-y divide-border text-left">
         {ENTRIES.map((entry) => (
           <div key={entry.rank} className="flex items-center gap-4 p-5">
-            <span className="w-8 font-mono text-2xl font-bold italic text-primary">{entry.rank}</span>
+            <span className="w-8 font-mono text-2xl font-bold italic text-primary">
+              {entry.rank}
+            </span>
 
             <Avatar className="h-10 w-10 bg-muted">
               <AvatarFallback>{entry.name[0]}</AvatarFallback>
@@ -65,9 +76,11 @@ export function Leaderboard() {
             <div className="text-right">
               <p>
                 <span className="font-bold">{entry.sessions}</span>{" "}
-                <span className="text-muted-foreground">сессий</span>
+                <span className="text-muted-foreground">{t("sessions")}</span>
               </p>
-              <p className="text-sm text-success">РЕЙТИНГ: {entry.rating}</p>
+              <p className="text-sm uppercase text-success">
+                {t("rating")}: {entry.rating}
+              </p>
             </div>
           </div>
         ))}

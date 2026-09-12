@@ -1,5 +1,5 @@
 import { NewSessionPage } from "@/views/new-session-page";
-import { DEMO_NEW_SESSION_DRAFT } from "../../demo-data";
+import { DEMO_NEW_SESSION_DRAFT } from "@/app/demo-data";
 
 /**
  * Route "/sessions/new" - the session creation form, prefilled with demo values.

@@ -1,11 +1,12 @@
 // Слой widgets: секция "История интервью" - прошедшие сессии пользователя с оценками.
+import { getServerTranslations } from "@/shared/i18n-server";
 import { Badge } from "@/shared/ui/badge";
 import { Card } from "@/shared/ui/card";
 import type { SessionHistoryEntry, SessionParticipantRole } from "@/entities/session";
 
-const ROLE_LABELS: Record<SessionParticipantRole, string> = {
-  candidate: "КАНДИДАТ",
-  interviewer: "ИНТЕРВЬЮЕР",
+const ROLE_LABEL_KEYS: Record<SessionParticipantRole, "interviewer" | "candidate"> = {
+  candidate: "candidate",
+  interviewer: "interviewer",
 };
 
 /**
@@ -23,13 +24,14 @@ export interface SessionHistoryProps {
  * @param {SessionHistoryProps} props - Props for the section.
  * @returns {import('react').ReactNode} The session history section.
  */
-export function SessionHistory(props: SessionHistoryProps) {
+export async function SessionHistory(props: SessionHistoryProps) {
   const { entries } = props;
+  const t = await getServerTranslations("session");
 
   return (
     <section className="mx-auto max-w-4xl px-6 py-16">
-      <h1 className="text-3xl font-bold tracking-tight">История интервью</h1>
-      <p className="mt-2 text-muted-foreground">Ваши сессии, оценки и личные заметки.</p>
+      <h1 className="text-3xl font-bold tracking-tight">{t("historyTitle")}</h1>
+      <p className="mt-2 text-muted-foreground">{t("historyDescription")}</p>
 
       <div className="mt-10 space-y-4">
         {entries.map((entry) => (
@@ -40,13 +42,13 @@ export function SessionHistory(props: SessionHistoryProps) {
                   #{entry.number}
                 </Badge>
                 <span className="text-xs font-semibold uppercase tracking-wide text-primary">
-                  {ROLE_LABELS[entry.role]}
+                  {t(ROLE_LABEL_KEYS[entry.role])}
                 </span>
               </div>
 
               <p className="mt-2 font-semibold">{entry.title}</p>
               <p className="text-sm text-muted-foreground">
-                {entry.partnerName} · {entry.date} · {entry.duration} · подсказок:{" "}
+                {entry.partnerName} · {entry.date} · {entry.duration} · {t("hintsUsedLabel")}:{" "}
                 {entry.hintsUsed}/{entry.hintsTotal}
               </p>
             </div>
@@ -54,7 +56,7 @@ export function SessionHistory(props: SessionHistoryProps) {
             <div className="text-center">
               <p className="text-3xl font-bold text-primary">{entry.score}</p>
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                из {entry.scoreMax}
+                {t("scoreOutOf")} {entry.scoreMax}
               </p>
             </div>
           </Card>

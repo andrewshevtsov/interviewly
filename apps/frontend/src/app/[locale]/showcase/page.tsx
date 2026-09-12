@@ -1,5 +1,5 @@
 import { ShowcasePage } from "@/views/showcase-page";
-import { DEMO_PARTICIPANTS } from "../demo-data";
+import { DEMO_PARTICIPANTS } from "@/app/demo-data";
 
 /**
  * Route "/showcase" - the full participant search/browse screen.

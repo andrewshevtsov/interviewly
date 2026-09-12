@@ -3,6 +3,7 @@
 // Слой features: поиск и фильтрация участников на "Витрине участников".
 import { useMemo, useState } from "react";
 
+import { useTranslations } from "@/shared/i18n-context";
 import { cn } from "@/shared/lib/cn";
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
 import { Badge } from "@/shared/ui/badge";
@@ -13,12 +14,6 @@ import { Label } from "@/shared/ui/label";
 import type { Participant, ParticipantLevel, ParticipantStatus } from "@/entities/participant";
 
 const LEVELS: ParticipantLevel[] = ["junior", "middle", "senior"];
-
-const LEVEL_LABELS: Record<ParticipantLevel, string> = {
-  junior: "Junior",
-  middle: "Middle",
-  senior: "Senior",
-};
 
 const STACK_OPTIONS = [
   "React",
@@ -33,10 +28,10 @@ const STACK_OPTIONS = [
   "Kubernetes",
 ];
 
-const STATUS_LABELS: Record<ParticipantStatus, string> = {
-  available: "СВОБОДЕН",
-  "in-session": "НА СЕССИИ",
-  "top-rated": "ТОП РЕЙТИНГА",
+const STATUS_LABEL_KEYS: Record<ParticipantStatus, "available" | "inSession" | "topRated"> = {
+  available: "available",
+  "in-session": "inSession",
+  "top-rated": "topRated",
 };
 
 /**
@@ -67,18 +62,27 @@ interface StatusBadgeProps {
  */
 function StatusBadge(props: StatusBadgeProps) {
   const { status } = props;
+  const t = useTranslations("showcase");
 
   if (status === "available") {
-    return <Badge variant="success">{STATUS_LABELS[status]}</Badge>;
+    return (
+      <Badge variant="success" className="uppercase">
+        {t(STATUS_LABEL_KEYS[status])}
+      </Badge>
+    );
   }
 
   if (status === "in-session") {
-    return <Badge variant="warning">{STATUS_LABELS[status]}</Badge>;
+    return (
+      <Badge variant="warning" className="uppercase">
+        {t(STATUS_LABEL_KEYS[status])}
+      </Badge>
+    );
   }
 
   return (
-    <Badge variant="outline" className="border-primary/40 text-primary">
-      {STATUS_LABELS[status]}
+    <Badge variant="outline" className="border-primary/40 uppercase text-primary">
+      {t(STATUS_LABEL_KEYS[status])}
     </Badge>
   );
 }
@@ -122,6 +126,9 @@ export function ParticipantBrowser(props: ParticipantBrowserProps) {
   const [query, setQuery] = useState("");
   const [levels, setLevels] = useState<ParticipantLevel[]>([]);
   const [stack, setStack] = useState<string[]>([]);
+  const showcase = useTranslations("showcase");
+  const profile = useTranslations("profile");
+  const leaderboard = useTranslations("leaderboard");
 
   const filtered = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -139,17 +146,17 @@ export function ParticipantBrowser(props: ParticipantBrowserProps) {
     <div className="grid gap-8 md:grid-cols-[240px_1fr]">
       <aside className="space-y-6">
         <div className="space-y-2">
-          <Label htmlFor="participant-search">Поиск</Label>
+          <Label htmlFor="participant-search">{showcase("searchLabel")}</Label>
           <Input
             id="participant-search"
-            placeholder="Имя, роль или стек..."
+            placeholder={showcase("searchPlaceholder")}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
         </div>
 
         <div className="space-y-2">
-          <Label>Уровень</Label>
+          <Label>{profile("level")}</Label>
           <div className="flex flex-wrap gap-2">
             {LEVELS.map((level) => (
               <button
@@ -163,14 +170,14 @@ export function ParticipantBrowser(props: ParticipantBrowserProps) {
                     : "border-border text-muted-foreground hover:text-foreground",
                 )}
               >
-                {level}
+                {profile(level)}
               </button>
             ))}
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label>Стек</Label>
+          <Label>{profile("stack")}</Label>
           <div className="flex flex-wrap gap-2">
             {STACK_OPTIONS.map((tech) => (
               <button
@@ -192,7 +199,7 @@ export function ParticipantBrowser(props: ParticipantBrowserProps) {
 
       <div>
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Найдено карточек: {filtered.length}
+          {showcase("foundCount")}: {filtered.length}
         </p>
 
         <div className="mt-4 grid gap-6 sm:grid-cols-2">
@@ -210,7 +217,7 @@ export function ParticipantBrowser(props: ParticipantBrowserProps) {
                   <p className="font-semibold">{participant.name}</p>
                   <p className="text-sm text-muted-foreground">
                     {participant.role} ·{" "}
-                    <span className="text-primary">{LEVEL_LABELS[participant.level]}</span>
+                    <span className="text-primary capitalize">{profile(participant.level)}</span>
                   </p>
                 </div>
 
@@ -231,9 +238,9 @@ export function ParticipantBrowser(props: ParticipantBrowserProps) {
 
               <CardFooter className="items-center justify-between gap-4">
                 <span className="text-xs text-muted-foreground">
-                  {participant.sessionsCount} сессий · {participant.rating}
+                  {participant.sessionsCount} {leaderboard("sessions")} · {participant.rating}
                 </span>
-                <Button variant="outline">Откликнуться</Button>
+                <Button variant="outline">{showcase("respond")}</Button>
               </CardFooter>
             </Card>
           ))}
