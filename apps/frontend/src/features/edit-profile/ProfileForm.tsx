@@ -7,7 +7,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { SubmitEvent } from "react";
 
-import { PROFILE_FIELDS } from "@/shared/config/constants";
+import { PROFILE_FIELDS, TOGGLE_CHECKED_CLASSES, TOGGLE_UNCHECKED_CLASSES } from "@/shared/config/constants";
 import { cn } from "@/shared/lib/cn";
 import type { MessageKey } from "@/shared/i18n";
 import { useTranslations } from "@/shared/i18n-context";
@@ -52,15 +52,6 @@ const STACK_OPTIONS = [
   "Rust",
   "Kubernetes",
 ];
-
-/**
- * Classes shared by the level/stack toggle "buttons": a `peer-checked:` variant makes the
- * hidden radio/checkbox's checked state drive the visible style, instead of JS.
- */
-const TOGGLE_UNCHECKED_CLASSES =
-  "border-border text-muted-foreground hover:text-foreground transition-colors";
-const TOGGLE_CHECKED_CLASSES =
-  "peer-checked:border-primary peer-checked:bg-primary peer-checked:text-primary-foreground";
 
 /**
  * Props for {@link ProfileForm}.

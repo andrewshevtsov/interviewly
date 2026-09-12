@@ -47,7 +47,7 @@ export function RegisterForm() {
 
     const formData = new FormData(event.currentTarget);
     const { email, password, firstName, lastName, passwordConfirm } = Object.fromEntries(formData) as Record<
-    "email" | "password" | "firstName" | "lastName" | "passwordConfirm", 
+    "email" | "password" | "firstName" | "lastName" | "passwordConfirm",
     string>;
     if (password !== passwordConfirm) {
       setPasswordMismatch(true);
