@@ -73,7 +73,7 @@ export const messages = {
     titleEnd: { ru: "интервью.", en: "interview." },
     description: {
       ru:
-        "Живой кодинг вдвоём, камера, AI-подсказки и честная обратная связь. " +
+        "Живой кодинг, камера, AI-подсказки и честная обратная связь. " +
         "Для работодателей и для тех, кто готовится к офферу.",
       en: "Live pair coding, video, AI hints, and honest feedback. For employers and candidates preparing for an offer.",
     },
