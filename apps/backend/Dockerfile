@@ -19,4 +19,4 @@ COPY . .
 
 EXPOSE 4000
 
-CMD ["sh", "-c", "pnpm run prisma-generate && pnpm run back-dev"]
+CMD ["sh", "-c", "pnpm --filter @app/backend run prisma-generate && pnpm run back-dev"]

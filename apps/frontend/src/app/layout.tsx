@@ -64,8 +64,7 @@ export default async function RootLayout(props: RootLayoutProps) {
             мигания дефолтной (тёмной) темы. См. features/toggle-theme/ThemeToggle. */}
         <InlineScript
           html={
-            "(function(){try{var t=localStorage.getItem('theme');" +
-            "if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})()"
+            `;(function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();`
           }
         />
       </head>

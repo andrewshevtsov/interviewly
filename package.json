@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Сервис проведения технических и мок-интервью",
-  "packageManager": "pnpm@11.22.0",
+  "packageManager": "pnpm@12.4.1",
   "engines": {
     "node": ">=22.13.0"
   },
