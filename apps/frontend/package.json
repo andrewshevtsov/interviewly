@@ -22,6 +22,7 @@
     "@storybook/addon-docs": "^10.6.0",
     "@storybook/nextjs": "^10.6.0",
     "@stylistic/eslint-plugin": "5.10.0",
+    "@tanstack/eslint-plugin-query": "^5.102.8",
     "@types/node": "^26.2.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
@@ -48,7 +49,9 @@
   "dependencies": {
     "@radix-ui/react-avatar": "^1.2.6",
     "@radix-ui/react-slot": "^1.3.3",
+    "@tanstack/react-query": "^5.102.8",
     "autoprefixer": "^10.5.5",
+    "axios": "^1.20.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.37.0",

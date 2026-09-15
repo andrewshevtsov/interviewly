@@ -4,19 +4,14 @@ import { Footer } from "@/widgets/footer";
 import { Navbar } from "@/widgets/navbar";
 import { ProfileStats } from "@/widgets/profile-stats";
 import { TelegramNotice } from "@/widgets/telegram-notice";
-import { ProfileForm } from "@/features/edit-profile";
-import type { Profile, ProfileStatsData } from "@/entities/profile";
+import type { ProfileStatsData } from "@/entities/profile";
 import { getServerTranslations } from "@/shared/i18n-server";
+import { ProfileFormSection } from "./ProfileFormSection";
 
 /**
  * Props for {@link ProfilePage}.
  */
 export interface ProfilePageProps {
-  /**
-   * The signed-in user's editable profile.
-   */
-  profile: Profile;
-
   /**
    * The signed-in user's aggregate stats.
    */
@@ -24,13 +19,14 @@ export interface ProfilePageProps {
 }
 
 /**
- * Renders the "Личный кабинет" screen: navbar, an editable profile form and a sidebar with
- * stats and the Telegram notification notice.
+ * Renders the "Личный кабинет" screen: navbar, an editable profile form (fetched
+ * client-side for the signed-in user, redirecting to "/auth" if the session can't be
+ * resolved) and a sidebar with stats and the Telegram notification notice.
  * @param {ProfilePageProps} props - Props for the page.
  * @returns {import('react').ReactNode} The profile page.
  */
 export async function ProfilePage(props: ProfilePageProps) {
-  const { profile, stats } = props;
+  const { stats } = props;
   const t = await getServerTranslations("profile");
 
   return (
@@ -42,7 +38,7 @@ export async function ProfilePage(props: ProfilePageProps) {
         <p className="mt-2 text-muted-foreground">{t("description")}</p>
 
         <div className="mt-10 grid gap-6 lg:grid-cols-[1fr_320px]">
-          <ProfileForm profile={profile} />
+          <ProfileFormSection />
 
           <div className="space-y-6">
             <ProfileStats stats={stats} />
