@@ -6,7 +6,6 @@ import { UsersService } from '../users/users.service.ts';
 import { UserEntity } from '../users/entities/user-entity.ts';
 import { LoginDto } from './dto/login.dto.ts';
 import { RegisterDto } from './dto/register.dto.ts';
-import { RefreshTokenDto } from './dto/refresh-token.dto.ts';
 import { AuthTokens, JwtPayload, RefreshPayload } from './auth.types.ts';
 
 const SALT_ROUNDS = 12;
@@ -76,14 +75,15 @@ export class AuthService {
   }
 
   /**
-   * Проверяет refresh-токен и выдаёт новую пару. Токены не хранятся на сервере,
-   * поэтому ротация здесь «мягкая»: старый refresh остаётся валидным до истечения.
+   * Проверяет refresh-токен (значение httpOnly-куки) и выдаёт новую пару.
+   * Токены не хранятся на сервере, поэтому ротация здесь «мягкая»: старый
+   * refresh остаётся валидным до истечения.
    */
-  async refresh(dto: RefreshTokenDto): Promise<AuthTokens> {
+  async refresh(refreshToken: string): Promise<AuthTokens> {
     let payload: RefreshPayload;
     try {
       payload = await this.jwtService.verifyAsync<RefreshPayload>(
-        dto.refreshToken,
+        refreshToken,
         { secret: this.refreshSecret },
       );
     } catch {
@@ -128,6 +128,7 @@ export class AuthService {
       }),
     ]);
 
-    return { accessToken, refreshToken };
+    const { exp } = this.jwtService.decode<{ exp: number }>(refreshToken);
+    return { accessToken, refreshToken, refreshTokenExpiresAt: new Date(exp * 1000) };
   }
 }

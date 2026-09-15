@@ -1,29 +1,53 @@
 "use client";
 
 // Слой features: форма входа - email и пароль.
-import type { SubmitEvent } from "react";
-
+import { useMutation } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { setAccessToken } from "@/shared/api/access-token";
+import { authApi } from "@/shared/api/auth-api";
+import { getLocalizedHref } from "@/shared/i18n";
+import { useLocale, useTranslations } from "@/shared/i18n-context";
 import { Button } from "@/shared/ui/button";
-import { useTranslations } from "@/shared/i18n-context";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
-
-/**
- * Prevents the default full-page submit for this demo form (no backend wired up yet).
- * @param {SubmitEvent<HTMLFormElement>} event - The form submit event.
- * @returns {void}
- */
-function handleSubmit(event: SubmitEvent<HTMLFormElement>): void {
-  event.preventDefault();
-}
+import { SubmitEvent } from "react";
 
 /**
  * Login form: email and password fields.
  * @returns {import('react').ReactNode} The login form.
  */
 export function LoginForm() {
+  const router = useRouter();
+  const locale = useLocale();
   const common = useTranslations("common");
   const auth = useTranslations("auth");
+
+  const loginMutation = useMutation({
+    mutationFn: authApi.login,
+    /**
+     * Stores the new access token and redirects to the profile page.
+     * @param {{ accessToken: string }} tokens - The login response.
+     * @returns {void}
+     */
+    onSuccess: (tokens) => {
+      setAccessToken(tokens.accessToken);
+      router.push(getLocalizedHref("/profile", locale));
+    },
+  });
+
+  /**
+   * Submits the login form.
+   * @param {SubmitEvent<HTMLFormElement>} event - The form submit event.
+   * @returns {void}
+   */
+  function handleSubmit(event: SubmitEvent<HTMLFormElement>): void {
+    event.preventDefault();
+
+    const formData = new FormData(event.currentTarget);
+    const { email, password } = Object.fromEntries(formData) as Record<
+    "email" | "password", string>;
+    loginMutation.mutate({ email, password });
+  }
 
   return (
     <form className="space-y-5" onSubmit={handleSubmit}>
@@ -33,6 +57,7 @@ export function LoginForm() {
           id="login-email"
           type="email"
           placeholder={auth.raw("emailPlaceholder")}
+          name="email"
           required
         />
       </div>
@@ -43,12 +68,15 @@ export function LoginForm() {
           id="login-password"
           type="password"
           placeholder={auth("passwordPlaceholder")}
+          name="password"
           required
         />
       </div>
 
-      <Button type="submit" className="w-full">
-        {auth("login")}
+      {loginMutation.isError && <p className="text-sm text-destructive">{auth("loginError")}</p>}
+
+      <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+        {loginMutation.isPending ? auth("loginPending") : auth("login")}
       </Button>
     </form>
   );

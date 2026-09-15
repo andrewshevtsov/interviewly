@@ -47,6 +47,19 @@ export interface Profile {
 }
 
 /**
+ * Blank profile shown while a signed-in user hasn't filled in their profile yet.
+ */
+export const EMPTY_PROFILE: Profile = {
+  name: "",
+  role: "",
+  email: "",
+  telegram: "",
+  level: "middle",
+  stack: [],
+  bio: "",
+};
+
+/**
  * The signed-in user's aggregate stats, shown in the profile sidebar.
  */
 export interface ProfileStatsData {
@@ -65,3 +78,5 @@ export interface ProfileStatsData {
    */
   topRank: string;
 }
+
+export { profileApi } from "./profile-api";
