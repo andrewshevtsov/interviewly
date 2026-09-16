@@ -13,7 +13,7 @@ COPY apps/frontend/package.json ./apps/frontend/package.json
 RUN pnpm config set fetch-timeout 500000 && \
     pnpm config set fetch-retry-mintimeout 100000 && \
     pnpm config set fetch-retry-maxtimeout 500000
-RUN pnpm install --frozen-lockfile 
+RUN pnpm install --frozen-lockfile
 
 COPY . .
 
