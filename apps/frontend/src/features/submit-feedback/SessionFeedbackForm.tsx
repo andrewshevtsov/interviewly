@@ -1,8 +1,10 @@
 "use client";
 
-// Слой features: форма обратной связи по завершённой сессии - оценка и заметки.
+// Слой features: форма обратной связи по завершённой сессии - кому она адресована,
+// оценка 0-10 и комментарий. Отправляет реальный POST /sessions/:sessionId/feedback.
 import { useState, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { getLocalizedHref } from "@/shared/i18n";
 import { useLocale, useTranslations } from "@/shared/i18n-context";
@@ -11,20 +13,26 @@ import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Label } from "@/shared/ui/label";
 import { LocalizedLink } from "@/shared/ui/localized-link";
+import { Select } from "@/shared/ui/select";
 import { Textarea } from "@/shared/ui/textarea";
 import { MAX_SESSION_SCORE } from "@/shared/config/constants";
+import { feedbackApi, type CreateFeedbackInput } from "@/entities/feedback";
 
 const INCLUSIVE_RANGE_OFFSET = 1;
 const SCORE_OPTIONS = Array.from(
   { length: MAX_SESSION_SCORE + INCLUSIVE_RANGE_OFFSET },
   (unusedEntry, score) => score,
 );
-const SAVE_REDIRECT_DELAY_MS = 600;
 
 /**
  * Props for {@link SessionFeedbackForm}.
  */
 export interface SessionFeedbackFormProps {
+  /**
+   * Session the feedback is about.
+   */
+  sessionId: string;
+
   /**
    * Score selected by default when the form is first shown.
    */
@@ -32,33 +40,98 @@ export interface SessionFeedbackFormProps {
 }
 
 /**
- * Session feedback form: a 0-10 score picker and three free-form notes fields. Saving redirects
- * to "История" (no backend wired up yet).
+ * Session feedback form: pick the participant it's about, a 0-10 score and a comment.
+ * Saving posts to the backend and returns to "История" on success.
  * @param {SessionFeedbackFormProps} props - Props for the form.
  * @returns {import('react').ReactNode} The session feedback form.
  */
 export function SessionFeedbackForm(props: SessionFeedbackFormProps) {
-  const { defaultScore } = props;
+  const { sessionId, defaultScore } = props;
   const router = useRouter();
   const locale = useLocale();
   const [score, setScore] = useState(defaultScore);
-  const [isSaving, setIsSaving] = useState(false);
   const t = useTranslations("feedback");
 
   /**
-   * Simulates saving the feedback, then returns to "История".
+   * Lists the session's other participants, eligible as feedback targets.
+   * @returns {ReturnType<typeof feedbackApi.listEligibleTargets>} The other participants.
+   */
+  function listEligibleTargets() {
+    return feedbackApi.listEligibleTargets(sessionId);
+  }
+
+  const participantsQuery = useQuery({
+    queryKey: ["sessions", sessionId, "feedback-participants"],
+    queryFn: listEligibleTargets,
+    retry: false,
+  });
+
+  /**
+   * Submits the feedback for the current session.
+   * @param {CreateFeedbackInput} input - The feedback fields.
+   * @returns {Promise<import("@/entities/feedback").Feedback>} The created feedback.
+   */
+  function createFeedback(input: CreateFeedbackInput) {
+    return feedbackApi.create(sessionId, input);
+  }
+
+  /**
+   * Returns to "История" once the feedback has been saved.
+   * @returns {void}
+   */
+  function handleSubmitSuccess(): void {
+    router.push(getLocalizedHref("/sessions", locale));
+  }
+
+  const submitMutation = useMutation({
+    mutationFn: createFeedback,
+    onSuccess: handleSubmitSuccess,
+  });
+
+  /**
+   * Reads the target participant and comment from the native form, and submits
+   * them together with the `score` state to the backend.
    * @param {SubmitEvent<HTMLFormElement>} event - The form submit event.
    * @returns {void}
    */
   function handleSubmit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
-    setIsSaving(true);
-    setTimeout(() => router.push(getLocalizedHref("/sessions", locale)), SAVE_REDIRECT_DELAY_MS);
+
+    const formData = new FormData(event.currentTarget);
+    const { targetUserId, comment } = Object.fromEntries(formData) as Record<
+      "targetUserId" | "comment",
+      string
+    >;
+
+    submitMutation.mutate({ targetUserId, score, comment });
   }
 
   return (
     <Card className="p-8">
       <form className="space-y-6" onSubmit={handleSubmit}>
+        <div className="space-y-2">
+          <Label htmlFor="feedback-target">{t("targetLabel")}</Label>
+          {participantsQuery.isError && (
+            <p className="text-sm text-destructive">{t("targetLoadError")}</p>
+          )}
+          <Select
+            id="feedback-target"
+            name="targetUserId"
+            required
+            disabled={participantsQuery.isPending}
+            defaultValue=""
+          >
+            <option value="" disabled>
+              {participantsQuery.isPending ? t("targetLoading") : t("targetPlaceholder")}
+            </option>
+            {participantsQuery.data?.map((participant) => (
+              <option key={participant.userId} value={participant.userId}>
+                {participant.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+
         <div className="space-y-2">
           <Label>
             {t("scoreLabel")}: <span className="text-primary">{score}</span> /{" "}
@@ -84,23 +157,15 @@ export function SessionFeedbackForm(props: SessionFeedbackFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="feedback-strengths">{t("strengthsLabel")}</Label>
-          <Textarea id="feedback-strengths" placeholder={t("strengthsPlaceholder")} />
+          <Label htmlFor="feedback-comment">{t("commentLabel")}</Label>
+          <Textarea id="feedback-comment" name="comment" placeholder={t("commentPlaceholder")} />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="feedback-growth-areas">{t("growthAreasLabel")}</Label>
-          <Textarea id="feedback-growth-areas" placeholder={t("growthAreasPlaceholder")} />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="feedback-notes">{t("notesLabel")}</Label>
-          <Textarea id="feedback-notes" placeholder={t("notesPlaceholder")} />
-        </div>
+        {submitMutation.isError && <p className="text-sm text-destructive">{t("saveError")}</p>}
 
         <div className="flex gap-3">
-          <Button type="submit" disabled={isSaving}>
-            {isSaving ? t("saving") : t("saveResult")}
+          <Button type="submit" disabled={submitMutation.isPending}>
+            {submitMutation.isPending ? t("saving") : t("saveResult")}
           </Button>
           <Button asChild variant="outline">
             <LocalizedLink href="/sessions">{t("backToHistory")}</LocalizedLink>
