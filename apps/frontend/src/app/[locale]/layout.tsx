@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 
 import { isLocale, SUPPORTED_LOCALES } from "@/shared/i18n";
+import { I18nProvider } from "@/shared/i18n-context";
 
 /** Props for the localized route group. */
 export interface LocaleLayoutProps {
@@ -34,5 +35,5 @@ export default async function LocaleLayout(props: LocaleLayoutProps): Promise<Re
     notFound();
   }
 
-  return props.children;
+  return <I18nProvider locale={locale}>{props.children}</I18nProvider>;
 }

@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 
-import { I18nProvider } from "@/shared/i18n-context";
 import { getRequestLocale, getServerTranslations } from "@/shared/i18n-server";
 import { InlineScript } from "@/shared/ui/inline-script";
 import { QueryProvider } from "@/shared/api/query-provider";
@@ -72,7 +71,7 @@ export default async function RootLayout(props: RootLayoutProps) {
       <body>
         <QueryProvider>
           <AuthSessionInit />
-          <I18nProvider locale={locale}>{props.children}</I18nProvider>
+          {props.children}
         </QueryProvider>
       </body>
     </html>

@@ -42,6 +42,7 @@ export const messages = {
     leaderboard: { ru: "лидерборд", en: "leaderboard" },
     history: { ru: "история", en: "history" },
     profile: { ru: "кабинет", en: "profile" },
+    chooseLanguage: { ru: "выбрать язык", en: "choose language" },
     signIn: { ru: "войти", en: "sign in" },
     createSession: { ru: "создать сессию", en: "create session" },
   },
