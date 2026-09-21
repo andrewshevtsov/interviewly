@@ -4,6 +4,7 @@
 import { usePathname } from "next/navigation";
 import { CircleUserRound } from "lucide-react";
 
+import { LanguageSwitcher } from "@/features/change-language";
 import { ThemeToggle } from "@/features/toggle-theme";
 import { LogoutButton } from "@/features/logout";
 import { getLocalizedHref } from "@/shared/i18n";
@@ -73,6 +74,7 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-3">
+          <LanguageSwitcher />
           <ThemeToggle />
           {isAuthenticated
             ? (
