@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { UsersModule } from './modules/users/user.module.ts';
 import { AuthModule } from './modules/auth/auth.module.ts';
 import { ProfileModule } from './modules/profile/profile.module.ts';
+import { SessionsModule } from './modules/sessions/sessions.module.ts';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { ProfileModule } from './modules/profile/profile.module.ts';
     UsersModule,
     AuthModule,
     ProfileModule,
+    SessionsModule,
   ],
   controllers: [],
   providers: [],

@@ -11,9 +11,9 @@
   "scripts": {
     "back-dev": "pnpm --filter @app/backend run start:dev",
     "front-dev": "pnpm --filter @app/frontend run dev",
+    "db-dev": "docker compose up -d postgres livekit",
     "prisma-generate": "pnpm --filter @app/backend prisma-generate",
     "format": "prettier --write .",
-    "prisma-generate": "pnpm --filter @app/backend prisma-generate",
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r --if-present run typecheck",
     "prepare": "husky"
