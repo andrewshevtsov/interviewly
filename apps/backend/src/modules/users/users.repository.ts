@@ -26,6 +26,10 @@ export class UsersRepository {
     return this.prisma.user.findUnique({ where: { email } });
   }
 
+  findByTelegramId(telegramId: string): Promise<User | null> {
+    return this.prisma.user.findUnique({ where: { telegramId } });
+  }
+
   update(id: string, data: Prisma.UserUpdateInput): Promise<User> {
     return this.prisma.user.update({ where: { id }, data });
   }

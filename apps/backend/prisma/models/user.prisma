@@ -23,6 +23,14 @@ model User {
   createdAt             DateTime   @default(now()) @db.Timestamptz(3)
   updatedAt             DateTime   @updatedAt @db.Timestamptz(3)
 
+  // Telegram Login Widget: `telegramId` - числовой id аккаунта Telegram
+  // (строкой, т.к. может превышать безопасный диапазон JS Number).
+  // Nullable и unique — привязка опциональна, у пары аккаунтов не бывает
+  // одного и того же telegramId.
+  telegramId       String?   @unique
+  telegramUsername String?
+  telegramLinkedAt DateTime? @db.Timestamptz(3)
+
   // Обратные стороны связей: сессии, созданные пользователем, и его участия.
   // Отдельных столбцов для этих массивов в таблице User не создаётся.
   ownedSessions         Session[]

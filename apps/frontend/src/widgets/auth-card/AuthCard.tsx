@@ -5,11 +5,11 @@ import { useState } from "react";
 
 import { cn } from "@/shared/lib/cn";
 import { useTranslations } from "@/shared/i18n-context";
-import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { LocalizedLink } from "@/shared/ui/localized-link";
 import { LoginForm } from "@/features/login";
 import { RegisterForm } from "@/features/register";
+import { TelegramLoginButton } from "@/features/telegram-login";
 
 /**
  * Which form the auth card currently shows.
@@ -67,15 +67,17 @@ export function AuthCard() {
 
       <div className="mt-6">{activeTab === "login" ? <LoginForm /> : <RegisterForm />}</div>
 
-      <div className="mt-6 flex items-center gap-4 text-xs uppercase text-muted-foreground">
-        <span className="h-px flex-1 bg-border" />
-        {t("or")}
-        <span className="h-px flex-1 bg-border" />
-      </div>
+      {Boolean(process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME) && (
+        <>
+          <div className="mt-6 flex items-center gap-4 text-xs uppercase text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            {t("or")}
+            <span className="h-px flex-1 bg-border" />
+          </div>
 
-      <Button variant="outline" className="mt-6 w-full">
-        {t("continueWithTelegram")}
-      </Button>
+          <TelegramLoginButton />
+        </>
+      )}
 
       <p className="mt-6 text-center text-xs text-muted-foreground">
         {t("agreementPrefix")}{" "}

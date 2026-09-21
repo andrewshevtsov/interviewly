@@ -80,6 +80,10 @@ export const messages = {
       ru: "не удалось зарегистрироваться. проверьте данные",
       en: "couldn't sign up. check your details",
     },
+    telegramLoginError: {
+      ru: "не удалось войти через Telegram. попробуйте ещё раз",
+      en: "couldn't sign in with Telegram. try again",
+    },
     passwordMismatch: { ru: "пароли не совпадают", en: "passwords don't match" },
   },
   hero: {
@@ -88,7 +92,7 @@ export const messages = {
     titleEnd: { ru: "интервью.", en: "interview." },
     description: {
       ru:
-        "Живой кодинг вдвоём, камера, AI-подсказки и честная обратная связь. " +
+        "Живой кодинг, камера, AI-подсказки и честная обратная связь. " +
         "Для работодателей и для тех, кто готовится к офферу.",
       en: "Live pair coding, video, AI hints, and honest feedback. For employers and candidates preparing for an offer.",
     },

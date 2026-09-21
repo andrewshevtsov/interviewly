@@ -59,6 +59,19 @@ docker compose up --build          # из корня репозитория
 
 Детали устройства compose-файла — в [docs/deployment.md](../../docs/deployment.md).
 
+## Storybook
+
+Изолированная разработка и документация компонентов из `src/shared/ui`
+
+```bash
+pnpm --filter @app/frontend run storybook        # dev-сервер, http://localhost:6006
+pnpm --filter @app/frontend run build-storybook   # статическая сборка в storybook-static/
+```
+
+Конфигурация - в `.storybook/` (`main.ts`, `preview.tsx`). `preview.tsx` подключает те же
+шрифты и CSS-переменные темы, что и `src/app/layout.tsx`, и добавляет в тулбар переключатель
+тёмной/светлой темы (`data-theme` на `<html>`, как в приложении).
+
 ## Структура: Feature-Sliced Design
 
 ```

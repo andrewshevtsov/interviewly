@@ -13,7 +13,9 @@ import type { Request, Response } from 'express';
 import { AuthService } from './auth.service.ts';
 import { LoginDto } from './dto/login.dto.ts';
 import { RegisterDto } from './dto/register.dto.ts';
+import { TelegramAuthDto } from './dto/telegram-auth.dto.ts';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.ts';
+import { CurrentUser } from './decorators/current-user.decorator.ts';
 import { AuthTokens } from './auth.types.ts';
 import { REFRESH_TOKEN_COOKIE, refreshTokenCookieOptions } from './auth.constants.ts';
 import { ApiBearerAuth, ApiProperty } from '@nestjs/swagger';
@@ -41,6 +43,30 @@ export class AuthController {
   ): Promise<{ accessToken: string }> {
     const tokens = await this.authService.login(dto);
     return this.respondWithTokens(res, tokens);
+  }
+
+  @Post('telegram')
+  @ApiProperty()
+  @HttpCode(HttpStatus.OK)
+  async telegramLogin(
+    @Body() dto: TelegramAuthDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ accessToken: string }> {
+    const tokens = await this.authService.loginWithTelegram(dto);
+    return this.respondWithTokens(res, tokens);
+  }
+
+  @Post('telegram/link')
+  @ApiBearerAuth()
+  @ApiProperty()
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async linkTelegram(
+    @CurrentUser('sub') userId: string,
+    @Body() dto: TelegramAuthDto,
+  ): Promise<{ success: true }> {
+    await this.authService.linkTelegram(userId, dto);
+    return { success: true };
   }
 
   @Post('refresh')

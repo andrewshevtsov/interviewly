@@ -14,6 +14,8 @@ import boundaries from "eslint-plugin-boundaries";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
 import filenames from "eslint-plugin-filenames";
 import prettierConfig from "eslint-config-prettier";
+// https://github.com/storybookjs/eslint-plugin-storybook#configuration-flat-config-format
+import storybook from "eslint-plugin-storybook";
 
 const baseDirectory = dirname(fileURLToPath(import.meta.url));
 
@@ -27,6 +29,7 @@ export default tseslint.config(
       "postcss.config.mjs",
       "node_modules",
       ".next",
+      "storybook-static",
     ],
   },
   js.configs.recommended,
@@ -443,4 +446,17 @@ export default tseslint.config(
     ignores: ["**/*.d.ts"],
     rules: { "filenames/match-regex": "off" },
   },
+  // Storybook CSF files: `export default meta` is the format's discovery mechanism (not a style
+  // choice, same reasoning as the App Router exemption above), and story args/labels are
+  // demo/dev-tool copy rather than user-facing app text, so the i18n-literal rules don't apply.
+  {
+    files: ["**/*.stories.tsx", ".storybook/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-exports": "off",
+      "react/jsx-no-literals": "off",
+      "no-restricted-syntax": "off",
+      "jsdoc/require-jsdoc": "off",
+    },
+  },
+  storybook.configs["flat/recommended"],
 );

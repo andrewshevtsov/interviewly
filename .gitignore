@@ -31,3 +31,6 @@ coverage/
 # Prisma Client генерируется из schema командой `prisma generate`.
 # В git храним schema и migrations, но не производный generated-код.
 apps/backend/src/prisma/generated/
+
+*storybook.log
+storybook-static
