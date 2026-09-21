@@ -21,6 +21,9 @@ export class UserEntity implements User {
   statusUpdatedAt!: Date;
   createdAt!: Date;
   updatedAt!: Date;
+  telegramId!: string | null;
+  telegramUsername!: string | null;
+  telegramLinkedAt!: Date | null;
 
   @Exclude()
   passwordHash!: string | null;

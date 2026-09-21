@@ -80,6 +80,10 @@ export const messages = {
       ru: "не удалось зарегистрироваться. проверьте данные",
       en: "couldn't sign up. check your details",
     },
+    telegramLoginError: {
+      ru: "не удалось войти через Telegram. попробуйте ещё раз",
+      en: "couldn't sign in with Telegram. try again",
+    },
     passwordMismatch: { ru: "пароли не совпадают", en: "passwords don't match" },
   },
   hero: {

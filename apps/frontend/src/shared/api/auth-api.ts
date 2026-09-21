@@ -43,6 +43,49 @@ export interface RegisterPayload {
 }
 
 /**
+ * Data the Telegram Login Widget hands to its `data-onauth` callback - see
+ * https://core.telegram.org/widgets/login#receiving-authorization-data. Field names match
+ * Telegram's own naming (snake_case) and the backend's `TelegramAuthDto`, so the widget's
+ * callback payload can be posted to `/auth/telegram` as-is.
+ */
+export interface TelegramAuthPayload {
+  /**
+   * Numeric Telegram account id.
+   */
+  id: number;
+
+  /**
+   * Telegram first name.
+   */
+  first_name: string;
+
+  /**
+   * Telegram last name, if set.
+   */
+  last_name?: string;
+
+  /**
+   * Telegram username, if set.
+   */
+  username?: string;
+
+  /**
+   * URL of the Telegram avatar, if set.
+   */
+  photo_url?: string;
+
+  /**
+   * Unix timestamp (seconds) of when the widget issued this data.
+   */
+  auth_date: number;
+
+  /**
+   * HMAC-SHA256 signature Telegram computed over the other fields.
+   */
+  hash: string;
+}
+
+/**
  * Response returned after a successful authentication request.
  */
 interface AccessTokenResponse {
@@ -62,6 +105,10 @@ export const authApi = {
 
   register(payload: RegisterPayload): Promise<AccessTokenResponse> {
     return httpClient.post<AccessTokenResponse>("/auth/register", payload).then((res) => res.data);
+  },
+
+  telegramLogin(payload: TelegramAuthPayload): Promise<AccessTokenResponse> {
+    return httpClient.post<AccessTokenResponse>("/auth/telegram", payload).then((res) => res.data);
   },
 
   logout(): Promise<void> {
