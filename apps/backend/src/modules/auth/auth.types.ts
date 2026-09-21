@@ -15,11 +15,14 @@ export interface RefreshPayload {
 }
 
 /**
- * Пара токенов, возвращаемая на register/login/refresh.
+ * Пара токенов, возвращаемая на register/login/refresh. `refreshTokenExpiresAt`
+ * нужен только контроллеру — выставить `Expires` у httpOnly-куки, в которой
+ * едет refresh-токен, в клиентский JSON-ответ не попадает.
  */
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
+  refreshTokenExpiresAt: Date;
 }
 
 /**

@@ -14,6 +14,8 @@ import boundaries from "eslint-plugin-boundaries";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
 import filenames from "eslint-plugin-filenames";
 import prettierConfig from "eslint-config-prettier";
+// https://github.com/storybookjs/eslint-plugin-storybook#configuration-flat-config-format
+import storybook from "eslint-plugin-storybook";
 
 const baseDirectory = dirname(fileURLToPath(import.meta.url));
 
@@ -27,6 +29,7 @@ export default tseslint.config(
       "postcss.config.mjs",
       "node_modules",
       ".next",
+      "storybook-static",
     ],
   },
   js.configs.recommended,
@@ -243,6 +246,87 @@ export default tseslint.config(
     rules: {
       "react/jsx-key": "error",
       "react/jsx-no-duplicate-props": "error",
+      "react/jsx-no-literals": [
+        "error",
+        {
+          noStrings: true,
+          ignoreProps: true,
+          allowedStrings: [
+            "Interviewly",
+            "GitHub",
+            "I",
+            "←",
+            "© 2026",
+            "(",
+            ")",
+            ".",
+            ":",
+            "«",
+            "»",
+            "#",
+            "#4092",
+            "(2/3)",
+            "editor.py —",
+            "main.py",
+            "1",
+            "2",
+            "3",
+            "4",
+            "class",
+            "Solution",
+            "def",
+            "two_sum",
+            "(self, nums, target):",
+            "prev_map =",
+            "{}",
+            "reverse_list",
+            "(head):",
+            "prev, curr = None, head",
+            "while",
+            "curr:",
+            "next_temp = curr.next",
+            "curr.next = prev",
+            "prev = curr",
+            "curr = next_temp",
+            "return",
+            "prev",
+            ": SECURE-77-X9",
+            "·",
+            "/",
+            "reverse_list(head):",
+            "//",
+            "function",
+            "reverseList(head: ListNode | null)",
+            "{",
+            "}",
+            "let",
+            "prev: ListNode | null =",
+            "null",
+            ";",
+            "curr = head;",
+            "(curr)",
+            "const",
+            "next = curr.next;",
+            "curr.next = prev;",
+            "prev = curr;",
+            "curr = next;",
+            "prev;",
+          ],
+        },
+      ],
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "JSXAttribute[name.name=/^(alt|aria-label|placeholder|title)$/][value.type='Literal']",
+          message: "Use a translation from the i18n dictionary for user-facing JSX attributes.",
+        },
+        {
+          selector:
+            "JSXAttribute[name.name=/^(alt|aria-label|placeholder|title)$/] > JSXExpressionContainer > Literal",
+          message: "Use a translation from the i18n dictionary for user-facing JSX attributes.",
+        },
+      ],
       "react/jsx-uses-react": "error",
       "react/jsx-uses-vars": "error",
       // React 17+ automatic JSX runtime (used by Next.js) never requires `React` in scope.
@@ -362,4 +446,17 @@ export default tseslint.config(
     ignores: ["**/*.d.ts"],
     rules: { "filenames/match-regex": "off" },
   },
+  // Storybook CSF files: `export default meta` is the format's discovery mechanism (not a style
+  // choice, same reasoning as the App Router exemption above), and story args/labels are
+  // demo/dev-tool copy rather than user-facing app text, so the i18n-literal rules don't apply.
+  {
+    files: ["**/*.stories.tsx", ".storybook/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-exports": "off",
+      "react/jsx-no-literals": "off",
+      "no-restricted-syntax": "off",
+      "jsdoc/require-jsdoc": "off",
+    },
+  },
+  storybook.configs["flat/recommended"],
 );

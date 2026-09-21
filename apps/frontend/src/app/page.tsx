@@ -1,9 +1,11 @@
-import { HomePage } from "@/views/home-page";
+import { redirect } from "next/navigation";
+
+import { getRequestLocale } from "@/shared/i18n-server";
 
 /**
- * Next.js App Router root page ("/") - thin route file that renders the FSD "views" layer.
- * @returns {import('react').ReactNode} The home page.
+ * Redirects the unlocalized root URL to the selected language.
+ * @returns {Promise<never>} Redirect response.
  */
-export default function RootPage() {
-  return <HomePage />;
+export default async function RootPage(): Promise<never> {
+  redirect(`/${await getRequestLocale()}`);
 }

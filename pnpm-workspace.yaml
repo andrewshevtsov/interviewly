@@ -5,9 +5,13 @@ packages:
 # Prisma CLI и engines разрешены здесь, чтобы подготовить платформенные бинарники
 # для generate/migrate; esbuild и unrs-resolver нужны существующим frontend-tools.
 allowBuilds:
+  # Транзитивная зависимость jest-haste-map (через ts-jest/@jest/globals у backend) -
+  # опциональный нативный акселератор file-watcher, с JS-фолбэком, не нужен в проде.
+  '@parcel/watcher': false
   "@prisma/engines": true
   '@scarf/scarf': false
   bcrypt: false
+  core-js-pure: false
   esbuild: true
   prisma: true
   unrs-resolver: true

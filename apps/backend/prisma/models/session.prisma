@@ -54,6 +54,7 @@ model Session {
   updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
 
   participants   SessionParticipant[]
+  feedback     Feedback[]
   accessRequests SessionAccessRequest[]
 
   @@id([id])

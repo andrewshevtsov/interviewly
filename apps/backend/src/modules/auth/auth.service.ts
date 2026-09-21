@@ -6,8 +6,10 @@ import { UsersService } from '../users/users.service.ts';
 import { UserEntity } from '../users/entities/user-entity.ts';
 import { LoginDto } from './dto/login.dto.ts';
 import { RegisterDto } from './dto/register.dto.ts';
-import { RefreshTokenDto } from './dto/refresh-token.dto.ts';
+import { TelegramAuthDto } from './dto/telegram-auth.dto.ts';
 import { AuthTokens, JwtPayload, RefreshPayload } from './auth.types.ts';
+import { TELEGRAM_AUTH_MAX_AGE_SECONDS } from './auth.constants.ts';
+import { isTelegramAuthFresh, isValidTelegramAuth } from './utils/telegram-auth.util.ts';
 
 const SALT_ROUNDS = 12;
 
@@ -17,6 +19,7 @@ export class AuthService {
   private readonly accessExpiresIn: JwtSignOptions['expiresIn'];
   private readonly refreshSecret: string;
   private readonly refreshExpiresIn: JwtSignOptions['expiresIn'];
+  private readonly telegramBotToken: string;
 
   constructor(
     private readonly usersService: UsersService,
@@ -33,6 +36,7 @@ export class AuthService {
       'JWT_REFRESH_EXPIRES_IN',
       '7d',
     ) as JwtSignOptions['expiresIn'];
+    this.telegramBotToken = configService.getOrThrow<string>('TELEGRAM_BOT_TOKEN');
   }
 
   /**
@@ -76,14 +80,15 @@ export class AuthService {
   }
 
   /**
-   * Проверяет refresh-токен и выдаёт новую пару. Токены не хранятся на сервере,
-   * поэтому ротация здесь «мягкая»: старый refresh остаётся валидным до истечения.
+   * Проверяет refresh-токен (значение httpOnly-куки) и выдаёт новую пару.
+   * Токены не хранятся на сервере, поэтому ротация здесь «мягкая»: старый
+   * refresh остаётся валидным до истечения.
    */
-  async refresh(dto: RefreshTokenDto): Promise<AuthTokens> {
+  async refresh(refreshToken: string): Promise<AuthTokens> {
     let payload: RefreshPayload;
     try {
       payload = await this.jwtService.verifyAsync<RefreshPayload>(
-        dto.refreshToken,
+        refreshToken,
         { secret: this.refreshSecret },
       );
     } catch {
@@ -109,6 +114,50 @@ export class AuthService {
     return { success: true };
   }
 
+  /**
+   * Логин или регистрация через Telegram Login Widget: проверяет подпись и
+   * свежесть данных, затем ищет пользователя по `telegramId` - если такого
+   * ещё нет, заводит нового без email/пароля (см. `UsersService.createFromTelegram`).
+   */
+  async loginWithTelegram(dto: TelegramAuthDto): Promise<AuthTokens> {
+    this.verifyTelegramPayload(dto);
+
+    const telegramId = String(dto.id);
+    const existingUser = await this.usersService.findByTelegramId(telegramId);
+    const user =
+      existingUser ??
+      (await this.usersService.createFromTelegram({
+        telegramId,
+        telegramUsername: dto.username,
+        firstName: dto.first_name,
+        lastName: dto.last_name,
+      }));
+
+    return this.issueTokens(user);
+  }
+
+  /**
+   * Привязывает Telegram к уже залогиненному аккаунту — второй способ входа
+   * в дополнение к email/паролю.
+   */
+  async linkTelegram(userId: string, dto: TelegramAuthDto): Promise<void> {
+    this.verifyTelegramPayload(dto);
+
+    await this.usersService.linkTelegram(userId, {
+      telegramId: String(dto.id),
+      telegramUsername: dto.username,
+    });
+  }
+
+  private verifyTelegramPayload(dto: TelegramAuthDto): void {
+    if (!isValidTelegramAuth(dto, this.telegramBotToken)) {
+      throw new UnauthorizedException('Invalid Telegram authentication data');
+    }
+    if (!isTelegramAuthFresh(dto.auth_date, TELEGRAM_AUTH_MAX_AGE_SECONDS)) {
+      throw new UnauthorizedException('Telegram authentication data has expired');
+    }
+  }
+
   private async issueTokens(user: UserEntity): Promise<AuthTokens> {
     const accessPayload: JwtPayload = {
       sub: user.id,
@@ -128,6 +177,7 @@ export class AuthService {
       }),
     ]);
 
-    return { accessToken, refreshToken };
+    const { exp } = this.jwtService.decode<{ exp: number }>(refreshToken);
+    return { accessToken, refreshToken, refreshTokenExpiresAt: new Date(exp * 1000) };
   }
 }

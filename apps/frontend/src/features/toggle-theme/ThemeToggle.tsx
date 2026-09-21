@@ -5,6 +5,7 @@ import { useLayoutEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 
 import { Button } from "@/shared/ui/button";
+import { useTranslations } from "@/shared/i18n-context";
 
 type Theme = "light" | "dark";
 
@@ -51,6 +52,7 @@ function applyTheme(theme: Theme): void {
  */
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>(DEFAULT_THEME);
+  const t = useTranslations("theme");
 
   useLayoutEffect(() => {
     // Синхронизируется с тем, что anti-flash inline-скрипт в layout.tsx уже применил
@@ -79,7 +81,7 @@ export function ThemeToggle() {
       variant="ghost"
       size="icon"
       onClick={handleToggle}
-      aria-label={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"}
+      aria-label={theme === "dark" ? t("enableLight") : t("enableDark")}
     >
       {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
     </Button>

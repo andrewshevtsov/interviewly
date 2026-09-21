@@ -22,6 +22,10 @@ export class ProfileRepository {
     return this.prisma.profile.findUnique({ where: { email } });
   }
 
+  findByUserId(userId: string) {
+    return this.prisma.profile.findFirst({ where: { userId } });
+  }
+
   update(id: string, data: UpdateProfileDto) {
     return this.prisma.profile.update({ where: { id }, data });
   }

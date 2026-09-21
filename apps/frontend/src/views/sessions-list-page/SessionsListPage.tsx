@@ -1,31 +1,35 @@
-// Слой views: список сессий со ссылками на детальную страницу каждой.
+// Слой views: страница "История интервью" - прошедшие сессии пользователя.
 // Разрешено импортировать widgets, features, entities, shared.
-import Link from "next/link";
-import type { InterviewSession } from "@/entities/session";
+import { Footer } from "@/widgets/footer";
+import { Navbar } from "@/widgets/navbar";
+import { SessionHistory } from "@/widgets/session-history";
+import type { SessionHistoryEntry } from "@/entities/session";
 
 /**
  * Props for {@link SessionsListPage}.
  */
 export interface SessionsListPageProps {
   /**
-   * Sessions to list.
+   * Past sessions to list, most recent first.
    */
-  sessions: InterviewSession[];
+  entries: SessionHistoryEntry[];
 }
 
 /**
- * Renders a list of interview sessions, each linking to its detail page.
+ * Renders the "История" screen: navbar, the session history section and the footer.
  * @param {SessionsListPageProps} props - Props for the page.
  * @returns {import('react').ReactNode} The sessions list page.
  */
 export function SessionsListPage(props: SessionsListPageProps) {
   return (
-    <ul>
-      {props.sessions.map((session) => (
-        <li key={session.id}>
-          <Link href={`/sessions/${session.id}`}>{`${session.title} (${session.status})`}</Link>
-        </li>
-      ))}
-    </ul>
+    <div className="flex min-h-screen flex-col">
+      <Navbar />
+
+      <main className="flex-1">
+        <SessionHistory entries={props.entries} />
+      </main>
+
+      <Footer />
+    </div>
   );
 }
