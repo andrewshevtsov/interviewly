@@ -29,4 +29,13 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-argument': 'warn',
     },
   },
+  {
+    // jest.fn() моки в expect(repository.method).toHaveBeenCalledWith(...)
+    // всегда триггерят unbound-method, хотя `this` тут не используется —
+    // это известный false positive typescript-eslint с Jest.
+    files: ['**/*.spec.ts'],
+    rules: {
+      '@typescript-eslint/unbound-method': 'off',
+    },
+  },
 );

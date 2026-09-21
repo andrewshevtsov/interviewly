@@ -254,26 +254,24 @@ export const messages = {
     title: { ru: "обратная связь", en: "feedback" },
     scoreLabel: { ru: "оценка", en: "score" },
     completedNotice: {
-      ru: "завершена. Заметки видны только вам.",
-      en: "is complete. Notes are visible only to you.",
+      ru: "завершена. Отзыв виден только вам.",
+      en: "is complete. Feedback is visible only to you.",
     },
-    strengthsLabel: { ru: "что получилось хорошо", en: "what went well" },
-    strengthsPlaceholder: {
-      ru: "Чистый код, проговаривал ход мыслей...",
-      en: "Clean code, talked through the thought process...",
+    targetLabel: { ru: "участник, о котором отзыв", en: "who is this feedback about" },
+    targetPlaceholder: { ru: "выберите участника…", en: "choose a participant…" },
+    targetLoading: { ru: "загружаем участников…", en: "loading participants…" },
+    targetLoadError: {
+      ru: "не удалось загрузить список участников",
+      en: "couldn't load the participant list",
     },
-    growthAreasLabel: { ru: "зоны роста", en: "areas to grow" },
-    growthAreasPlaceholder: {
-      ru: "Крайние случаи, оценка сложности...",
-      en: "Edge cases, complexity analysis...",
-    },
-    notesLabel: { ru: "личные заметки", en: "personal notes" },
-    notesPlaceholder: {
-      ru: "Что повторить перед следующим интервью...",
-      en: "What to review before the next interview...",
+    commentLabel: { ru: "комментарий", en: "comment" },
+    commentPlaceholder: {
+      ru: "Чистый код, проговаривал ход мыслей, стоит подтянуть крайние случаи...",
+      en: "Clean code, talked through the thought process, could work on edge cases...",
     },
     saving: { ru: "Сохраняем…", en: "Saving…" },
     saveResult: { ru: "сохранить результат", en: "save result" },
+    saveError: { ru: "не удалось сохранить отзыв", en: "couldn't save the feedback" },
     backToHistory: { ru: "к истории", en: "back to history" },
   },
   interview: {

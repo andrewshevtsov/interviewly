@@ -35,6 +35,8 @@ model User {
   // Отдельных столбцов для этих массивов в таблице User не создаётся.
   ownedSessions         Session[]
   sessionParticipations SessionParticipant[]
+  feedbackAuthored      Feedback[]           @relation("FeedbackAuthored")
+  feedbackReceived      Feedback[]           @relation("FeedbackReceived")
 
   @@id([id])
 }
