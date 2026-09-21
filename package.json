@@ -14,7 +14,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r --if-present run typecheck",
-    "prepare": "husky"
+    "prepare": "husky",
+    "prisma-generate": "pnpm --filter @app/backend prisma-generate"
   },
   "devDependencies": {
     "husky": "^9.1.7"

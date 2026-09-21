@@ -81,6 +81,10 @@ export const messages = {
       ru: "не удалось зарегистрироваться. проверьте данные",
       en: "couldn't sign up. check your details",
     },
+    telegramLoginError: {
+      ru: "не удалось войти через Telegram. попробуйте ещё раз",
+      en: "couldn't sign in with Telegram. try again",
+    },
     passwordMismatch: { ru: "пароли не совпадают", en: "passwords don't match" },
   },
   hero: {
@@ -89,7 +93,7 @@ export const messages = {
     titleEnd: { ru: "интервью.", en: "interview." },
     description: {
       ru:
-        "Живой кодинг вдвоём, камера, AI-подсказки и честная обратная связь. " +
+        "Живой кодинг, камера, AI-подсказки и честная обратная связь. " +
         "Для работодателей и для тех, кто готовится к офферу.",
       en: "Live pair coding, video, AI hints, and honest feedback. For employers and candidates preparing for an offer.",
     },
@@ -251,26 +255,24 @@ export const messages = {
     title: { ru: "обратная связь", en: "feedback" },
     scoreLabel: { ru: "оценка", en: "score" },
     completedNotice: {
-      ru: "завершена. Заметки видны только вам.",
-      en: "is complete. Notes are visible only to you.",
+      ru: "завершена. Отзыв виден только вам.",
+      en: "is complete. Feedback is visible only to you.",
     },
-    strengthsLabel: { ru: "что получилось хорошо", en: "what went well" },
-    strengthsPlaceholder: {
-      ru: "Чистый код, проговаривал ход мыслей...",
-      en: "Clean code, talked through the thought process...",
+    targetLabel: { ru: "участник, о котором отзыв", en: "who is this feedback about" },
+    targetPlaceholder: { ru: "выберите участника…", en: "choose a participant…" },
+    targetLoading: { ru: "загружаем участников…", en: "loading participants…" },
+    targetLoadError: {
+      ru: "не удалось загрузить список участников",
+      en: "couldn't load the participant list",
     },
-    growthAreasLabel: { ru: "зоны роста", en: "areas to grow" },
-    growthAreasPlaceholder: {
-      ru: "Крайние случаи, оценка сложности...",
-      en: "Edge cases, complexity analysis...",
-    },
-    notesLabel: { ru: "личные заметки", en: "personal notes" },
-    notesPlaceholder: {
-      ru: "Что повторить перед следующим интервью...",
-      en: "What to review before the next interview...",
+    commentLabel: { ru: "комментарий", en: "comment" },
+    commentPlaceholder: {
+      ru: "Чистый код, проговаривал ход мыслей, стоит подтянуть крайние случаи...",
+      en: "Clean code, talked through the thought process, could work on edge cases...",
     },
     saving: { ru: "Сохраняем…", en: "Saving…" },
     saveResult: { ru: "сохранить результат", en: "save result" },
+    saveError: { ru: "не удалось сохранить отзыв", en: "couldn't save the feedback" },
     backToHistory: { ru: "к истории", en: "back to history" },
   },
   interview: {

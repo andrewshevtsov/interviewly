@@ -4,7 +4,7 @@ import animate from "tailwindcss-animate";
 // theme.extend, токены с макетов
 const config: Config = {
   darkMode: ["class"],
-  content: ["./src/**/*.{ts,tsx}"],
+  content: ["./src/**/*.{ts,tsx}", "./.storybook/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {

@@ -10,6 +10,11 @@ import { getServerTranslations } from "@/shared/i18n-server";
  */
 export interface SessionFeedbackPageProps {
   /**
+   * Session the feedback is about.
+   */
+  sessionId: string;
+
+  /**
    * Short display code for the session, e.g. "4092" (shown as "#4092").
    */
   sessionNumber: string;
@@ -26,7 +31,7 @@ export interface SessionFeedbackPageProps {
  * @returns {import('react').ReactNode} The session feedback page.
  */
 export async function SessionFeedbackPage(props: SessionFeedbackPageProps) {
-  const { sessionNumber, defaultScore } = props;
+  const { sessionId, sessionNumber, defaultScore } = props;
   const t = await getServerTranslations("feedback");
   const session = await getServerTranslations("session");
 
@@ -41,7 +46,7 @@ export async function SessionFeedbackPage(props: SessionFeedbackPageProps) {
         </p>
 
         <div className="mt-10">
-          <SessionFeedbackForm defaultScore={defaultScore} />
+          <SessionFeedbackForm sessionId={sessionId} defaultScore={defaultScore} />
         </div>
       </main>
 
