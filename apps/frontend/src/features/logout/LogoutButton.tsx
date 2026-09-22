@@ -7,16 +7,18 @@ import { LogOut } from "lucide-react";
 
 import { clearAccessToken } from "@/shared/api/access-token";
 import { authApi } from "@/shared/api/auth-api";
+import { useTranslations } from "@/shared/i18n-context";
 import { Button } from "@/shared/ui/button";
 
 /**
- * Signs the user out: asks the backend to clear the refresh-token cookie, then clears
- * the in-memory access token, drops any cached profile data and returns to the homepage.
- * @returns {import('react').ReactNode} The logout button.
+ * Разлогинивает пользователя: просит бэкенд очистить куку с refresh-токеном, затем чистит
+ * access-токен в памяти, сбрасывает закэшированные данные профиля и отзывов и возвращает на главную.
+ * @returns {import('react').ReactNode} Кнопка выхода.
  */
 export function LogoutButton() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const t = useTranslations("navigation");
 
   const logoutMutation = useMutation({
     mutationFn: authApi.logout,
@@ -28,6 +30,7 @@ export function LogoutButton() {
     onSettled: () => {
       clearAccessToken();
       queryClient.removeQueries({ queryKey: ["profile"] });
+      queryClient.removeQueries({ queryKey: ["feedback"] });
       router.push("/");
     },
   });
@@ -37,7 +40,7 @@ export function LogoutButton() {
       type="button"
       variant="ghost"
       size="icon"
-      aria-label="Выйти"
+      aria-label={t("signOut")}
       onClick={() => logoutMutation.mutate()}
       disabled={logoutMutation.isPending}
     >

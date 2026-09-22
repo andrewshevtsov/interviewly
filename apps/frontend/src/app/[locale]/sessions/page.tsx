@@ -1,10 +1,10 @@
 import { SessionsListPage } from "@/views/sessions-list-page";
-import { DEMO_SESSION_HISTORY } from "@/app/demo-data";
+import { DEMO_PAST_SESSIONS } from "@/app/demo-session-details";
 
 /**
- * Route "/sessions" - renders the "History" screen with demo session history.
- * @returns {import('react').ReactNode} The sessions list page.
+ * Роут "/sessions" - рендерит экран "История"; каждый пользователь видит свои мок-интервью.
+ * @returns {import('react').ReactNode} Страница истории интервью.
  */
 export default function Page() {
-  return <SessionsListPage entries={DEMO_SESSION_HISTORY} />;
+  return <SessionsListPage sessions={DEMO_PAST_SESSIONS} />;
 }

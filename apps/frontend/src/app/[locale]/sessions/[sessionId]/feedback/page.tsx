@@ -1,7 +1,5 @@
 import { SessionFeedbackPage } from "@/views/session-feedback-page";
-import { DEMO_SESSION_HISTORY } from "@/app/demo-data";
-
-const DEMO_SESSION = DEMO_SESSION_HISTORY[0];
+import { DEMO_PAST_SESSIONS } from "@/app/demo-session-details";
 
 /**
  * Props for the "/sessions/[sessionId]/feedback" route.
@@ -27,12 +25,14 @@ export interface FeedbackPageProps {
  */
 export default async function Page(props: FeedbackPageProps) {
   const { sessionId } = await props.params;
+  // Для неизвестного демо-ID (например, у живой комнаты) берём первую мок-сессию.
+  const demoSession = DEMO_PAST_SESSIONS.find((entry) => entry.id === sessionId) ?? DEMO_PAST_SESSIONS[0];
 
   return (
     <SessionFeedbackPage
       sessionId={sessionId}
-      sessionNumber={DEMO_SESSION?.number ?? ""}
-      defaultScore={DEMO_SESSION?.score ?? 0}
+      sessionNumber={demoSession?.number ?? ""}
+      defaultScore={demoSession?.score ?? 0}
     />
   );
 }

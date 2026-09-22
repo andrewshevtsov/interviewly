@@ -35,9 +35,6 @@ const LANGUAGES: LanguageOption[] = [
 ];
 
 const COPY_CONFIRMATION_MS = 2000;
-
-// ID демо-сессии, которую открывает "Запустить сессию" - та же сессия #4092, что уже
-// фигурирует в истории (DEMO_SESSION_HISTORY) и в моках на главной странице.
 const DEMO_LAUNCHED_SESSION_ID = "abcdef123456";
 
 /**

@@ -2,7 +2,7 @@ import {
   SessionAccess,
   SessionStatus,
   SessionType,
-} from '../../src/prisma/generated/enums.ts';
+} from '../../src/prisma/generated/enums';
 
 export default [
   {
@@ -37,5 +37,27 @@ export default [
     scheduledAt: new Date('2026-08-20T12:00:00.000Z'),
     startedAt: new Date('2026-08-20T12:05:00.000Z'),
     endedAt: new Date('2026-08-20T13:00:00.000Z'),
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000104',
+    ownerEmail: 'owner@interviewly.test',
+    type: SessionType.MOCK,
+    access: SessionAccess.OPEN,
+    status: SessionStatus.COMPLETED,
+    passwordHash: null,
+    scheduledAt: new Date('2026-08-25T14:00:00.000Z'),
+    startedAt: new Date('2026-08-25T14:05:00.000Z'),
+    endedAt: new Date('2026-08-25T14:46:00.000Z'),
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000105',
+    ownerEmail: 'interviewer@interviewly.test',
+    type: SessionType.MOCK,
+    access: SessionAccess.OPEN,
+    status: SessionStatus.COMPLETED,
+    passwordHash: null,
+    scheduledAt: new Date('2026-08-28T16:00:00.000Z'),
+    startedAt: new Date('2026-08-28T16:05:00.000Z'),
+    endedAt: new Date('2026-08-28T16:52:00.000Z'),
   },
 ];

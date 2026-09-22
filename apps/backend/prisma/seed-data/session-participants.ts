@@ -52,4 +52,40 @@ export default [
     reconnectCount: 2,
     offlineSeconds: 45,
   },
+
+  // Завершённая мок-сессия: owner + user
+  {
+    sessionId: '00000000-0000-4000-8000-000000000104',
+    userEmail: 'owner@interviewly.test',
+    joinedAt: new Date('2026-08-25T14:05:00.000Z'),
+    leftAt: new Date('2026-08-25T14:46:00.000Z'),
+    reconnectCount: 0,
+    offlineSeconds: 0,
+  },
+  {
+    sessionId: '00000000-0000-4000-8000-000000000104',
+    userEmail: 'user@interviewly.test',
+    joinedAt: new Date('2026-08-25T14:06:00.000Z'),
+    leftAt: new Date('2026-08-25T14:45:00.000Z'),
+    reconnectCount: 1,
+    offlineSeconds: 30,
+  },
+
+  // Завершённая мок-сессия: interviewer + candidate
+  {
+    sessionId: '00000000-0000-4000-8000-000000000105',
+    userEmail: 'interviewer@interviewly.test',
+    joinedAt: new Date('2026-08-28T16:05:00.000Z'),
+    leftAt: new Date('2026-08-28T16:52:00.000Z'),
+    reconnectCount: 0,
+    offlineSeconds: 0,
+  },
+  {
+    sessionId: '00000000-0000-4000-8000-000000000105',
+    userEmail: 'candidate@interviewly.test',
+    joinedAt: new Date('2026-08-28T16:06:00.000Z'),
+    leftAt: new Date('2026-08-28T16:51:00.000Z'),
+    reconnectCount: 1,
+    offlineSeconds: 15,
+  },
 ];

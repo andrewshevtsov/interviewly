@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { beforeEach, describe, expect, it, vi, type Mocked } from 'vitest';
 import { FeedbackService } from './feedback.service.ts';
 import type { FeedbackRepository } from './feedback.repository.ts';
 
@@ -9,20 +9,20 @@ const TARGET_ID = '33333333-3333-3333-3333-333333333333';
 const OTHER_ID = '44444444-4444-4444-4444-444444444444';
 const FEEDBACK_ID = '55555555-5555-5555-5555-555555555555';
 
-function createMockRepository(): jest.Mocked<FeedbackRepository> {
+function createMockRepository(): Mocked<FeedbackRepository> {
   return {
-    isSessionParticipant: jest.fn(),
-    findUnique: jest.fn(),
-    create: jest.fn(),
-    findById: jest.fn(),
-    findManyByAuthor: jest.fn(),
-    update: jest.fn(),
-    findOtherParticipants: jest.fn(),
-  } as unknown as jest.Mocked<FeedbackRepository>;
+    isSessionParticipant: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    findById: vi.fn(),
+    findManyByAuthor: vi.fn(),
+    update: vi.fn(),
+    findOtherParticipants: vi.fn(),
+  } as unknown as Mocked<FeedbackRepository>;
 }
 
 describe('FeedbackService', () => {
-  let repository: jest.Mocked<FeedbackRepository>;
+  let repository: Mocked<FeedbackRepository>;
   let service: FeedbackService;
 
   beforeEach(() => {
@@ -81,13 +81,59 @@ describe('FeedbackService', () => {
   });
 
   describe('findMine', () => {
-    it('возвращает отзывы, оставленные текущим пользователем', async () => {
-      repository.findManyByAuthor.mockResolvedValue([{ id: FEEDBACK_ID }] as never);
+    const createdAt = new Date('2026-09-20T10:00:00.000Z');
+    const scheduledAt = new Date('2026-08-20T12:00:00.000Z');
+    const startedAt = new Date('2026-08-20T12:05:00.000Z');
+    const endedAt = new Date('2026-08-20T13:00:00.000Z');
+
+    function createFeedbackRow(session: { endedAt: Date | null; startedAt: Date | null; scheduledAt: Date | null }) {
+      return {
+        id: FEEDBACK_ID,
+        sessionId: SESSION_ID,
+        score: 8,
+        comment: 'Solid',
+        createdAt,
+        targetUser: { id: TARGET_ID, firstName: 'Clara', lastName: 'Candidate' },
+        session: { type: 'MOCK', ...session },
+      };
+    }
+
+    it('возвращает отзывы текущего пользователя с именем адресата и типом сессии', async () => {
+      repository.findManyByAuthor.mockResolvedValue([createFeedbackRow({ endedAt, startedAt, scheduledAt })] as never);
 
       const result = await service.findMine(AUTHOR_ID);
 
       expect(repository.findManyByAuthor).toHaveBeenCalledWith(AUTHOR_ID);
-      expect(result).toEqual([{ id: FEEDBACK_ID }]);
+      expect(result).toEqual([
+        {
+          id: FEEDBACK_ID,
+          sessionId: SESSION_ID,
+          score: 8,
+          comment: 'Solid',
+          createdAt,
+          targetUser: { userId: TARGET_ID, name: 'Clara Candidate' },
+          sessionType: 'MOCK',
+          sessionDate: endedAt,
+        },
+      ]);
+    });
+
+    it('возвращает пустой список, если отзывов нет', async () => {
+      repository.findManyByAuthor.mockResolvedValue([]);
+
+      await expect(service.findMine(AUTHOR_ID)).resolves.toEqual([]);
+    });
+
+    it.each([
+      ['startedAt, если сессия не завершена', { endedAt: null, startedAt, scheduledAt }, startedAt],
+      ['scheduledAt, если сессия не начата', { endedAt: null, startedAt: null, scheduledAt }, scheduledAt],
+      ['null, если у сессии нет ни одной даты', { endedAt: null, startedAt: null, scheduledAt: null }, null],
+    ])('берёт дату сессии из %s', async (_title, session, expectedDate) => {
+      repository.findManyByAuthor.mockResolvedValue([createFeedbackRow(session)] as never);
+
+      const [entry] = await service.findMine(AUTHOR_ID);
+
+      expect(entry?.sessionDate).toEqual(expectedDate);
     });
   });
 
