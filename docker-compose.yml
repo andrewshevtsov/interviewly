@@ -1,4 +1,5 @@
-# Docker Compose для ЛОКАЛЬНОЙ РАЗРАБОТКИ. Поднимает frontend, backend и postgres.
+# Docker Compose для ЛОКАЛЬНОЙ РАЗРАБОТКИ. Поднимает frontend, backend, postgres
+# и LiveKit (SFU для видео/аудио сессий).
 #
 # Быстрый старт всех Docker-сервисов:
 #   cp .env.example .env
@@ -7,12 +8,17 @@
 # Запуск только PostgreSQL в фоне (например, для локального запуска backend вне Docker):
 #   docker compose up -d postgres
 #
+# PostgreSQL + LiveKit (локальный backend + проверка комнат):
+#   docker compose up -d postgres livekit
+#   # или: pnpm db-dev
+#
 # Дальше:
 #   frontend: http://localhost:3000
 #   backend:  http://localhost:4000
 #   postgres: localhost:5432 (при запуске в Docker backend подключается к postgres
 #             по имени сервиса "postgres" в сети interviewly-network; при локальном
 #             запуске backend вне Docker — через localhost, см. DATABASE_URL в .env)
+#   livekit:  ws://localhost:7880 (signaling); RTC TCP 7881, UDP 7882
 #
 # Сервис backend сам применяет миграции и сиды при каждом старте контейнера:
 # prisma generate && prisma migrate deploy && prisma db seed.
@@ -38,6 +44,25 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  livekit:
+    image: livekit/livekit-server:v1.9.1
+    restart: unless-stopped
+    command: ["--config", "/etc/livekit.yaml"]
+    ports:
+      - "${LIVEKIT_PORT:-7880}:7880"
+      - "${LIVEKIT_RTC_TCP_PORT:-7881}:7881"
+      - "${LIVEKIT_RTC_UDP_PORT:-7882}:7882/udp"
+    volumes:
+      - ./infra/livekit/livekit.yaml:/etc/livekit.yaml:ro
+    networks:
+      - interviewly-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:7880"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
 
   frontend:
     build:

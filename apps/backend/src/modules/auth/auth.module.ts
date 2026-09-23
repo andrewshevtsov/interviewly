@@ -13,6 +13,6 @@ import { DevOnlyGuard } from './guards/dev-only.guard.ts';
   imports: [UsersModule, JwtModule.register({})],
   controllers: [AuthController, AuthDevController],
   providers: [AuthService, JwtAuthGuard, DevOnlyGuard],
-  exports: [AuthService, JwtAuthGuard],
+  exports: [AuthService, JwtAuthGuard, JwtModule],
 })
 export class AuthModule {}

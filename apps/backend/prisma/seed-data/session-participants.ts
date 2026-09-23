@@ -1,8 +1,11 @@
+import { SessionParticipantRole } from '../../src/prisma/generated/enums.ts';
+
 export default [
   // Scheduled business: owner + interviewer
   {
     sessionId: '00000000-0000-4000-8000-000000000101',
     userEmail: 'owner@interviewly.test',
+    role: SessionParticipantRole.HOST,
     joinedAt: null,
     leftAt: null,
     reconnectCount: 0,
@@ -11,6 +14,7 @@ export default [
   {
     sessionId: '00000000-0000-4000-8000-000000000101',
     userEmail: 'interviewer@interviewly.test',
+    role: SessionParticipantRole.INTERVIEWER,
     joinedAt: null,
     leftAt: null,
     reconnectCount: 0,
@@ -21,6 +25,7 @@ export default [
   {
     sessionId: '00000000-0000-4000-8000-000000000102',
     userEmail: 'interviewer@interviewly.test',
+    role: SessionParticipantRole.HOST,
     joinedAt: new Date('2026-08-30T15:05:00.000Z'),
     leftAt: null,
     reconnectCount: 0,
@@ -29,6 +34,7 @@ export default [
   {
     sessionId: '00000000-0000-4000-8000-000000000102',
     userEmail: 'candidate@interviewly.test',
+    role: SessionParticipantRole.CANDIDATE,
     joinedAt: new Date('2026-08-30T15:07:00.000Z'),
     leftAt: null,
     reconnectCount: 1,
@@ -39,6 +45,7 @@ export default [
   {
     sessionId: '00000000-0000-4000-8000-000000000103',
     userEmail: 'owner@interviewly.test',
+    role: SessionParticipantRole.HOST,
     joinedAt: new Date('2026-08-20T12:05:00.000Z'),
     leftAt: new Date('2026-08-20T13:00:00.000Z'),
     reconnectCount: 0,
@@ -47,6 +54,7 @@ export default [
   {
     sessionId: '00000000-0000-4000-8000-000000000103',
     userEmail: 'candidate@interviewly.test',
+    role: SessionParticipantRole.CANDIDATE,
     joinedAt: new Date('2026-08-20T12:06:00.000Z'),
     leftAt: new Date('2026-08-20T12:58:00.000Z'),
     reconnectCount: 2,
