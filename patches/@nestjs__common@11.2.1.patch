@@ -1,0 +1,13 @@
+diff --git a/package.json b/package.json
+index e538823e036e9371f76e28f7ffa5d63e2c586c28..b3d72fa260ee2f1c5610e07159af12161e42ddd6 100644
+--- a/package.json
++++ b/package.json
+@@ -17,6 +17,8 @@
+     "access": "public"
+   },
+   "license": "MIT",
++  "main": "./index.js",
++  "types": "./index.d.ts",
+   "dependencies": {
+     "file-type": "21.3.4",
+     "iterare": "1.2.1",

@@ -7,6 +7,7 @@ import {
 export default [
   {
     id: '00000000-0000-4000-8000-000000000101',
+    livekitRoomName: '00000000-0000-4000-8000-000000000101',
     ownerEmail: 'owner@interviewly.test',
     type: SessionType.BUSINESS,
     access: SessionAccess.INVITE,
@@ -18,6 +19,7 @@ export default [
   },
   {
     id: '00000000-0000-4000-8000-000000000102',
+    livekitRoomName: '00000000-0000-4000-8000-000000000102',
     ownerEmail: 'interviewer@interviewly.test',
     type: SessionType.MOCK,
     access: SessionAccess.OPEN,
@@ -29,6 +31,7 @@ export default [
   },
   {
     id: '00000000-0000-4000-8000-000000000103',
+    livekitRoomName: '00000000-0000-4000-8000-000000000103',
     ownerEmail: 'owner@interviewly.test',
     type: SessionType.MOCK,
     access: SessionAccess.PASSWORD,

@@ -20,6 +20,19 @@ enum SessionStatus {
   EXPIRED
 }
 
+enum SessionParticipantRole {
+  HOST
+  INTERVIEWER
+  CANDIDATE
+}
+
+enum SessionAccessRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
 model Session {
   id String @default(uuid()) @db.Uuid
 
@@ -36,11 +49,13 @@ model Session {
   scheduledAt     DateTime?     @db.Timestamptz(3)
   startedAt       DateTime?     @db.Timestamptz(3)
   endedAt         DateTime?     @db.Timestamptz(3)
+  livekitRoomName String        @unique
   createdAt       DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
 
-  participants SessionParticipant[]
+  participants   SessionParticipant[]
   feedback     Feedback[]
+  accessRequests SessionAccessRequest[]
 
   @@id([id])
 }
@@ -54,6 +69,8 @@ model SessionParticipant {
   sessionId String  @db.Uuid
   session   Session @relation(fields: [sessionId], references: [id])
 
+  role SessionParticipantRole @default(CANDIDATE)
+
   joinedAt       DateTime? @db.Timestamptz(3)
   leftAt         DateTime? @db.Timestamptz(3)
   reconnectCount Int       @default(0)
@@ -66,4 +83,29 @@ model SessionParticipant {
   // Составной PK начинается с userId; отдельный индекс ускоряет обратный
   // запрос — получение всех участников по sessionId.
   @@index([sessionId])
+  @@index([userId, leftAt])
+}
+
+model SessionAccessRequest {
+  id String @default(uuid()) @db.Uuid
+
+  sessionId String  @db.Uuid
+  session   Session @relation(fields: [sessionId], references: [id])
+
+  requesterId String @db.Uuid
+  requester   User   @relation("SessionAccessRequester", fields: [requesterId], references: [id])
+
+  status        SessionAccessRequestStatus @default(PENDING)
+  requestedRole SessionParticipantRole     @default(CANDIDATE)
+
+  reviewedById String? @db.Uuid
+  reviewedBy   User?   @relation("SessionAccessReviewer", fields: [reviewedById], references: [id])
+  reviewedAt   DateTime? @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@id([id])
+  @@index([sessionId, status])
+  @@index([requesterId])
 }
