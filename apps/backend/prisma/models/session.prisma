@@ -20,8 +20,8 @@ enum SessionStatus {
   EXPIRED
 }
 
+// Права владельца комнаты определяются по Session.ownerId; сам владелец в комнате - INTERVIEWER
 enum SessionParticipantRole {
-  HOST
   INTERVIEWER
   CANDIDATE
 }

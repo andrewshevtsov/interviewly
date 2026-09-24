@@ -19,14 +19,16 @@ import type { JwtPayload } from '../auth/auth.types.ts';
 import { CreateAccessRequestDto } from './dto/create-access-request.dto.ts';
 import { CreateSessionDto } from './dto/create-session.dto.ts';
 import { JoinSessionDto } from './dto/join-session.dto.ts';
+import { TransferOwnershipDto } from './dto/transfer-ownership.dto.ts';
 import {
   LivekitTokenResponse,
+  MySessionStateResponse,
   SessionAccessRequestEntity,
   SessionEntity,
   SessionParticipantEntity,
   SessionParticipantsResponse,
 } from './entities/session.entity.ts';
-import { SESSION_PERMISSIONS, roleAllowed } from './sessions.permissions.ts';
+import { SESSION_PERMISSIONS } from './sessions.permissions.ts';
 import { SessionsRepository } from './sessions.repository.ts';
 
 const PASSWORD_SALT_ROUNDS = 12;
@@ -82,7 +84,7 @@ export class SessionsService {
         create: [
           {
             userId: ownerId,
-            role: SessionParticipantRole.HOST,
+            role: SessionParticipantRole.INTERVIEWER,
             joinedAt: null,
           },
           ...invited
@@ -114,12 +116,36 @@ export class SessionsService {
     return new SessionEntity(session);
   }
 
+  /**
+   * Только собственные данные вызывающего, поэтому доступно любому авторизованному:
+   * так гость по ссылке узнаёт, нужен ли пароль и что с его заявкой.
+   */
+  async getMyState(
+    sessionId: string,
+    userId: string,
+  ): Promise<MySessionStateResponse> {
+    const session = await this.requireSession(sessionId);
+    const [participant, latestRequest] = await Promise.all([
+      this.sessionsRepository.findParticipant(sessionId, userId),
+      this.sessionsRepository.findLatestAccessRequest(sessionId, userId),
+    ]);
+
+    return new MySessionStateResponse({
+      userId,
+      isOwner: session.ownerId === userId,
+      sessionStatus: session.status,
+      access: session.access,
+      role: participant?.role ?? null,
+      accessRequestStatus: latestRequest?.status ?? null,
+    });
+  }
+
   async listParticipants(
     sessionId: string,
     actor: JwtPayload,
   ): Promise<SessionParticipantsResponse> {
-    await this.requireSession(sessionId);
-    await this.assertCanViewParticipants(sessionId, actor);
+    const session = await this.requireSession(sessionId);
+    await this.assertCanViewParticipants(session, actor);
 
     const [participants, count] = await Promise.all([
       this.sessionsRepository.listParticipants(sessionId),
@@ -158,7 +184,7 @@ export class SessionsService {
 
     if (session.access === SessionAccess.INVITE) {
       throw new ForbiddenException(
-        'Invite-only session: wait for an invitation or ask the host to add you',
+        'Invite-only session: wait for an invitation or ask the owner to add you',
       );
     }
 
@@ -181,9 +207,6 @@ export class SessionsService {
     }
 
     const requestedRole = dto.role ?? SessionParticipantRole.CANDIDATE;
-    if (requestedRole === SessionParticipantRole.HOST) {
-      throw new BadRequestException('Cannot request HOST role');
-    }
 
     const created = await this.sessionsRepository.createAccessRequest({
       sessionId,
@@ -198,8 +221,8 @@ export class SessionsService {
     sessionId: string,
     actor: JwtPayload,
   ): Promise<SessionAccessRequestEntity[]> {
-    await this.requireSession(sessionId);
-    await this.assertCanManageAccessRequests(sessionId, actor);
+    const session = await this.requireSession(sessionId);
+    this.assertCanManageAccessRequests(session, actor);
 
     const requests = await this.sessionsRepository.listAccessRequests(sessionId);
     return requests.map(
@@ -212,8 +235,8 @@ export class SessionsService {
     requestId: string,
     actor: JwtPayload,
   ): Promise<SessionAccessRequestEntity> {
-    await this.requireSession(sessionId);
-    await this.assertCanManageAccessRequests(sessionId, actor);
+    const session = await this.requireSession(sessionId);
+    this.assertCanManageAccessRequests(session, actor);
 
     const request = await this.requireAccessRequest(sessionId, requestId);
     if (request.status !== SessionAccessRequestStatus.PENDING) {
@@ -246,8 +269,8 @@ export class SessionsService {
     requestId: string,
     actor: JwtPayload,
   ): Promise<SessionAccessRequestEntity> {
-    await this.requireSession(sessionId);
-    await this.assertCanManageAccessRequests(sessionId, actor);
+    const session = await this.requireSession(sessionId);
+    this.assertCanManageAccessRequests(session, actor);
 
     const request = await this.requireAccessRequest(sessionId, requestId);
     if (request.status !== SessionAccessRequestStatus.PENDING) {
@@ -266,6 +289,53 @@ export class SessionsService {
     );
 
     return new SessionAccessRequestEntity(updated);
+  }
+
+  /**
+   * Передаёт владение комнатой другому интервьюеру: права владельца (заявки, свои комнаты
+   * остаются открытыми) вычисляются из ownerId, поэтому переходят сразу. Роли не меняются.
+   */
+  async transferOwnership(
+    sessionId: string,
+    actor: JwtPayload,
+    dto: TransferOwnershipDto,
+  ): Promise<SessionEntity> {
+    const session = await this.requireSession(sessionId);
+    const rule = SESSION_PERMISSIONS.transferOwnership;
+
+    const isAllowed =
+      (rule.allowAdmin && actor.isAdmin) ||
+      (rule.allowOwner && session.ownerId === actor.sub);
+    if (!isAllowed) {
+      throw new ForbiddenException('Only the room owner can transfer ownership');
+    }
+
+    if (CLOSED_STATUSES.has(session.status)) {
+      throw new ForbiddenException(
+        `Session "${sessionId}" is ${session.status.toLowerCase()}`,
+      );
+    }
+
+    if (dto.userId === session.ownerId) {
+      throw new ConflictException('This user already owns the session');
+    }
+
+    const target = await this.sessionsRepository.findParticipant(
+      sessionId,
+      dto.userId,
+    );
+    const targetRoles: readonly SessionParticipantRole[] = rule.allowTargetRoles;
+    if (!target || !targetRoles.includes(target.role)) {
+      throw new BadRequestException(
+        'Ownership can only be transferred to an interviewer of this session',
+      );
+    }
+
+    const updated = await this.sessionsRepository.updateOwner(
+      sessionId,
+      dto.userId,
+    );
+    return new SessionEntity(updated);
   }
 
   /**
@@ -290,7 +360,7 @@ export class SessionsService {
     );
     if (!participant) {
       throw new ForbiddenException(
-        'Not a participant: submit an access request and wait for host approval',
+        'Not a participant: submit an access request and wait for owner approval',
       );
     }
 
@@ -304,15 +374,7 @@ export class SessionsService {
       }
     }
 
-    if (
-      SESSION_PERMISSIONS.singleActiveRoom.enabled &&
-      roleAllowed(
-        SESSION_PERMISSIONS.singleActiveRoom.enforceForRoles,
-        participant.role,
-      )
-    ) {
-      await this.disconnectFromOtherRooms(userId, sessionId);
-    }
+    await this.leaveOtherRooms(session, userId);
 
     await this.sessionsRepository.upsertParticipant({
       sessionId,
@@ -341,19 +403,11 @@ export class SessionsService {
     );
     if (!participant) {
       throw new ForbiddenException(
-        'Not a participant: submit an access request and wait for host approval',
+        'Not a participant: submit an access request and wait for owner approval',
       );
     }
 
-    if (
-      SESSION_PERMISSIONS.singleActiveRoom.enabled &&
-      roleAllowed(
-        SESSION_PERMISSIONS.singleActiveRoom.enforceForRoles,
-        participant.role,
-      )
-    ) {
-      await this.disconnectFromOtherRooms(userId, sessionId);
-    }
+    await this.leaveOtherRooms(session, userId);
 
     await this.sessionsRepository.upsertParticipant({
       sessionId,
@@ -387,22 +441,26 @@ export class SessionsService {
     });
   }
 
-  private async disconnectFromOtherRooms(
+  /**
+   * Одна активная комната на участника: при входе в чужую комнату выводит из остальных.
+   * Владелец (exemptOwner) держит свои комнаты открытыми и не выкидывается из них.
+   */
+  private async leaveOtherRooms(
+    session: { id: string; ownerId: string },
     userId: string,
-    currentSessionId: string,
   ): Promise<void> {
-    const enforceRoles =
-      SESSION_PERMISSIONS.singleActiveRoom.enforceForRoles;
+    const rule = SESSION_PERMISSIONS.singleActiveRoom;
+    if (!rule.enabled || (rule.exemptOwner && session.ownerId === userId)) {
+      return;
+    }
 
     const active = await this.sessionsRepository.findActiveParticipations(
       userId,
-      currentSessionId,
+      session.id,
     );
-
-    // HOST-участия в других комнатах не трогаем.
-    const toLeave = active.filter((participation) =>
-      roleAllowed(enforceRoles, participation.role),
-    );
+    const toLeave = rule.exemptOwner
+      ? active.filter((participation) => participation.session.ownerId !== userId)
+      : active;
 
     await Promise.all(
       toLeave.map(async (participation) => {
@@ -469,44 +527,43 @@ export class SessionsService {
   }
 
   private async assertCanViewParticipants(
-    sessionId: string,
+    session: { id: string; ownerId: string },
     actor: JwtPayload,
   ): Promise<void> {
     const perm = SESSION_PERMISSIONS.viewParticipants;
     if (perm.allowAdmin && actor.isAdmin) {
       return;
     }
-
-    const participant = await this.sessionsRepository.findParticipant(
-      sessionId,
-      actor.sub,
-    );
-    if (participant && roleAllowed(perm.allowRoles, participant.role)) {
+    if (perm.allowOwner && session.ownerId === actor.sub) {
       return;
+    }
+    if (perm.allowParticipant) {
+      const participant = await this.sessionsRepository.findParticipant(
+        session.id,
+        actor.sub,
+      );
+      if (participant) {
+        return;
+      }
     }
 
     throw new ForbiddenException(
-      'Only the host or participants of this room can view the participant list',
+      'Only the owner or participants of this room can view the participant list',
     );
   }
 
-  private async assertCanManageAccessRequests(
-    sessionId: string,
+  private assertCanManageAccessRequests(
+    session: { ownerId: string },
     actor: JwtPayload,
-  ): Promise<void> {
+  ): void {
     const perm = SESSION_PERMISSIONS.manageAccessRequests;
     if (perm.allowAdmin && actor.isAdmin) {
       return;
     }
-
-    const participant = await this.sessionsRepository.findParticipant(
-      sessionId,
-      actor.sub,
-    );
-    if (participant && roleAllowed(perm.allowRoles, participant.role)) {
+    if (perm.allowOwner && session.ownerId === actor.sub) {
       return;
     }
 
-    throw new ForbiddenException('Only the room host can manage access requests');
+    throw new ForbiddenException('Only the room owner can manage access requests');
   }
 }

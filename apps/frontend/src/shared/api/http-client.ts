@@ -7,22 +7,21 @@ import { useAuthStore } from "@/shared/model/auth-store";
 const HTTP_UNAUTHORIZED = 401;
 
 /**
- * Body of a successful `POST /auth/refresh` response.
+ * Тело успешного ответа `POST /auth/refresh`.
  */
 interface RefreshResponse {
   /**
-   * Newly issued access token.
+   * Новый access-токен.
    */
   accessToken: string;
 }
 
 /**
- * An axios request config, extended with a flag marking it as already retried once
- * after a silent token refresh (to avoid retry loops on a repeated 401).
+ * Конфиг запроса axios с флагом "уже повторён после тихого обновления токена"
  */
 interface RetryableRequestConfig extends InternalAxiosRequestConfig {
   /**
-   * Set once this request has already been retried after a token refresh.
+   * Выставляется, когда запрос уже повторили после обновления токена
    */
   _retry?: boolean;
 }
@@ -34,9 +33,9 @@ export const httpClient = axios.create({
 
 httpClient.interceptors.request.use(
   /**
-   * Attaches the in-memory access token to outgoing requests, if present.
-   * @param {InternalAxiosRequestConfig} config - The outgoing request config.
-   * @returns {InternalAxiosRequestConfig} The config with an `Authorization` header attached.
+   * Добавляет к исходящим запросам access-токен из памяти, если он есть.
+   * @param {InternalAxiosRequestConfig} config - Конфиг исходящего запроса.
+   * @returns {InternalAxiosRequestConfig} Конфиг с заголовком `Authorization`.
    */
   (config) => {
     const accessToken = useAuthStore.getState().accessToken;
@@ -51,9 +50,9 @@ httpClient.interceptors.request.use(
 let refreshPromise: Promise<string> | null = null;
 
 /**
- * Requests a new access token via the refresh-token cookie (sent automatically
- * by the browser), deduplicating concurrent 401s behind one in-flight call.
- * @returns {Promise<string>} The new access token.
+ * Запрашивает новый access-токен по куке с refresh-токеном (браузер отправляет её сам);
+ * одновременные 401 ждут один и тот же запрос.
+ * @returns {Promise<string>} Новый access-токен.
  */
 export function refreshAccessToken(): Promise<string> {
   refreshPromise ??= axios
@@ -72,15 +71,15 @@ export function refreshAccessToken(): Promise<string> {
 
 httpClient.interceptors.response.use(
   /**
-   * Passes successful responses through unchanged.
-   * @param {import('axios').AxiosResponse} response - The successful response.
-   * @returns {import('axios').AxiosResponse} The same response.
+   * Пропускает успешные ответы без изменений.
+   * @param {import('axios').AxiosResponse} response - Успешный ответ.
+   * @returns {import('axios').AxiosResponse} Тот же ответ.
    */
   (response) => response,
   /**
-   * On a 401, retries the request once after a silent token refresh; otherwise rejects.
-   * @param {AxiosError} error - The failed response's error.
-   * @returns {Promise<unknown>} The retried request, or a rejected promise.
+   * При 401 один раз повторяет запрос после тихого обновления токена; иначе отклоняет.
+   * @param {AxiosError} error - Ошибка неудавшегося ответа.
+   * @returns {Promise<unknown>} Повторённый запрос или отклонённый промис.
    */
   async (error: AxiosError) => {
     const originalRequest = error.config as RetryableRequestConfig | undefined;
@@ -106,3 +105,12 @@ httpClient.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+/**
+ * HTTP-статус неудавшегося запроса, если ошибка пришла от бэкенда.
+ * @param {unknown} error - Ошибка из вызова `httpClient`.
+ * @returns {number | undefined} Статус ответа или `undefined` для сетевых и прочих ошибок.
+ */
+export function getHttpStatus(error: unknown): number | undefined {
+  return axios.isAxiosError(error) ? error.response?.status : undefined;
+}

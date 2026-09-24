@@ -1,17 +1,9 @@
 // Демо-данные для примера роутинга (app/, app/sessions/*). Не часть FSD -
 // живут рядом с роутами, которые их используют, а не в entities/shared.
-import type { User } from "@/entities/user";
 import type { NewSessionDraft, SessionHistoryEntry } from "@/entities/session";
 import type { Profile, ProfileStatsData } from "@/entities/profile";
 import type { Participant } from "@/entities/participant";
 import type { LeaderboardEntry } from "@/entities/leaderboard";
-
-export const DEMO_USER: User = {
-  id: "u-1",
-  displayName: "John Doe",
-  stack: ["TypeScript", "React"],
-  level: "Senior",
-};
 
 export const DEMO_SESSION_HISTORY: SessionHistoryEntry[] = [
   {
@@ -76,7 +68,6 @@ export const DEMO_NEW_SESSION_DRAFT: NewSessionDraft = {
   editorLanguage: "python",
   isPrivate: true,
   accessCode: "SECURE-77-X9",
-  inviteLink: "https://syntax.dev/session/4092",
 };
 
 export const DEMO_PARTICIPANTS: Participant[] = [
