@@ -3,10 +3,10 @@
 // Слой features: форма входа - email и пароль.
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { setAccessToken } from "@/shared/api/access-token";
 import { authApi } from "@/shared/api/auth-api";
 import { getLocalizedHref } from "@/shared/i18n";
 import { useLocale, useTranslations } from "@/shared/i18n-context";
+import { useAuthStore } from "@/shared/model/auth-store";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -21,6 +21,7 @@ export function LoginForm() {
   const locale = useLocale();
   const common = useTranslations("common");
   const auth = useTranslations("auth");
+  const setAuthenticated = useAuthStore((state) => state.setAuthenticated);
 
   const loginMutation = useMutation({
     mutationFn: authApi.login,
@@ -30,7 +31,7 @@ export function LoginForm() {
      * @returns {void}
      */
     onSuccess: (tokens) => {
-      setAccessToken(tokens.accessToken);
+      setAuthenticated(tokens.accessToken);
       router.push(getLocalizedHref("/profile", locale));
     },
   });

@@ -44,6 +44,7 @@ export const messages = {
     profile: { ru: "кабинет", en: "profile" },
     chooseLanguage: { ru: "выбрать язык", en: "choose language" },
     signIn: { ru: "войти", en: "sign in" },
+    logout: { ru: "выйти", en: "log out" },
     createSession: { ru: "создать сессию", en: "create session" },
   },
   auth: {

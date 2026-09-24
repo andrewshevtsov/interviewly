@@ -10,9 +10,9 @@ import { LogoutButton } from "@/features/logout";
 import { getLocalizedHref } from "@/shared/i18n";
 import { useLocale, useTranslations } from "@/shared/i18n-context";
 import { cn } from "@/shared/lib/cn";
+import { useAuthStore } from "@/shared/model/auth-store";
 import { Button } from "@/shared/ui/button";
 import { LocalizedLink } from "@/shared/ui/localized-link";
-import { useIsAuthenticated } from "@/shared/api/use-is-authenticated";
 
 /**
  * A single top navigation link.
@@ -45,7 +45,8 @@ export function Navbar() {
   const PATHNAME = usePathname();
   const locale = useLocale();
   const t = useTranslations("navigation");
-  const isAuthenticated = useIsAuthenticated();
+  const authStatus = useAuthStore((state) => state.status);
+  const isAuthenticated = authStatus === "authenticated";
   const localizedProfileHref = getLocalizedHref("/profile", locale);
 
   return (
@@ -76,26 +77,28 @@ export function Navbar() {
         <div className="flex items-center gap-3">
           <LanguageSwitcher />
           <ThemeToggle />
-          {isAuthenticated
-            ? (
-              <>
-                <Button asChild variant="ghost" size="icon" className={cn(PATHNAME === localizedProfileHref && "text-primary")}>
-                  <LocalizedLink
-                    href="/profile"
-                    aria-label={t("profile")}
-                    aria-current={PATHNAME === localizedProfileHref ? "page" : undefined}
-                  >
-                    <CircleUserRound className="h-5 w-5" />
-                  </LocalizedLink>
-                </Button>
-                <LogoutButton />
-              </>
-            )
-            : (
-              <LocalizedLink href="/auth" className="text-sm text-foreground hover:text-muted-foreground">
-                {t("signIn")}
-              </LocalizedLink>
-            )}
+          {authStatus === "initializing"
+            ? null
+            : isAuthenticated
+              ? (
+                <>
+                  <Button asChild variant="ghost" size="icon" className={cn(PATHNAME === localizedProfileHref && "text-primary")}>
+                    <LocalizedLink
+                      href="/profile"
+                      aria-label={t("profile")}
+                      aria-current={PATHNAME === localizedProfileHref ? "page" : undefined}
+                    >
+                      <CircleUserRound className="h-5 w-5" />
+                    </LocalizedLink>
+                  </Button>
+                  <LogoutButton />
+                </>
+              )
+              : (
+                <LocalizedLink href="/auth" className="text-sm text-foreground hover:text-muted-foreground">
+                  {t("signIn")}
+                </LocalizedLink>
+              )}
           {isAuthenticated && (
             <Button asChild size="sm">
               <LocalizedLink href="/sessions/new">{t("createSession")}</LocalizedLink>
