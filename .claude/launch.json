@@ -8,6 +8,12 @@
       "port": 3000
     },
     {
+      "name": "backend-dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["back-dev"],
+      "port": 4000
+    },
+    {
       "name": "storybook",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "storybook", "--prefix", "apps/frontend"],

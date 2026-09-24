@@ -18,7 +18,8 @@ type SessionPermissionsConfig = {
   viewParticipants: {
     description: string;
     allowAdmin: boolean;
-    allowRoles: RoleList;
+    allowOwner: boolean;
+    allowParticipant: boolean;
   };
   createAccessRequest: {
     description: string;
@@ -27,7 +28,13 @@ type SessionPermissionsConfig = {
   manageAccessRequests: {
     description: string;
     allowAdmin: boolean;
-    allowRoles: RoleList;
+    allowOwner: boolean;
+  };
+  transferOwnership: {
+    description: string;
+    allowAdmin: boolean;
+    allowOwner: boolean;
+    allowTargetRoles: RoleList;
   };
   connectToRoom: {
     description: string;
@@ -37,7 +44,7 @@ type SessionPermissionsConfig = {
   singleActiveRoom: {
     description: string;
     enabled: boolean;
-    enforceForRoles: RoleList;
+    exemptOwner: boolean;
   };
 };
 
@@ -62,13 +69,10 @@ export const SESSION_PERMISSIONS = {
 
   viewParticipants: {
     description:
-      'Видеть участников и их количество: только HOST этой комнаты, её участники или admin',
+      'Видеть участников и их количество: только владелец комнаты, её участники или admin',
     allowAdmin: true,
-    allowRoles: [
-      SessionParticipantRole.HOST,
-      SessionParticipantRole.INTERVIEWER,
-      SessionParticipantRole.CANDIDATE,
-    ],
+    allowOwner: true,
+    allowParticipant: true,
   },
 
   createAccessRequest: {
@@ -79,9 +83,17 @@ export const SESSION_PERMISSIONS = {
 
   manageAccessRequests: {
     description:
-      'Смотреть и принимать/отклонять заявки — только HOST комнаты (или admin)',
+      'Смотреть и принимать/отклонять заявки - только владелец комнаты (или admin)',
     allowAdmin: true,
-    allowRoles: [SessionParticipantRole.HOST],
+    allowOwner: true,
+  },
+
+  transferOwnership: {
+    description:
+      'Передача владения комнатой только другому интервьюеру;',
+    allowAdmin: true,
+    allowOwner: true,
+    allowTargetRoles: [SessionParticipantRole.INTERVIEWER],
   },
 
   connectToRoom: {
@@ -93,20 +105,10 @@ export const SESSION_PERMISSIONS = {
 
   singleActiveRoom: {
     description:
-      'Одна активная комната для INTERVIEWER/CANDIDATE; HOST может быть в нескольких',
+      'Одна активная комната для участника; свои комнаты владелец держит сколько угодно',
     enabled: true,
-    enforceForRoles: [
-      SessionParticipantRole.INTERVIEWER,
-      SessionParticipantRole.CANDIDATE,
-    ],
+    exemptOwner: true,
   },
 } as const satisfies SessionPermissionsConfig;
 
 export type SessionPermissionKey = keyof typeof SESSION_PERMISSIONS;
-
-export function roleAllowed(
-  roles: RoleList,
-  role: SessionParticipantRole,
-): boolean {
-  return roles.includes(role);
-}

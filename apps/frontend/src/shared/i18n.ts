@@ -1,28 +1,28 @@
-/** Languages supported by the application. */
+/** Языки, которые поддерживает приложение. */
 export const SUPPORTED_LOCALES = ["ru", "en"] as const;
 
-/** A language supported by the application. */
+/** Язык, поддерживаемый приложением. */
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 
-/** Language used when the requested language is unavailable. */
+/** Язык, который используется, если запрошенный недоступен. */
 export const DEFAULT_LOCALE: Locale = "ru";
 
-/** Cookie used to persist the selected language. */
+/** Кука, в которой сохраняется выбранный язык. */
 export const LOCALE_COOKIE_NAME = "locale";
 
-/** Request header populated from the locale URL segment. */
+/** Заголовок запроса, заполняемый из сегмента URL с локалью. */
 export const REQUEST_LOCALE_HEADER_NAME = "x-interviewly-locale";
 
 const LOCALE_PATH_SEGMENT_INDEX = 1;
 const FIRST_CHARACTER_COUNT = 1;
 
-/** Translations of one message for every supported language. */
+/** Переводы одного сообщения на все поддерживаемые языки. */
 export type Translation = Record<Locale, string>;
 
-/** A named group of translated messages. */
+/** Именованная группа переведённых сообщений. */
 export type MessageGroup = Record<string, Translation>;
 
-/** The complete application dictionary. */
+/** Полный словарь приложения. */
 export const messages = {
   common: {
     cancel: { ru: "отмена", en: "cancel" },
@@ -228,6 +228,35 @@ export const messages = {
     },
     running: { ru: "Выполняется…", en: "Running…" },
     runCode: { ru: "запустить код", en: "run code" },
+    copyInviteLink: { ru: "скопировать ссылку", en: "copy invite link" },
+    inviteLinkCopied: { ru: "ссылка скопирована", en: "link copied" },
+    connecting: { ru: "Подключаемся к комнате…", en: "Connecting to the room…" },
+    connectionError: {
+      ru: "Не удалось подключиться к комнате. Обновите страницу.",
+      en: "Couldn't connect to the room. Reload the page.",
+    },
+    mediaUnavailable: {
+      ru: "Нет доступа к камере или микрофону — проверьте разрешения браузера. Вы в комнате без них.",
+      en: "No access to the camera or microphone — check the browser permissions. You're in the room without them.",
+    },
+    waitingForParticipants: { ru: "Ждём второго участника…", en: "Waiting for the other participant…" },
+    accessRequestsTitle: { ru: "заявки на вход", en: "access requests" },
+    approveRequest: { ru: "принять", en: "approve" },
+    rejectRequest: { ru: "отклонить", en: "reject" },
+    transferOwnershipTitle: { ru: "сделать владельцем", en: "make owner" },
+    transferOwnershipHint: {
+      ru: "Передать можно только другому интервьюеру.",
+      en: "Ownership can only go to another interviewer.",
+    },
+    transferOwnership: { ru: "сделать владельцем", en: "make owner" },
+    transferOwnershipError: {
+      ru: "Не удалось передать владение, попробуйте ещё раз.",
+      en: "Couldn't transfer ownership, try again.",
+    },
+    reviewRequestError: {
+      ru: "Не удалось обработать заявку, попробуйте ещё раз.",
+      en: "Couldn't process the request, try again.",
+    },
   },
   newSession: {
     title: { ru: "новая сессия", en: "new session" },
@@ -242,14 +271,20 @@ export const messages = {
       ru: "Вход только по паролю.",
       en: "Access requires the code below.",
     },
-    inviteLinkLabel: { ru: "ссылка-приглашение", en: "invite link" },
-    copy: { ru: "копировать", en: "copy" },
-    copied: { ru: "скопировано", en: "copied" },
     telegramNotice: {
       ru: "Всем приглашённым Telegram-бот пришлёт уведомление о запуске сессии.",
       en: "The Telegram bot will notify every invitee when the session starts.",
     },
     launchSession: { ru: "запустить сессию", en: "launch session" },
+    launchingSession: { ru: "Создаём сессию…", en: "Creating the session…" },
+    passwordTooShort: {
+      ru: "Пароль должен быть не короче 4 символов.",
+      en: "The password must be at least 4 characters long.",
+    },
+    createError: {
+      ru: "Не удалось создать сессию, попробуйте ещё раз.",
+      en: "Couldn't create the session, try again.",
+    },
   },
   feedback: {
     title: { ru: "обратная связь", en: "feedback" },
@@ -283,6 +318,35 @@ export const messages = {
       ru: "Эту сессию нельзя открыть — проверьте ссылку.",
       en: "This session can't be opened — check the link.",
     },
+    sessionClosed: {
+      ru: "Эта сессия уже завершена.",
+      en: "This session has already ended.",
+    },
+    requestAccessTitle: { ru: "Вход в сессию", en: "Join the session" },
+    requestAccessDescription: {
+      ru: "Владелец сессии увидит вашу заявку и впустит вас в комнату.",
+      en: "The session owner will see your request and let you into the room.",
+    },
+    passwordLabel: { ru: "пароль сессии", en: "session password" },
+    requestAccess: { ru: "подать заявку", en: "request access" },
+    sendingRequest: { ru: "Отправляем…", en: "Sending…" },
+    waitingForApproval: {
+      ru: "Заявка отправлена. Ждём, пока владелец сессии вас впустит…",
+      en: "Request sent. Waiting for the session owner to let you in…",
+    },
+    requestRejected: {
+      ru: "Владелец сессии отклонил заявку. Можно отправить её ещё раз.",
+      en: "The session owner rejected your request. You can send it again.",
+    },
+    wrongPassword: { ru: "Неверный пароль.", en: "Wrong password." },
+    inviteOnly: {
+      ru: "Сессия только по приглашению — попросите владельца сессии добавить вас.",
+      en: "This session is invite-only — ask the session owner to add you.",
+    },
+    requestError: {
+      ru: "Не удалось отправить заявку, попробуйте ещё раз.",
+      en: "Couldn't send the request, try again.",
+    },
   },
   footer: {
     privacy: { ru: "приватность", en: "privacy" },
@@ -295,47 +359,47 @@ export const messages = {
   },
 } as const satisfies Record<string, MessageGroup>;
 
-/** A top-level section of the dictionary. */
+/** Раздел словаря верхнего уровня. */
 export type MessageGroupName = keyof typeof messages;
 
-/** A valid message name from the selected dictionary group. */
+/** Допустимое имя сообщения из выбранной группы словаря. */
 export type MessageKey<Group extends MessageGroupName> = keyof (typeof messages)[Group];
 
-/** A translator restricted to one dictionary group. */
+/** Переводчик, ограниченный одной группой словаря. */
 export interface Translator<Group extends MessageGroupName> {
   <Key extends MessageKey<Group>>(key: Key): string;
 
   /**
-   * Returns the message as written in the dictionary, without the automatic leading-capital
-   * applied by the default call. Only for values that must keep their exact casing (e.g. an
-   * email example) or that continue a sentence started by another translated string.
+   * Возвращает сообщение в том виде, как оно записано в словаре, без автоматической заглавной
+   * буквы, которую ставит обычный вызов. Только для значений, где важен точный регистр (например,
+   * пример email) или которые продолжают предложение, начатое другой переведённой строкой.
    */
   raw<Key extends MessageKey<Group>>(key: Key): string;
 }
 
 /**
- * Checks whether a value is one of the supported languages.
- * @param {unknown} value - Value to check.
- * @returns {boolean} Whether the value is a supported locale.
+ * Проверяет, что значение - один из поддерживаемых языков.
+ * @param {unknown} value - Проверяемое значение.
+ * @returns {boolean} Является ли значение поддерживаемой локалью.
  */
 export function isLocale(value: unknown): value is Locale {
   return typeof value === "string" && SUPPORTED_LOCALES.some((locale) => locale === value);
 }
 
 /**
- * Returns a supported language or the default one.
- * @param {unknown} value - Locale candidate.
- * @returns {Locale} Valid application locale.
+ * Возвращает поддерживаемый язык или язык по умолчанию.
+ * @param {unknown} value - Предполагаемая локаль.
+ * @returns {Locale} Допустимая локаль приложения.
  */
 export function resolveLocale(value: unknown): Locale {
   return isLocale(value) ? value : DEFAULT_LOCALE;
 }
 
 /**
- * Prefixes an internal application URL with the selected language.
- * @param {string} href - Internal URL or page fragment.
- * @param {Locale} locale - Language to add to the URL.
- * @returns {string} Locale-aware URL.
+ * Добавляет выбранный язык в начало внутреннего URL приложения.
+ * @param {string} href - Внутренний URL или фрагмент страницы.
+ * @param {Locale} locale - Язык, который нужно добавить в URL.
+ * @returns {string} URL с учётом локали.
  */
 export function getLocalizedHref(href: string, locale: Locale): string {
   if (!href.startsWith("/") || href.startsWith("//")) {
@@ -354,11 +418,11 @@ export function getLocalizedHref(href: string, locale: Locale): string {
 }
 
 /**
- * Capitalizes the first letter of a string, leaving the rest untouched. Locale-aware so it
- * behaves correctly for every supported language, not just ASCII text.
- * @param {string} text - Text to capitalize.
- * @param {Locale} locale - Language the text is written in.
- * @returns {string} `text` with its first letter capitalized.
+ * Делает первую букву строки заглавной, остальное не трогает. Учитывает локаль, поэтому
+ * работает правильно для всех поддерживаемых языков, а не только для ASCII.
+ * @param {string} text - Текст, первую букву которого нужно сделать заглавной.
+ * @param {Locale} locale - Язык текста.
+ * @returns {string} `text` с заглавной первой буквой.
  */
 function capitalizeFirstLetter(text: string, locale: Locale): string {
   if (!text) {
@@ -369,11 +433,11 @@ function capitalizeFirstLetter(text: string, locale: Locale): string {
 }
 
 /**
- * Returns a message from the dictionary exactly as written, with no capitalization applied.
- * @param {string} group - Dictionary section.
- * @param {string} key - Message name within the section.
- * @param {Locale} locale - Language of the returned message.
- * @returns {string} Translated message, in its original casing.
+ * Возвращает сообщение из словаря ровно в том виде, как оно записано, без заглавной буквы.
+ * @param {string} group - Раздел словаря.
+ * @param {string} key - Имя сообщения внутри раздела.
+ * @param {Locale} locale - Язык возвращаемого сообщения.
+ * @returns {string} Переведённое сообщение в исходном регистре.
  */
 export function getRawMessage<Group extends MessageGroupName, Key extends MessageKey<Group>>(
   group: Group,
@@ -391,13 +455,13 @@ export function getRawMessage<Group extends MessageGroupName, Key extends Messag
 }
 
 /**
- * Returns a translated message from the dictionary. The result always starts with a capital
- * letter, so every dictionary entry can be written in lowercase and every call site (buttons,
- * links, headings, paragraphs, ...) gets sentence-style capitalization for free.
- * @param {string} group - Dictionary section.
- * @param {string} key - Message name within the section.
- * @param {Locale} locale - Language of the returned message.
- * @returns {string} Translated message.
+ * Возвращает переведённое сообщение из словаря. Результат всегда начинается с заглавной буквы,
+ * поэтому все записи словаря можно писать строчными, а в каждом месте вызова (кнопки, ссылки,
+ * заголовки, абзацы, ...) регистр как в предложении получается сам.
+ * @param {string} group - Раздел словаря.
+ * @param {string} key - Имя сообщения внутри раздела.
+ * @param {Locale} locale - Язык возвращаемого сообщения.
+ * @returns {string} Переведённое сообщение.
  */
 export function getMessage<Group extends MessageGroupName, Key extends MessageKey<Group>>(
   group: Group,
@@ -408,10 +472,10 @@ export function getMessage<Group extends MessageGroupName, Key extends MessageKe
 }
 
 /**
- * Creates a translator bound to a language and dictionary group.
- * @param {string} group - Dictionary section.
- * @param {Locale} locale - Language of returned messages.
- * @returns {Translator} Translator for the selected group.
+ * Создаёт переводчик, привязанный к языку и группе словаря.
+ * @param {string} group - Раздел словаря.
+ * @param {Locale} locale - Язык возвращаемых сообщений.
+ * @returns {Translator} Переводчик для выбранной группы.
  */
 export function createTranslator<Group extends MessageGroupName>(
   group: Group,
@@ -420,8 +484,8 @@ export function createTranslator<Group extends MessageGroupName>(
   const translate = ((key) => getMessage(group, key, locale)) as Translator<Group>;
 
   /**
-   * @param {string} key - Message name within the group.
-   * @returns {string} The message in its original casing.
+   * @param {string} key - Имя сообщения внутри группы.
+   * @returns {string} Сообщение в исходном регистре.
    */
   translate.raw = (key) => getRawMessage(group, key, locale);
 
