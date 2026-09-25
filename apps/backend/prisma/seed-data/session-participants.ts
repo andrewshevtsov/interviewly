@@ -1,11 +1,11 @@
-import { SessionParticipantRole } from '../../src/prisma/generated/enums.ts';
+import { SessionParticipantRole } from '../../src/prisma/generated/enums';
 
 export default [
-  // Scheduled business: owner + interviewer
+  // Запланированная бизнес-сессия: owner + interviewer
   {
     sessionId: '00000000-0000-4000-8000-000000000101',
     userEmail: 'owner@interviewly.test',
-    role: SessionParticipantRole.HOST,
+    role: SessionParticipantRole.INTERVIEWER,
     joinedAt: null,
     leftAt: null,
     reconnectCount: 0,
@@ -21,11 +21,11 @@ export default [
     offlineSeconds: 0,
   },
 
-  // Active mock: interviewer + candidate
+  // Активная мок-сессия: interviewer + candidate
   {
     sessionId: '00000000-0000-4000-8000-000000000102',
     userEmail: 'interviewer@interviewly.test',
-    role: SessionParticipantRole.HOST,
+    role: SessionParticipantRole.INTERVIEWER,
     joinedAt: new Date('2026-08-30T15:05:00.000Z'),
     leftAt: null,
     reconnectCount: 0,
@@ -41,11 +41,11 @@ export default [
     offlineSeconds: 20,
   },
 
-  // Completed mock: owner + candidate
+  // Завершённая мок-сессия: owner + candidate
   {
     sessionId: '00000000-0000-4000-8000-000000000103',
     userEmail: 'owner@interviewly.test',
-    role: SessionParticipantRole.HOST,
+    role: SessionParticipantRole.INTERVIEWER,
     joinedAt: new Date('2026-08-20T12:05:00.000Z'),
     leftAt: new Date('2026-08-20T13:00:00.000Z'),
     reconnectCount: 0,

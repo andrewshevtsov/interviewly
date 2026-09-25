@@ -11,9 +11,18 @@ import {
   SessionParticipantRole,
 } from '../../prisma/generated/enums.ts';
 import type {
+  AccessRequestWithRequester,
+  ParticipantWithUser,
   SessionWithParticipants,
   UpdateAccessRequestData,
 } from './sessions.types.ts';
+
+const USER_SUMMARY_SELECT = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  email: true,
+} as const satisfies Prisma.UserSelect;
 
 @Injectable()
 export class SessionsRepository {
@@ -52,6 +61,13 @@ export class SessionsRepository {
     });
   }
 
+  updateOwner(sessionId: string, ownerId: string): Promise<Session> {
+    return this.prisma.session.update({
+      where: { id: sessionId },
+      data: { ownerId },
+    });
+  }
+
   findById(id: string): Promise<Session | null> {
     return this.prisma.session.findUnique({ where: { id } });
   }
@@ -76,9 +92,10 @@ export class SessionsRepository {
     });
   }
 
-  listParticipants(sessionId: string): Promise<SessionParticipant[]> {
+  listParticipants(sessionId: string): Promise<ParticipantWithUser[]> {
     return this.prisma.sessionParticipant.findMany({
       where: { sessionId },
+      include: { user: { select: USER_SUMMARY_SELECT } },
       orderBy: { createdAt: 'asc' },
     });
   }
@@ -118,7 +135,11 @@ export class SessionsRepository {
     userId: string,
     excludeSessionId?: string,
   ): Promise<
-    Array<SessionParticipant & { session: Pick<Session, 'id' | 'livekitRoomName'> }>
+    Array<
+      SessionParticipant & {
+        session: Pick<Session, 'id' | 'ownerId' | 'livekitRoomName'>;
+      }
+    >
   > {
     return this.prisma.sessionParticipant.findMany({
       where: {
@@ -130,7 +151,7 @@ export class SessionsRepository {
           : {}),
       },
       include: {
-        session: { select: { id: true, livekitRoomName: true } },
+        session: { select: { id: true, ownerId: true, livekitRoomName: true } },
       },
     });
   }
@@ -155,6 +176,16 @@ export class SessionsRepository {
     });
   }
 
+  findLatestAccessRequest(
+    sessionId: string,
+    requesterId: string,
+  ): Promise<SessionAccessRequest | null> {
+    return this.prisma.sessionAccessRequest.findFirst({
+      where: { sessionId, requesterId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   createAccessRequest(params: {
     sessionId: string;
     requesterId: string;
@@ -173,12 +204,13 @@ export class SessionsRepository {
   listAccessRequests(
     sessionId: string,
     status?: SessionAccessRequestStatus,
-  ): Promise<SessionAccessRequest[]> {
+  ): Promise<AccessRequestWithRequester[]> {
     return this.prisma.sessionAccessRequest.findMany({
       where: {
         sessionId,
         ...(status ? { status } : {}),
       },
+      include: { requester: { select: USER_SUMMARY_SELECT } },
       orderBy: { createdAt: 'desc' },
     });
   }

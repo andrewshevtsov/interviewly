@@ -1,30 +1,29 @@
 import { InterviewSessionPage } from "@/views/interview-session-page";
-import { DEMO_USER } from "@/app/demo-data";
 
 /**
- * Props for the localized dynamic session route.
+ * Пропсы локализованного динамического роута сессии.
  */
 export interface SessionPageProps {
   /**
-   * Next.js dynamic route params, resolved asynchronously.
+   * Динамические параметры роута Next.js, разрешаются асинхронно.
    */
   params: Promise<{
     /**
-     * Session ID captured from the URL segment.
+     * ID сессии из сегмента URL.
      */
     sessionId: string;
-    /** Locale captured from the parent URL segment. */
+    /** Локаль из родительского сегмента URL. */
     locale: string;
   }>;
 }
 
 /**
- * Localized route that renders the interview session page.
- * @param {SessionPageProps} props - Next.js route props containing the dynamic params.
- * @returns {Promise<import('react').ReactNode>} The interview session page.
+ * Локализованный роут, который рендерит страницу сессии интервью.
+ * @param {SessionPageProps} props - Пропсы роута Next.js с динамическими параметрами.
+ * @returns {Promise<import('react').ReactNode>} Страница сессии интервью.
  */
 export default async function Page(props: SessionPageProps) {
   const params = await props.params;
 
-  return <InterviewSessionPage sessionId={params.sessionId} user={DEMO_USER} />;
+  return <InterviewSessionPage sessionId={params.sessionId} />;
 }

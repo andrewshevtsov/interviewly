@@ -3,36 +3,39 @@ import { isValidSessionId, type InterviewSession } from "@/entities/session";
 import { MAX_AI_HINTS_PER_SESSION } from "@/shared/config/constants";
 
 /**
- * Interface JoinSessionParams
+ * Параметры входа в сессию.
  */
 export interface JoinSessionParams {
   /**
-   * SesionID
+   * ID сессии.
    */
   sessionId: string;
 
   /**
-   * Password
+   * Пароль сессии.
    */
   password?: string;
 }
 
 /**
- * Checks whether a session can be joined with the given params.
- * @param {JoinSessionParams} params - Session ID and optional password.
- * @returns {boolean} `true` if the session can be joined.
+ * Проверяет, можно ли войти в сессию с такими параметрами.
+ * @param {JoinSessionParams} params - ID сессии и необязательный пароль.
+ * @returns {boolean} `true`, если войти можно.
  */
 export function canJoinSession(params: JoinSessionParams): boolean {
   return isValidSessionId(params.sessionId);
 }
 
 /**
- * Calculates how many AI hints are still available in a session.
- * @param {number} usedHints - Number of hints already used.
- * @returns {number} Number of hints remaining, never below zero.
+ * Считает, сколько AI-подсказок ещё доступно в сессии.
+ * @param {number} usedHints - Сколько подсказок уже использовано.
+ * @returns {number} Сколько подсказок осталось, не меньше нуля.
  */
 export function hintsRemaining(usedHints: number): number {
   return Math.max(0, MAX_AI_HINTS_PER_SESSION - usedHints);
 }
 
 export type { InterviewSession };
+
+export { RequestAccessForm } from "./RequestAccessForm";
+export type { RequestAccessFormProps } from "./RequestAccessForm";

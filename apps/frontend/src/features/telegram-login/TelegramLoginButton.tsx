@@ -7,10 +7,10 @@ import { useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
-import { setAccessToken } from "@/shared/api/access-token";
 import { authApi, type TelegramAuthPayload } from "@/shared/api/auth-api";
 import { getLocalizedHref } from "@/shared/i18n";
 import { useLocale, useTranslations } from "@/shared/i18n-context";
+import { useAuthStore } from "@/shared/model/auth-store";
 
 const TELEGRAM_WIDGET_SCRIPT_SRC = "https://telegram.org/js/telegram-widget.js?22";
 // Уникальное имя, чтобы не столкнуться с другим кодом на странице - виджет вызывает
@@ -44,6 +44,7 @@ export function TelegramLoginButton() {
   const auth = useTranslations("auth");
   const containerRef = useRef<HTMLDivElement>(null);
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
+  const setAuthenticated = useAuthStore((state) => state.setAuthenticated);
 
   const telegramLoginMutation = useMutation({
     mutationFn: authApi.telegramLogin,
@@ -53,7 +54,7 @@ export function TelegramLoginButton() {
      * @returns {void}
      */
     onSuccess: (tokens) => {
-      setAccessToken(tokens.accessToken);
+      setAuthenticated(tokens.accessToken);
       router.push(getLocalizedHref("/profile", locale));
     },
   });

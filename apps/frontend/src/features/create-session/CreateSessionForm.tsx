@@ -1,8 +1,10 @@
 "use client";
 
-// Слой features: форма создания сессии - название, язык редактора, приватность и приглашение.
+// Слой features: форма создания сессии - название, язык редактора и приватность.
+// Отправляет реальный POST /sessions; название и язык бэкенд пока не хранит.
 import { useState, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
 
 import { getLocalizedHref } from "@/shared/i18n";
 import { useLocale, useTranslations } from "@/shared/i18n-context";
@@ -12,19 +14,19 @@ import { Card } from "@/shared/ui/card";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
-import type { EditorLanguage, NewSessionDraft } from "@/entities/session";
+import { sessionApi, type ApiSession, type EditorLanguage, type NewSessionDraft } from "@/entities/session";
 
 /**
- * A single option in the "Язык редактора" toggle group.
+ * Один вариант в группе переключателей "Язык редактора".
  */
 interface LanguageOption {
   /**
-   * Language identifier.
+   * Идентификатор языка.
    */
   id: EditorLanguage;
 
   /**
-   * Language label, shown in monospace.
+   * Подпись языка, выводится моноширинным шрифтом.
    */
   label: string;
 }
@@ -34,24 +36,24 @@ const LANGUAGES: LanguageOption[] = [
   { id: "javascript", label: "javascript" },
 ];
 
-const COPY_CONFIRMATION_MS = 2000;
-const DEMO_LAUNCHED_SESSION_ID = "abcdef123456";
+// Совпадает с @MinLength в CreateSessionDto на бэкенде.
+const MIN_PASSWORD_LENGTH = 4;
 
 /**
- * Props for {@link CreateSessionForm}.
+ * Пропсы {@link CreateSessionForm}.
  */
 export interface CreateSessionFormProps {
   /**
-   * Initial draft values to populate the form with.
+   * Начальные значения черновика для заполнения формы.
    */
   draft: NewSessionDraft;
 }
 
 /**
- * Session creation form: title, editor language, a private/access-code toggle and a copyable
- * invite link.
- * @param {CreateSessionFormProps} props - Props for the form.
- * @returns {import('react').ReactNode} The create-session form.
+ * Форма создания сессии: название, язык редактора и переключатель приватности с паролем.
+ * Запуск создаёт сессию на бэкенде и открывает её комнату.
+ * @param {CreateSessionFormProps} props - Пропсы формы.
+ * @returns {import('react').ReactNode} Форма создания сессии.
  */
 export function CreateSessionForm(props: CreateSessionFormProps) {
   const { draft } = props;
@@ -59,31 +61,33 @@ export function CreateSessionForm(props: CreateSessionFormProps) {
   const locale = useLocale();
   const [language, setLanguage] = useState<EditorLanguage>(draft.editorLanguage);
   const [isPrivate, setIsPrivate] = useState(draft.isPrivate);
-  const [copied, setCopied] = useState(false);
+  const [password, setPassword] = useState(draft.accessCode);
   const t = useTranslations("newSession");
 
   /**
-   * Opens the newly created (demo) session.
-   * @param {SubmitEvent<HTMLFormElement>} event - The form submit event.
+   * Открывает комнату только что созданной сессии.
+   * @param {ApiSession} session - Созданная сессия.
+   * @returns {void}
+   */
+  function openCreatedSession(session: ApiSession): void {
+    router.push(getLocalizedHref(`/sessions/${session.id}`, locale));
+  }
+
+  const createMutation = useMutation({ mutationFn: sessionApi.create, onSuccess: openCreatedSession });
+  const isPasswordTooShort = isPrivate && password.length < MIN_PASSWORD_LENGTH;
+
+  /**
+   * Создаёт сессию: закрытую паролем, если отмечена приватность, иначе открытую для заявок.
+   * @param {SubmitEvent<HTMLFormElement>} event - Событие отправки формы.
    * @returns {void}
    */
   function handleSubmit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
-    router.push(getLocalizedHref(`/sessions/${DEMO_LAUNCHED_SESSION_ID}`, locale));
-  }
-
-  /**
-   * Copies the invite link to the clipboard and briefly shows a confirmation.
-   * @returns {Promise<void>} Resolves once the copy attempt settles.
-   */
-  async function handleCopy(): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(draft.inviteLink);
-      setCopied(true);
-      setTimeout(() => setCopied(false), COPY_CONFIRMATION_MS);
-    } catch {
-      // Буфер обмена недоступен (например, нет разрешения)
+    if (isPasswordTooShort) {
+      return;
     }
+
+    createMutation.mutate(isPrivate ? { access: "PASSWORD", password } : { access: "OPEN" });
   }
 
   return (
@@ -128,29 +132,26 @@ export function CreateSessionForm(props: CreateSessionFormProps) {
             />
           </div>
 
-          {isPrivate && <Input readOnly value={draft.accessCode} className="mt-4 font-mono" />}
+          {isPrivate && (
+            <>
+              <Input
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                aria-label={t("privateSession")}
+                className="mt-4 font-mono"
+              />
+              {isPasswordTooShort && <p className="mt-2 text-sm text-destructive">{t("passwordTooShort")}</p>}
+            </>
+          )}
         </Card>
-
-        <div className="space-y-2">
-          <Label htmlFor="session-invite-link">{t("inviteLinkLabel")}</Label>
-          <div className="flex gap-2">
-            <Input
-              id="session-invite-link"
-              readOnly
-              value={draft.inviteLink}
-              className="font-mono text-muted-foreground"
-            />
-            <Button type="button" variant="outline" onClick={handleCopy}>
-              {copied ? t("copied") : t("copy")}
-            </Button>
-          </div>
-        </div>
 
         <p className="text-sm text-muted-foreground">{t("telegramNotice")}</p>
 
-        <Button type="submit" size="lg" className="w-full">
-          {t("launchSession")}
+        <Button type="submit" size="lg" className="w-full" disabled={createMutation.isPending || isPasswordTooShort}>
+          {createMutation.isPending ? t("launchingSession") : t("launchSession")}
         </Button>
+
+        {createMutation.isError && <p className="text-sm text-destructive">{t("createError")}</p>}
       </form>
     </Card>
   );

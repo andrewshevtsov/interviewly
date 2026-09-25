@@ -1,13 +1,12 @@
 /* eslint-disable indent */
 // Слой shared: общие константы без бизнес-логики, доступны всем слоям выше.
 export const MAX_AI_HINTS_PER_SESSION = 3;
-export const SESSION_ID_LENGTH = 12;
 export const MAX_SESSION_SCORE = 10;
 
 /**
- * Text/textarea fields on the profile card, in display order. `group` selects which
- * `useTranslations()` namespace `lang` is looked up in ("common" vs "profile"), `name`
- * is the `<input name="...">` used for `FormData`, and `type` picks the field element.
+ * Текстовые поля карточки профиля в порядке отображения. `group` выбирает пространство имён
+ * `useTranslations()`, в котором ищется `lang` ("common" или "profile"), `name` - это
+ * `<input name="...">` для `FormData`, а `type` определяет элемент поля.
  */
 export const PROFILE_FIELDS = [
     {
@@ -53,8 +52,8 @@ export const PROFILE_FIELDS = [
 ] as const;
 
 /**
- * Classes shared by the level/stack toggle "buttons": a `peer-checked:` variant makes the
- * hidden radio/checkbox's checked state drive the visible style, instead of JS.
+ * Общие классы "кнопок"-переключателей уровня и стека: вариант `peer-checked:` связывает
+ * видимый стиль с состоянием скрытого radio/checkbox без JS.
  */
 export const TOGGLE_UNCHECKED_CLASSES =
     "border-border text-muted-foreground hover:text-foreground transition-colors";

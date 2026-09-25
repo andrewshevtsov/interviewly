@@ -5,9 +5,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 
-import { clearAccessToken } from "@/shared/api/access-token";
 import { authApi } from "@/shared/api/auth-api";
 import { useTranslations } from "@/shared/i18n-context";
+import { useAuthStore } from "@/shared/model/auth-store";
 import { Button } from "@/shared/ui/button";
 
 /**
@@ -18,6 +18,7 @@ import { Button } from "@/shared/ui/button";
 export function LogoutButton() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const setAnonymous = useAuthStore((state) => state.setAnonymous);
   const t = useTranslations("navigation");
 
   const logoutMutation = useMutation({
@@ -28,7 +29,7 @@ export function LogoutButton() {
      * @returns {void}
      */
     onSettled: () => {
-      clearAccessToken();
+      setAnonymous();
       queryClient.removeQueries({ queryKey: ["profile"] });
       queryClient.removeQueries({ queryKey: ["feedback"] });
       router.push("/");
@@ -40,7 +41,7 @@ export function LogoutButton() {
       type="button"
       variant="ghost"
       size="icon"
-      aria-label={t("signOut")}
+      aria-label={t("logout")}
       onClick={() => logoutMutation.mutate()}
       disabled={logoutMutation.isPending}
     >

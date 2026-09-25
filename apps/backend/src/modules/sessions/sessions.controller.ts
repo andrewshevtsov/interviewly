@@ -22,8 +22,10 @@ import type { JwtPayload } from '../auth/auth.types.ts';
 import { CreateAccessRequestDto } from './dto/create-access-request.dto.ts';
 import { CreateSessionDto } from './dto/create-session.dto.ts';
 import { JoinSessionDto } from './dto/join-session.dto.ts';
+import { TransferOwnershipDto } from './dto/transfer-ownership.dto.ts';
 import {
   LivekitTokenResponse,
+  MySessionStateResponse,
   SessionAccessRequestEntity,
   SessionEntity,
   SessionParticipantsResponse,
@@ -50,7 +52,7 @@ export class SessionsController {
   @Post()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Создать сессию (владелец = HOST)' })
+  @ApiOperation({ summary: 'Создать сессию (создатель = владелец, в комнате - INTERVIEWER)' })
   create(
     @CurrentUser('sub') userId: string,
     @Body() dto: CreateSessionDto,
@@ -80,11 +82,25 @@ export class SessionsController {
     return this.sessionsService.findOne(id, actor);
   }
 
+  @Get(':id/me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Моё состояние в комнате: роль участника и статус последней заявки',
+  })
+  getMyState(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('sub') userId: string,
+  ): Promise<MySessionStateResponse> {
+    return this.sessionsService.getMyState(id, userId);
+  }
+
   @Get(':id/participants')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Участники и count — только HOST / участники комнаты / admin',
+    summary: 'Участники и count - только владелец / участники комнаты / admin',
   })
   listParticipants(
     @Param('id', ParseUUIDPipe) id: string,
@@ -98,7 +114,7 @@ export class SessionsController {
   @ApiBearerAuth()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
-    summary: 'Заявка на вход (OPEN/PASSWORD). Принимает только HOST.',
+    summary: 'Заявка на вход (OPEN/PASSWORD). Принимает только владелец.',
   })
   createAccessRequest(
     @Param('id', ParseUUIDPipe) id: string,
@@ -111,7 +127,7 @@ export class SessionsController {
   @Get(':id/access-requests')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Список заявок — только HOST / admin' })
+  @ApiOperation({ summary: 'Список заявок - только владелец / admin' })
   listAccessRequests(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() actor: JwtPayload,
@@ -123,7 +139,7 @@ export class SessionsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Одобрить заявку (HOST)' })
+  @ApiOperation({ summary: 'Одобрить заявку (владелец)' })
   approveAccessRequest(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('requestId', ParseUUIDPipe) requestId: string,
@@ -136,13 +152,28 @@ export class SessionsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Отклонить заявку (HOST)' })
+  @ApiOperation({ summary: 'Отклонить заявку (владелец)' })
   rejectAccessRequest(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('requestId', ParseUUIDPipe) requestId: string,
     @CurrentUser() actor: JwtPayload,
   ): Promise<SessionAccessRequestEntity> {
     return this.sessionsService.rejectAccessRequest(id, requestId, actor);
+  }
+
+  @Post(':id/transfer-ownership')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Передать владение другому интервьюеру сессии (владелец / admin)',
+  })
+  transferOwnership(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: JwtPayload,
+    @Body() dto: TransferOwnershipDto,
+  ): Promise<SessionEntity> {
+    return this.sessionsService.transferOwnership(id, actor, dto);
   }
 
   @Post(':id/join')

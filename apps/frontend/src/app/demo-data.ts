@@ -1,17 +1,51 @@
 // Демо-данные для примера роутинга (app/, app/sessions/*). Не часть FSD -
 // живут рядом с роутами, которые их используют, а не в entities/shared.
-import type { User } from "@/entities/user";
-import type { NewSessionDraft } from "@/entities/session";
+import type { NewSessionDraft, SessionHistoryEntry } from "@/entities/session";
 import type { Profile, ProfileStatsData } from "@/entities/profile";
 import type { Participant } from "@/entities/participant";
 import type { LeaderboardEntry } from "@/entities/leaderboard";
 
-export const DEMO_USER: User = {
-  id: "u-1",
-  displayName: "John Doe",
-  stack: ["TypeScript", "React"],
-  level: "Senior",
-};
+export const DEMO_SESSION_HISTORY: SessionHistoryEntry[] = [
+  {
+    id: "abcdef123456",
+    number: "4092",
+    role: "candidate",
+    title: "Алгоритмы: связные списки",
+    partnerName: "Мария Лебедева",
+    date: "18 августа 2026",
+    duration: "48 мин",
+    hintsUsed: 1,
+    hintsTotal: 3,
+    score: 8,
+    scoreMax: 10,
+  },
+  {
+    id: "a1b2c3d4e5f6",
+    number: "4071",
+    role: "interviewer",
+    title: "System design: сервис нотификаций",
+    partnerName: "Марк Ченов",
+    date: "12 августа 2026",
+    duration: "62 мин",
+    hintsUsed: 0,
+    hintsTotal: 3,
+    score: 9,
+    scoreMax: 10,
+  },
+  {
+    id: "112233445566",
+    number: "3980",
+    role: "candidate",
+    title: "SQL и индексы",
+    partnerName: "Елена Волкова",
+    date: "3 августа 2026",
+    duration: "41 мин",
+    hintsUsed: 3,
+    hintsTotal: 3,
+    score: 6,
+    scoreMax: 10,
+  },
+];
 
 export const DEMO_PROFILE: Profile = {
   name: "Артём Соколов",
@@ -34,7 +68,6 @@ export const DEMO_NEW_SESSION_DRAFT: NewSessionDraft = {
   editorLanguage: "python",
   isPrivate: true,
   accessCode: "SECURE-77-X9",
-  inviteLink: "https://syntax.dev/session/4092",
 };
 
 export const DEMO_PARTICIPANTS: Participant[] = [

@@ -29,8 +29,8 @@ export default tseslint.config(
     },
   },
   {
-    // unbound-method ругается на моки вида expect(repo.method).toHaveBeenCalledWith(...) —
-    // это ложное срабатывание, `this` там ни при чём.
+    // unbound-method ругается на моки вида expect(repo.method).toHaveBeenCalledWith(...) -
+    // ложное срабатывание, `this` ни при чём
     files: ['**/*.spec.ts'],
     rules: {
       '@typescript-eslint/unbound-method': 'off',

@@ -12,10 +12,12 @@ Runtime-матрица: `GET /sessions/permissions`.
 | Сущность | Назначение |
 |----------|------------|
 | `Session` | Комната в БД: owner, `access`, `status`, `livekitRoomName` |
-| `SessionParticipant` | Принятый участник (`HOST` / `INTERVIEWER` / `CANDIDATE`) |
+| `SessionParticipant` | Принятый участник (`INTERVIEWER` / `CANDIDATE`) |
 | `SessionAccessRequest` | Заявка на вход (`PENDING` → approve/reject) |
 
-- При `POST /sessions` создатель становится **HOST**.
+- При `POST /sessions` создатель становится **владельцем** (`Session.ownerId`) и участником с ролью `INTERVIEWER`.
+- Права «хозяина комнаты» (заявки, несколько комнат) определяются по `ownerId`, отдельной роли для этого нет.
+- Владелец может передать комнату другому интервьюеру (например, если нужно срочно отойти): меняется только `ownerId`, роли остаются. Кандидату владение не передаётся — он приходит на интервью один.
 - `livekitRoomName` по умолчанию = `session.id` (отдельное поле на будущее).
 - Видео идёт через **LiveKit SFU**; backend только выдаёт participant JWT.
 
@@ -23,7 +25,7 @@ Runtime-матрица: `GET /sessions/permissions`.
 
 | access | Как попасть |
 |--------|-------------|
-| `OPEN` | Заявка → approve хостом |
+| `OPEN` | Заявка → approve владельцем |
 | `PASSWORD` | Заявка с паролем → approve |
 | `INVITE` | Заявку подать нельзя; нужно уже быть в participants |
 
@@ -40,24 +42,25 @@ LiveKit-token — только для `SCHEDULED` / `READY` / `ACTIVE`.
 
 | Роль | Кто обычно | Сколько активных комнат |
 |------|------------|-------------------------|
-| **HOST** | Создатель / владелец | Несколько (не выкидывается при входе в другую) |
+| **owner** (`Session.ownerId`, не роль) | Создатель; в комнате — INTERVIEWER | Свои комнаты — сколько угодно (не выкидывается из них) |
 | **INTERVIEWER** | Проводящий интервью | Одна: вход в новую → выход из старой |
 | **CANDIDATE** | Кандидат | Одна: вход в новую → выход из старой |
 | **admin** (`isAdmin` в JWT) | Глобальный админ | Видит все сессии; может смотреть заявки/участников |
 
-При смене комнаты у INTERVIEWER/CANDIDATE: `leftAt` в БД + `removeParticipant` в LiveKit. HOST-участия в других комнатах не трогаются.
+При входе в чужую комнату: `leftAt` в БД + `removeParticipant` в LiveKit для остальных активных комнат, кроме тех, которыми пользователь владеет.
 
 ---
 
 ## Кто что может
 
-| Действие | HOST | INTERVIEWER | CANDIDATE | Автор pending-заявки | Admin |
+| Действие | Владелец | INTERVIEWER | CANDIDATE | Автор pending-заявки | Admin |
 |----------|:----:|:-----------:|:---------:|:--------------------:|:-----:|
 | `GET /sessions` (свои) | ✅ | ✅ | ✅ | ✅ | все |
 | `GET /sessions/:id` (карточка без участников) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `GET /sessions/:id/participants` (список + count) | ✅ | ✅ | ✅ | ❌ | ✅ |
 | Подать `access-request` (OPEN/PASSWORD) | — | если ещё не участник | если ещё не участник | — | — |
 | Смотреть / approve / reject заявки | ✅ | ❌ | ❌ | ❌ | ✅ |
+| Передать владение (только другому INTERVIEWER) | ✅ | ❌ | ❌ | ❌ | ✅ |
 | `join` / `livekit-token` | ✅ | ✅ | ✅ | ❌ пока не approved | ❌* |
 
 \* Admin **не** получает LiveKit-token только из-за isAdmin — нужен статус участника.
@@ -78,7 +81,7 @@ POST /auth/login → Bearer
 POST /sessions/:id/access-requests
         │
         ▼
-HOST: GET …/access-requests
+Владелец: GET …/access-requests
       POST …/access-requests/:requestId/approve | reject
         │ (approve → запись в SessionParticipant)
         ▼
@@ -98,14 +101,16 @@ INVITE: шаг с заявкой пропускается, если пользо
 | Метод | Путь | Заметка |
 |-------|------|---------|
 | GET | `/sessions/permissions` | Матрица прав |
-| POST | `/sessions` | Создать; ты = HOST |
+| POST | `/sessions` | Создать; ты = владелец |
 | GET | `/sessions` | Фильтр по пользователю |
 | GET | `/sessions/:id` | Без участников |
 | GET | `/sessions/:id/participants` | count + список |
 | POST | `/sessions/:id/access-requests` | Заявка |
-| GET | `/sessions/:id/access-requests` | Только HOST/admin |
-| POST | `/sessions/:id/access-requests/:requestId/approve` | HOST |
-| POST | `/sessions/:id/access-requests/:requestId/reject` | HOST |
+| GET | `/sessions/:id/me` | Моя роль, `isOwner`, статус моей заявки |
+| GET | `/sessions/:id/access-requests` | Только владелец/admin |
+| POST | `/sessions/:id/access-requests/:requestId/approve` | Владелец |
+| POST | `/sessions/:id/access-requests/:requestId/reject` | Владелец |
+| POST | `/sessions/:id/transfer-ownership` | Владелец/admin; `{ userId }` другого INTERVIEWER, роли не меняются |
 | POST | `/sessions/:id/join` | Уже участник |
 | POST | `/sessions/:id/livekit-token` | JWT для SFU |
 
@@ -119,14 +124,14 @@ INVITE: шаг с заявкой пропускается, если пользо
 2. **Список сессий** не глобальный (кроме admin).
 3. **Участники и count** скрыты от посторонних.
 4. **Вход в медиа** только после accept (или pre-invite).
-5. **Заявки** принимает только HOST (или admin).
+5. **Заявки** принимает только владелец (или admin).
 6. **PASSWORD**: проверка при создании заявки (и при join).
 7. **INVITE**: чужой не может сам себя добавить через заявку.
-8. **Одна активная комната** для INTERVIEWER/CANDIDATE.
+8. **Одна активная комната** на участника (свои комнаты владельца не в счёт).
 9. **API key/secret LiveKit** только на backend; в браузер уходит лишь participant token.
-10. Права централизованы в `sessions.permissions.ts` (`satisfies` + `roleAllowed`, без `as`-кастов).
+10. Права централизованы в `sessions.permissions.ts` (`satisfies`, без `as`-кастов).
 
-Не реализовано (осознанно пока): WS/push «пришла заявка», Nest-уведомления хосту, mute UI, HTTPS для удалённых устройств.
+Не реализовано (осознанно пока): WS/push «пришла заявка», Nest-уведомления владельцу, mute UI, HTTPS для удалённых устройств.
 
 ---
 
@@ -165,7 +170,7 @@ HTTPS Meet → `ws://localhost` иногда режется mixed content; то�
 2. `POST /auth/login` → сохранить `accessToken` в Bearer.
 3. `GET /sessions/permissions`, `GET /sessions`.
 4. Кандидатом: `POST /sessions/…102/access-requests` body `{}`.
-5. Хостом сессии (interviewer на `…102`): `GET …/access-requests` → `…/approve`.
+5. Владельцем сессии (interviewer на `…102`): `GET …/access-requests` → `…/approve`.
 6. Кандидатом: `POST …/join` → `POST …/livekit-token`.
 7. Проверить JWT: `video.room` == `livekitRoomName`, `iss` == `devkey`.
 8. `GET …/participants` — видят host и участники; посторонний — 403.
