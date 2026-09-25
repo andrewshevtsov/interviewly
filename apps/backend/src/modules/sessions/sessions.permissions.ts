@@ -36,6 +36,11 @@ type SessionPermissionsConfig = {
     allowOwner: boolean;
     allowTargetRoles: RoleList;
   };
+  endSession: {
+    description: string;
+    allowAdmin: boolean;
+    allowOwner: boolean;
+  };
   connectToRoom: {
     description: string;
     allowAdmin: boolean;
@@ -94,6 +99,13 @@ export const SESSION_PERMISSIONS = {
     allowAdmin: true,
     allowOwner: true,
     allowTargetRoles: [SessionParticipantRole.INTERVIEWER],
+  },
+
+  endSession: {
+    description:
+      'Завершить интервью для всех (COMPLETED + закрытие LiveKit-комнаты) - владелец или admin',
+    allowAdmin: true,
+    allowOwner: true,
   },
 
   connectToRoom: {

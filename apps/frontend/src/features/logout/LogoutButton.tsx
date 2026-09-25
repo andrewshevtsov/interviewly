@@ -11,9 +11,9 @@ import { useAuthStore } from "@/shared/model/auth-store";
 import { Button } from "@/shared/ui/button";
 
 /**
- * Signs the user out: asks the backend to clear the refresh-token cookie, then clears
- * the in-memory access token, drops any cached profile data and returns to the homepage.
- * @returns {import('react').ReactNode} The logout button.
+ * Разлогинивает пользователя: просит бэкенд очистить куку с refresh-токеном, затем чистит
+ * access-токен в памяти, сбрасывает закэшированные данные профиля и отзывов и возвращает на главную.
+ * @returns {import('react').ReactNode} Кнопка выхода.
  */
 export function LogoutButton() {
   const router = useRouter();
@@ -31,6 +31,7 @@ export function LogoutButton() {
     onSettled: () => {
       setAnonymous();
       queryClient.removeQueries({ queryKey: ["profile"] });
+      queryClient.removeQueries({ queryKey: ["feedback"] });
       router.push("/");
     },
   });

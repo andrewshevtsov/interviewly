@@ -64,6 +64,22 @@ export class SessionParticipantsResponse {
   }
 }
 
+/**
+ * Завершённая сессия в истории пользователя: его роль и остальные участники
+ */
+export class SessionHistoryItemResponse {
+  id!: string;
+  type!: SessionType;
+  startedAt!: Date | null;
+  endedAt!: Date | null;
+  myRole!: SessionParticipantRole;
+  partners!: SessionParticipantEntity[];
+
+  constructor(partial: SessionHistoryItemResponse) {
+    Object.assign(this, partial);
+  }
+}
+
 export class SessionAccessRequestEntity implements SessionAccessRequest {
   id!: string;
   sessionId!: string;

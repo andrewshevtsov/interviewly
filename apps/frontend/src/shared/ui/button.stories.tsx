@@ -19,6 +19,7 @@ const meta = {
   args: {
     children: "Создать сессию",
     disabled: false,
+    isLoading: false,
   },
 } satisfies Meta<typeof Button>;
 
@@ -39,6 +40,8 @@ export const Link: Story = { args: { variant: "link" } };
 export const Destructive: Story = { args: { variant: "destructive", children: "Удалить" } };
 
 export const Disabled: Story = { args: { disabled: true } };
+
+export const Loading: Story = { args: { isLoading: true, children: "Создаём…" } };
 
 export const AllVariants: Story = {
   render: () => (

@@ -3,15 +3,16 @@
 // Слой views: живая комната - получает LiveKit-токен и подключается к SFU. Всё внутри
 // <LiveKitRoom> видит комнату через контекст; уход со страницы отключает от неё
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LiveKitRoom, RoomAudioRenderer, useParticipants } from "@livekit/components-react";
-import { ConnectionError } from "livekit-client";
+import { ConnectionError, DisconnectReason } from "livekit-client";
 
 import { SessionCodeEditor } from "@/widgets/session-code-editor";
 import { SessionHeader } from "@/widgets/session-header";
 import { SessionVideoPanels } from "@/widgets/session-video-panels";
 import { sessionApi } from "@/entities/session";
 import { useTranslations } from "@/shared/i18n-context";
+import { SessionEndedNotice } from "./SessionEndedNotice";
 
 /**
  * Пропсы {@link LiveSessionRoom}.
@@ -55,7 +56,7 @@ function RoomWorkspace(props: RoomWorkspaceProps) {
 
   return (
     <>
-      <SessionHeader sessionId={sessionId} />
+      <SessionHeader sessionId={sessionId} isOwner={isOwner} />
       {mediaUnavailable && (
         <p className="border-b border-border px-6 py-2 text-sm text-muted-foreground">{t("mediaUnavailable")}</p>
       )}
@@ -82,6 +83,8 @@ export function LiveSessionRoom(props: LiveSessionRoomProps) {
   const { sessionId } = props;
   const [connectionFailed, setConnectionFailed] = useState(false);
   const [mediaUnavailable, setMediaUnavailable] = useState(false);
+  const [roomDeleted, setRoomDeleted] = useState(false);
+  const queryClient = useQueryClient();
   const t = useTranslations("session");
 
   /**
@@ -95,6 +98,19 @@ export function LiveSessionRoom(props: LiveSessionRoomProps) {
       setConnectionFailed(true);
     } else {
       setMediaUnavailable(true);
+    }
+  }
+
+  /**
+   * Владелец завершил сессию и закрыл комнату: вместо отключённой комнаты показываем
+   * "интервью завершено" и перечитываем состояние, чтобы шлюз сразу увёл на экран фидбека.
+   * @param {DisconnectReason} [reason] - Причина отключения от комнаты.
+   * @returns {void}
+   */
+  function handleDisconnected(reason?: DisconnectReason): void {
+    if (reason === DisconnectReason.ROOM_DELETED) {
+      setRoomDeleted(true);
+      void queryClient.invalidateQueries({ queryKey: ["sessions", sessionId, "me"] });
     }
   }
 
@@ -115,6 +131,10 @@ export function LiveSessionRoom(props: LiveSessionRoomProps) {
     refetchOnWindowFocus: false,
   });
 
+  if (roomDeleted) {
+    return <SessionEndedNotice />;
+  }
+
   if (tokenQuery.isError || connectionFailed) {
     return <p className="p-6 text-center text-muted-foreground">{t("connectionError")}</p>;
   }
@@ -131,6 +151,7 @@ export function LiveSessionRoom(props: LiveSessionRoomProps) {
       video
       audio
       onError={handleRoomError}
+      onDisconnected={handleDisconnected}
       className="flex h-screen flex-col"
     >
       <RoomWorkspace {...props} mediaUnavailable={mediaUnavailable} />
