@@ -72,4 +72,55 @@ export interface EligibleFeedbackTarget {
   name: string;
 }
 
+/**
+ * Тип интервью, на которое оставлен отзыв, как он хранится в сессии.
+ */
+export type FeedbackSessionType = "BUSINESS" | "MOCK";
+
+/**
+ * Одна запись истории отзывов пользователя: что написал, о ком и по какой сессии.
+ */
+export interface FeedbackHistoryEntry {
+  /**
+   * Идентификатор отзыва.
+   */
+  id: string;
+
+  /**
+   * Сессия, о которой оставлен отзыв.
+   */
+  sessionId: string;
+
+  /**
+   * Участник, о котором отзыв.
+   */
+  targetUser: EligibleFeedbackTarget;
+
+  /**
+   * Тип интервью, которым была сессия.
+   */
+  sessionType: FeedbackSessionType;
+
+  /**
+   * ISO-дата проведения сессии (окончание, иначе начало, иначе план) -
+   * `null`, если у сессии вообще нет дат.
+   */
+  sessionDate: string | null;
+
+  /**
+   * Оценка от 0 до 10.
+   */
+  score: number;
+
+  /**
+   * Свободный комментарий, если оставлен.
+   */
+  comment: string | null;
+
+  /**
+   * ISO-дата написания отзыва.
+   */
+  createdAt: string;
+}
+
 export { feedbackApi } from "./feedback-api";

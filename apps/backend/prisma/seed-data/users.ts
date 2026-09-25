@@ -1,4 +1,4 @@
-import { UserStatus } from '../../src/prisma/generated/enums.ts';
+import { UserStatus } from '../../src/prisma/generated/enums';
 
 // Общий пароль для всех сид-пользователей — только для локальной разработки.
 // seed.ts хеширует его bcrypt-ом ровно так же, как AuthService.register,

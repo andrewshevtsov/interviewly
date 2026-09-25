@@ -339,6 +339,36 @@ export class SessionsService {
   }
 
   /**
+   * Завершает интервью для всех: сессия становится COMPLETED, участники выходят,
+   * LiveKit-комната закрывается. Повторный вызов для завершённой сессии ничего не меняет.
+   */
+  async end(sessionId: string, actor: JwtPayload): Promise<SessionEntity> {
+    const session = await this.requireSession(sessionId);
+    const rule = SESSION_PERMISSIONS.endSession;
+
+    const isAllowed =
+      (rule.allowAdmin && actor.isAdmin) ||
+      (rule.allowOwner && session.ownerId === actor.sub);
+    if (!isAllowed) {
+      throw new ForbiddenException('Only the room owner can end the session');
+    }
+
+    if (session.status === SessionStatus.COMPLETED) {
+      return new SessionEntity(session);
+    }
+    if (CLOSED_STATUSES.has(session.status)) {
+      throw new ConflictException(
+        `Session "${sessionId}" is ${session.status.toLowerCase()}`,
+      );
+    }
+
+    const completed = await this.sessionsRepository.complete(sessionId, new Date());
+    await this.livekitService.deleteRoom(session.livekitRoomName);
+
+    return new SessionEntity(completed);
+  }
+
+  /**
    * Повторный вход уже принятого участника (не заявка).
    */
   async join(

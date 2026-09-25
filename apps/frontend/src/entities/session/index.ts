@@ -88,6 +88,162 @@ export interface SessionHistoryEntry {
 }
 
 /**
+ * Подсказка, которую AI дал во время сессии.
+ */
+export interface SessionHint {
+  /**
+   * Время от начала сессии, когда была запрошена подсказка, например "12:40".
+   */
+  at: string;
+
+  /**
+   * Текст подсказки.
+   */
+  text: string;
+}
+
+/**
+ * Один момент хронологии сессии.
+ */
+export interface SessionTimelineEvent {
+  /**
+   * Время от начала сессии, например "05:30".
+   */
+  at: string;
+
+  /**
+   * Что произошло.
+   */
+  text: string;
+}
+
+/**
+ * Всё, что показывается о прошедшем интервью на его экране: запись истории плюс
+ * задача, итоговый код, подсказки, хронология и AI-резюме.
+ */
+export interface SessionDetails extends SessionHistoryEntry {
+  /**
+   * Название задачи, которую решали на интервью.
+   */
+  taskTitle: string;
+
+  /**
+   * Условие задачи.
+   */
+  taskDescription: string;
+
+  /**
+   * Темы, затронутые на интервью.
+   */
+  topics: string[];
+
+  /**
+   * Отображаемое название языка итогового кода, например "Python".
+   */
+  codeLanguage: string;
+
+  /**
+   * Код на момент завершения интервью.
+   */
+  finalCode: string;
+
+  /**
+   * Подсказки, запрошенные во время интервью, по порядку.
+   */
+  hints: SessionHint[];
+
+  /**
+   * Ключевые моменты интервью, по порядку.
+   */
+  timeline: SessionTimelineEvent[];
+
+  /**
+   * Сколько раз запускали код.
+   */
+  codeRuns: number;
+
+  /**
+   * Сколько раз текущий пользователь терял и восстанавливал соединение.
+   */
+  reconnects: number;
+
+  /**
+   * Что получилось хорошо, по итогам AI.
+   */
+  strengths: string[];
+
+  /**
+   * Что улучшить, по итогам AI.
+   */
+  growthAreas: string[];
+}
+
+/**
+ * Человек, участвовавший в прошедшем интервью, и его роль в нём.
+ */
+export interface PastSessionParticipant {
+  /**
+   * Email аккаунта - то, что идентифицирует участника среди пользователей.
+   */
+  email: string;
+
+  /**
+   * Отображаемое имя.
+   */
+  name: string;
+
+  /**
+   * Роль, которую участник играл в интервью.
+   */
+  role: SessionParticipantRole;
+
+  /**
+   * Сколько раз этот участник терял и восстанавливал соединение.
+   */
+  reconnects: number;
+}
+
+/**
+ * Прошедшее интервью как оно есть, одинаковое для всех: в отличие от {@link SessionDetails},
+ * здесь ничего не зависит от того, кто смотрит - роль, партнёр и переподключения смотрящего
+ * вычисляются из `participants` функцией {@link getSessionDetailsFor}.
+ */
+export interface PastSession extends Omit<SessionDetails, "role" | "partnerName" | "reconnects"> {
+  /**
+   * Все, кто участвовал в интервью.
+   */
+  participants: PastSessionParticipant[];
+}
+
+/**
+ * Описывает прошедшее интервью с точки зрения участника: его роль, его партнёр
+ * и его собственные переподключения.
+ * @param {PastSession} session - прошедшее интервью.
+ * @param {string} viewerEmail - email аккаунта текущего пользователя.
+ * @returns {SessionDetails | null} Интервью с точки зрения смотрящего, либо `null`, если он не участвовал.
+ */
+export function getSessionDetailsFor(session: PastSession, viewerEmail: string): SessionDetails | null {
+  const viewer = session.participants.find((participant) => participant.email === viewerEmail);
+  const partner = session.participants.find((participant) => participant.email !== viewerEmail);
+
+  if (!viewer || !partner) {
+    return null;
+  }
+
+  return { ...session, role: viewer.role, partnerName: partner.name, reconnects: viewer.reconnects };
+}
+
+/**
+ * Возвращает прошедшие интервью, в которых участвовал пользователь, в порядке `sessions`.
+ * @param {PastSession[]} sessions - все прошедшие интервью, сначала новые.
+ * @param {string} viewerEmail - email аккаунта текущего пользователя.
+ * @returns {SessionDetails[]} Собственные интервью пользователя, каждое с его точки зрения.
+ */
+export function getSessionHistoryFor(sessions: PastSession[], viewerEmail: string): SessionDetails[] {
+  return sessions.flatMap((session) => getSessionDetailsFor(session, viewerEmail) ?? []);
+}
+
+/**
  * Участник на экране "Открытая сессия".
  */
 export interface SessionParticipant {
@@ -130,6 +286,17 @@ export interface NewSessionDraft {
    * Код доступа, обязательный для входа при `isPrivate`.
    */
   accessCode: string;
+}
+
+const SESSION_NUMBER_LENGTH = 8;
+
+/**
+ * Короткий код сессии для отображения (выводится как "#1a2b3c4d") - начало её UUID.
+ * @param {string} id - UUID сессии.
+ * @returns {string} Короткий код сессии.
+ */
+export function formatSessionNumber(id: string): string {
+  return id.slice(0, SESSION_NUMBER_LENGTH);
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

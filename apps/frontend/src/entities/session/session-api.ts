@@ -100,6 +100,15 @@ export const sessionApi = {
   },
 
   /**
+   * Завершает интервью для всех и закрывает LiveKit-комнату (только владелец)
+   * @param {string} sessionId - UUID сессии
+   * @returns {Promise<void>} Завершается, когда сессия переведена в COMPLETED
+   */
+  end(sessionId: string): Promise<void> {
+    return httpClient.post(`/sessions/${sessionId}/end`).then(() => undefined);
+  },
+
+  /**
    * Выпускает LiveKit-токен для текущего участника
    * @param {string} sessionId - UUID сессии
    * @returns {Promise<LivekitConnection>} URL сервера, имя комнаты и токен участника

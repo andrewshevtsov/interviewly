@@ -31,22 +31,6 @@ export const httpClient = axios.create({
   withCredentials: true,
 });
 
-httpClient.interceptors.request.use(
-  /**
-   * Добавляет к исходящим запросам access-токен из памяти, если он есть.
-   * @param {InternalAxiosRequestConfig} config - Конфиг исходящего запроса.
-   * @returns {InternalAxiosRequestConfig} Конфиг с заголовком `Authorization`.
-   */
-  (config) => {
-    const accessToken = useAuthStore.getState().accessToken;
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
-    }
-
-    return config;
-  },
-);
-
 let refreshPromise: Promise<string> | null = null;
 
 /**
@@ -68,6 +52,29 @@ export function refreshAccessToken(): Promise<string> {
 
   return refreshPromise;
 }
+
+httpClient.interceptors.request.use(
+  /**
+   * Добавляет к исходящим запросам access-токен из памяти, если он есть. Пока сессия ещё
+   * восстанавливается после загрузки страницы, сначала дожидается refresh - иначе запросы,
+   * ушедшие раньше AuthSessionInit (эффекты детей срабатывают до эффектов layout), получат 401.
+   * @param {InternalAxiosRequestConfig} config - Конфиг исходящего запроса.
+   * @returns {Promise<InternalAxiosRequestConfig>} Конфиг с заголовком `Authorization`.
+   */
+  async (config) => {
+    if (useAuthStore.getState().status === "initializing") {
+      // Гость: запрос уйдёт без токена, а статус выставит AuthSessionInit
+      await refreshAccessToken().catch(() => undefined);
+    }
+
+    const accessToken = useAuthStore.getState().accessToken;
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    }
+
+    return config;
+  },
+);
 
 httpClient.interceptors.response.use(
   /**
