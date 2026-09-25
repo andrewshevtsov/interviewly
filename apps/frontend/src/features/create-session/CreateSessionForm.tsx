@@ -147,7 +147,13 @@ export function CreateSessionForm(props: CreateSessionFormProps) {
 
         <p className="text-sm text-muted-foreground">{t("telegramNotice")}</p>
 
-        <Button type="submit" size="lg" className="w-full" disabled={createMutation.isPending || isPasswordTooShort}>
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full"
+          isLoading={createMutation.isPending}
+          disabled={isPasswordTooShort}
+        >
           {createMutation.isPending ? t("launchingSession") : t("launchSession")}
         </Button>
 

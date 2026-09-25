@@ -222,6 +222,11 @@ export const messages = {
     scoreOutOf: { ru: "из", en: "out of" },
     recording: { ru: "запись", en: "recording" },
     endSession: { ru: "завершить", en: "end session" },
+    endingSession: { ru: "завершаем…", en: "ending…" },
+    endSessionError: { ru: "не удалось завершить", en: "couldn't end session" },
+    leaveSession: { ru: "выйти", en: "leave" },
+    sessionEnded: { ru: "интервью завершено", en: "The interview has ended" },
+    redirectingToFeedback: { ru: "переходим к отзыву…", en: "taking you to the feedback…" },
     participantsSuffix: { ru: "участника", en: "participants" },
     outputLabel: { ru: "вывод", en: "output" },
     syntaxHint: {

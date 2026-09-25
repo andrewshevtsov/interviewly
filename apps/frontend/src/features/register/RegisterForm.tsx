@@ -126,7 +126,7 @@ export function RegisterForm() {
       {passwordMismatch && <p className="text-sm text-destructive">{auth("passwordMismatch")}</p>}
       {registerMutation.isError && <p className="text-sm text-destructive">{auth("registerError")}</p>}
 
-      <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
+      <Button type="submit" className="w-full" isLoading={registerMutation.isPending}>
         {registerMutation.isPending ? auth("registerPending") : auth("register")}
       </Button>
     </form>

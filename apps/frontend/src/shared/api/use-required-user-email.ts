@@ -1,15 +1,14 @@
 "use client";
 
 // Слой shared: email текущего пользователя для UI, который зависит от того, кто смотрит
-// (например, мок-история интервью). Email берётся из payload access-токена в памяти вкладки -
-// только для отображения, права проверяет backend.
+// (например, мок-история интервью). Email берётся из payload access-токена в auth-store -
+// только для отображения, права проверяет backend
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect } from "react";
 
 import { getLocalizedHref } from "@/shared/i18n";
 import { useLocale } from "@/shared/i18n-context";
-import { getAccessToken, subscribeToAccessToken } from "./access-token";
-import { refreshAccessToken } from "./http-client";
+import { useAuthStore } from "@/shared/model/auth-store";
 
 const JWT_PAYLOAD_INDEX = 1;
 
@@ -21,14 +20,6 @@ interface AccessTokenClaims {
    * Email владельца токена.
    */
   email?: unknown;
-}
-
-/**
- * Снэпшот для серверного рендера: до гидратации access-токена ещё нет.
- * @returns {null} Всегда `null`.
- */
-function getServerSnapshot(): null {
-  return null;
 }
 
 /**
@@ -63,27 +54,16 @@ function readEmail(token: string): string | undefined {
 }
 
 /**
- * Email текущего пользователя. Пока сессия ещё восстанавливается после загрузки страницы,
- * возвращает `undefined`; если сессии в итоге нет (гость или после выхода), отправляет
- * посетителя на "/auth" и продолжает возвращать `undefined`.
+ * Email текущего пользователя. Пока сессия восстанавливается после загрузки страницы
+ * (это делает AuthSessionInit), возвращает `undefined`; если сессии в итоге нет (гость или
+ * после выхода), отправляет посетителя на "/auth" и продолжает возвращать `undefined`.
  * @returns {string | undefined} Email текущего пользователя, либо `undefined`, если пока не известен.
  */
 export function useRequiredUserEmail(): string | undefined {
   const router = useRouter();
   const locale = useLocale();
-  const token = useSyncExternalStore(subscribeToAccessToken, getAccessToken, getServerSnapshot);
-  const [isGuest, setIsGuest] = useState(false);
-
-  useEffect(() => {
-    if (token) {
-      setIsGuest(false);
-
-      return;
-    }
-
-    // Тот же запрос, что делает AuthSessionInit: refreshAccessToken склеивает параллельные вызовы.
-    refreshAccessToken().catch(() => setIsGuest(true));
-  }, [token]);
+  const token = useAuthStore((state) => state.accessToken);
+  const isGuest = useAuthStore((state) => state.status === "anonymous");
 
   useEffect(() => {
     if (isGuest) {

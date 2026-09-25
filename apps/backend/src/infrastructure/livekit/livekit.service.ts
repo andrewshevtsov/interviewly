@@ -66,4 +66,17 @@ export class LivekitService {
       );
     }
   }
+
+  /**
+   * Закрывает комнату и отключает всех, кто в ней. Комнаты может уже не быть
+   * (никто не подключался или она закрылась по таймауту) - это не ошибка
+   */
+  async deleteRoom(roomName: string): Promise<void> {
+    try {
+      await this.roomService.deleteRoom(roomName);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.debug(`deleteRoom skipped (${roomName}): ${message}`);
+    }
+  }
 }

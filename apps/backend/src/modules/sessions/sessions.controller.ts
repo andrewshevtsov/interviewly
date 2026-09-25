@@ -176,6 +176,20 @@ export class SessionsController {
     return this.sessionsService.transferOwnership(id, actor, dto);
   }
 
+  @Post(':id/end')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Завершить интервью для всех и закрыть LiveKit-комнату (владелец / admin)',
+  })
+  end(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: JwtPayload,
+  ): Promise<SessionEntity> {
+    return this.sessionsService.end(id, actor);
+  }
+
   @Post(':id/join')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

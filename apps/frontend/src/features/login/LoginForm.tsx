@@ -76,7 +76,7 @@ export function LoginForm() {
 
       {loginMutation.isError && <p className="text-sm text-destructive">{auth("loginError")}</p>}
 
-      <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+      <Button type="submit" className="w-full" isLoading={loginMutation.isPending}>
         {loginMutation.isPending ? auth("loginPending") : auth("login")}
       </Button>
     </form>

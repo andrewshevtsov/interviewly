@@ -1,4 +1,5 @@
 import { SessionFeedbackPage } from "@/views/session-feedback-page";
+import { formatSessionNumber } from "@/entities/session";
 import { DEMO_PAST_SESSIONS } from "@/app/demo-session-details";
 
 /**
@@ -19,19 +20,19 @@ export interface FeedbackPageProps {
 }
 
 /**
- * Route "/sessions/[sessionId]/feedback" - the post-session feedback form.
+ * Роут "/sessions/[sessionId]/feedback" форма отзыва после сессии. Для мок-интервью
+ * номер и оценка берутся из демо-данных, для реальной сессии короткий код из её UUID
  * @param {FeedbackPageProps} props - Route props.
  * @returns {import('react').ReactNode} The session feedback page.
  */
 export default async function Page(props: FeedbackPageProps) {
   const { sessionId } = await props.params;
-  // Для неизвестного демо-ID (например, у живой комнаты) берём первую мок-сессию.
-  const demoSession = DEMO_PAST_SESSIONS.find((entry) => entry.id === sessionId) ?? DEMO_PAST_SESSIONS[0];
+  const demoSession = DEMO_PAST_SESSIONS.find((entry) => entry.id === sessionId);
 
   return (
     <SessionFeedbackPage
       sessionId={sessionId}
-      sessionNumber={demoSession?.number ?? ""}
+      sessionNumber={demoSession?.number ?? formatSessionNumber(sessionId)}
       defaultScore={demoSession?.score ?? 0}
     />
   );

@@ -288,6 +288,17 @@ export interface NewSessionDraft {
   accessCode: string;
 }
 
+const SESSION_NUMBER_LENGTH = 8;
+
+/**
+ * Короткий код сессии для отображения (выводится как "#1a2b3c4d") - начало её UUID.
+ * @param {string} id - UUID сессии.
+ * @returns {string} Короткий код сессии.
+ */
+export function formatSessionNumber(id: string): string {
+  return id.slice(0, SESSION_NUMBER_LENGTH);
+}
+
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
