@@ -2,7 +2,7 @@
 // чтобы браузер отправлял httpOnly-куку с refresh-токеном на /auth/refresh.
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 
-import { clearAccessToken, getAccessToken, setAccessToken } from "./access-token";
+import { useAuthStore } from "@/shared/model/auth-store";
 
 const HTTP_UNAUTHORIZED = 401;
 
@@ -39,7 +39,7 @@ httpClient.interceptors.request.use(
    * @returns {InternalAxiosRequestConfig} The config with an `Authorization` header attached.
    */
   (config) => {
-    const accessToken = getAccessToken();
+    const accessToken = useAuthStore.getState().accessToken;
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
@@ -59,7 +59,7 @@ export function refreshAccessToken(): Promise<string> {
   refreshPromise ??= axios
     .post<RefreshResponse>(`${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`, undefined, { withCredentials: true })
     .then(({ data }) => {
-      setAccessToken(data.accessToken);
+      useAuthStore.getState().setAuthenticated(data.accessToken);
 
       return data.accessToken;
     })
@@ -99,7 +99,7 @@ httpClient.interceptors.response.use(
 
         return httpClient(originalRequest);
       } catch {
-        clearAccessToken();
+        useAuthStore.getState().setAnonymous();
       }
     }
 
