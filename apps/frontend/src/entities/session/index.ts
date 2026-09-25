@@ -205,42 +205,13 @@ export interface PastSessionParticipant {
 
 /**
  * Прошедшее интервью как оно есть, одинаковое для всех: в отличие от {@link SessionDetails},
- * здесь ничего не зависит от того, кто смотрит - роль, партнёр и переподключения смотрящего
- * вычисляются из `participants` функцией {@link getSessionDetailsFor}.
+ * здесь ничего не зависит от того, кто смотрит. Мок-данные для размытых секций экрана интервью
  */
 export interface PastSession extends Omit<SessionDetails, "role" | "partnerName" | "reconnects"> {
   /**
    * Все, кто участвовал в интервью.
    */
   participants: PastSessionParticipant[];
-}
-
-/**
- * Описывает прошедшее интервью с точки зрения участника: его роль, его партнёр
- * и его собственные переподключения.
- * @param {PastSession} session - прошедшее интервью.
- * @param {string} viewerEmail - email аккаунта текущего пользователя.
- * @returns {SessionDetails | null} Интервью с точки зрения смотрящего, либо `null`, если он не участвовал.
- */
-export function getSessionDetailsFor(session: PastSession, viewerEmail: string): SessionDetails | null {
-  const viewer = session.participants.find((participant) => participant.email === viewerEmail);
-  const partner = session.participants.find((participant) => participant.email !== viewerEmail);
-
-  if (!viewer || !partner) {
-    return null;
-  }
-
-  return { ...session, role: viewer.role, partnerName: partner.name, reconnects: viewer.reconnects };
-}
-
-/**
- * Возвращает прошедшие интервью, в которых участвовал пользователь, в порядке `sessions`.
- * @param {PastSession[]} sessions - все прошедшие интервью, сначала новые.
- * @param {string} viewerEmail - email аккаунта текущего пользователя.
- * @returns {SessionDetails[]} Собственные интервью пользователя, каждое с его точки зрения.
- */
-export function getSessionHistoryFor(sessions: PastSession[], viewerEmail: string): SessionDetails[] {
-  return sessions.flatMap((session) => getSessionDetailsFor(session, viewerEmail) ?? []);
 }
 
 /**
@@ -340,6 +311,19 @@ export type ApiSessionRole = "INTERVIEWER" | "CANDIDATE";
 export type AccessRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 /**
+ * Тип интервью: бизнес (найм) или мок (тренировка)
+ */
+export type SessionType = "BUSINESS" | "MOCK";
+
+/**
+ * Ключи переводов (namespace "session") для названия типа интервью - у сессии нет своего названия
+ */
+export const SESSION_TYPE_LABEL_KEYS = {
+  BUSINESS: "typeBusiness",
+  MOCK: "typeMock",
+} as const satisfies Record<SessionType, string>;
+
+/**
  * Сессия в ответе бэкенда (без участников и пароля).
  */
 export interface ApiSession {
@@ -362,6 +346,21 @@ export interface ApiSession {
    * Этап жизненного цикла.
    */
   status: SessionStatus;
+
+  /**
+   * Тип интервью
+   */
+  type: SessionType;
+
+  /**
+   * ISO-время, когда в комнате собрались двое, либо `null`, если интервью не начиналось
+   */
+  startedAt: string | null;
+
+  /**
+   * ISO-время завершения, либо `null`, если сессия не завершена
+   */
+  endedAt: string | null;
 }
 
 /**
@@ -504,6 +503,81 @@ export interface LivekitConnection {
   token: string;
 }
 
+/**
+ * Завершённая сессия в ответе `GET /sessions/history`
+ */
+export interface ApiSessionHistoryItem extends Pick<ApiSession, "id" | "type" | "startedAt" | "endedAt"> {
+  /**
+   * Роль текущего пользователя в сессии
+   */
+  myRole: ApiSessionRole;
+
+  /**
+   * Остальные участники сессии
+   */
+  partners: ApiSessionParticipant[];
+}
+
+/**
+ * Второй участник завершённой сессии глазами текущего пользователя
+ */
+export interface CompletedSessionPartner {
+  /**
+   * UUID пользователя
+   */
+  userId: string;
+
+  /**
+   * Отображаемое имя
+   */
+  name: string;
+
+  /**
+   * Роль в интервью
+   */
+  role: SessionParticipantRole;
+}
+
+/**
+ * Завершённая сессия с точки зрения текущего пользователя - только то, что есть в данных бэкенда
+ */
+export interface CompletedSession {
+  /**
+   * UUID сессии
+   */
+  id: string;
+
+  /**
+   * Короткий код для отображения (выводится как "#1a2b3c4d")
+   */
+  number: string;
+
+  /**
+   * Тип интервью
+   */
+  type: SessionType;
+
+  /**
+   * ISO-дата интервью (окончание, иначе начало) - `null`, если дат нет
+   */
+  date: string | null;
+
+  /**
+   * Длительность в минутах - `null`, если интервью не начиналось
+   */
+  durationMinutes: number | null;
+
+  /**
+   * Роль текущего пользователя
+   */
+  myRole: SessionParticipantRole;
+
+  /**
+   * Остальные участники.
+   */
+  partners: CompletedSessionPartner[];
+}
+
 const CLOSED_SESSION_STATUSES: ReadonlySet<SessionStatus> = new Set(["COMPLETED", "CANCELLED", "EXPIRED"]);
 
 /**
@@ -531,6 +605,36 @@ export function toParticipantRole(role: ApiSessionRole): SessionParticipantRole 
  */
 export function formatUserName(user: SessionUserSummary): string {
   return user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName;
+}
+
+const MS_PER_MINUTE = 60_000;
+
+/**
+ * Собирает завершённую сессию для экрана из ответа бэкенда
+ * @param {ApiSessionHistoryItem} item - Сессия, роль текущего пользователя и остальные участники
+ * @returns {CompletedSession} Сессия для отображения
+ */
+export function toCompletedSession(item: ApiSessionHistoryItem): CompletedSession {
+  const { id, type, startedAt, endedAt, myRole, partners } = item;
+  const durationMinutes =
+    startedAt && endedAt
+      // Округление вверх до минуты
+      ? Math.ceil((new Date(endedAt).getTime() - new Date(startedAt).getTime()) / MS_PER_MINUTE)
+      : null;
+
+  return {
+    id,
+    number: formatSessionNumber(id),
+    type,
+    date: endedAt ?? startedAt,
+    durationMinutes,
+    myRole: toParticipantRole(myRole),
+    partners: partners.map((partner) => ({
+      userId: partner.userId,
+      name: formatUserName(partner.user),
+      role: toParticipantRole(partner.role),
+    })),
+  };
 }
 
 export { sessionApi } from "./session-api";

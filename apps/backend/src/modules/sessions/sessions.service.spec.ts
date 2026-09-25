@@ -17,6 +17,7 @@ const session = {
   ownerId: OWNER_ID,
   status: SessionStatus.ACTIVE,
   livekitRoomName: SESSION_ID,
+  startedAt: null,
 };
 
 function createMockRepository(): Mocked<SessionsRepository> {
@@ -25,6 +26,12 @@ function createMockRepository(): Mocked<SessionsRepository> {
     findParticipant: vi.fn(),
     updateOwner: vi.fn(),
     complete: vi.fn(),
+    findCompletedForUser: vi.fn(),
+    upsertParticipant: vi.fn(),
+    findActiveParticipations: vi.fn(),
+    findUserById: vi.fn(),
+    countPresentParticipants: vi.fn(),
+    markStarted: vi.fn(),
   } as unknown as Mocked<SessionsRepository>;
 }
 
@@ -35,7 +42,11 @@ describe('SessionsService', () => {
 
   beforeEach(() => {
     repository = createMockRepository();
-    livekit = { deleteRoom: vi.fn() } as unknown as Mocked<LivekitService>;
+    livekit = {
+      deleteRoom: vi.fn(),
+      createParticipantToken: vi.fn().mockResolvedValue('token'),
+      getServerUrl: vi.fn().mockReturnValue('ws://livekit'),
+    } as unknown as Mocked<LivekitService>;
     service = new SessionsService(repository, livekit);
     repository.findById.mockResolvedValue(session as never);
   });
@@ -143,6 +154,67 @@ describe('SessionsService', () => {
       repository.findById.mockResolvedValue({ ...session, status: SessionStatus.CANCELLED } as never);
 
       await expect(service.end(SESSION_ID, owner)).rejects.toBeInstanceOf(ConflictException);
+    });
+  });
+
+  describe('createLivekitToken', () => {
+    beforeEach(() => {
+      repository.findById.mockResolvedValue({ ...session, status: SessionStatus.READY } as never);
+      repository.findParticipant.mockResolvedValue({ role: SessionParticipantRole.CANDIDATE } as never);
+      repository.findActiveParticipations.mockResolvedValue([]);
+      repository.findUserById.mockResolvedValue({ firstName: 'Clara', lastName: null, email: 'c@test' } as never);
+    });
+
+    it('не начинает интервью, пока в комнате один участник', async () => {
+      repository.countPresentParticipants.mockResolvedValue(1);
+
+      await service.createLivekitToken(SESSION_ID, CANDIDATE_ID);
+
+      expect(repository.markStarted).not.toHaveBeenCalled();
+    });
+
+    it('начинает интервью, когда в комнату вошёл второй участник', async () => {
+      repository.countPresentParticipants.mockResolvedValue(2);
+
+      await service.createLivekitToken(SESSION_ID, CANDIDATE_ID);
+
+      expect(repository.markStarted).toHaveBeenCalledWith(SESSION_ID, expect.any(Date));
+    });
+
+    it('не переписывает время начала при повторном входе', async () => {
+      repository.findById.mockResolvedValue({ ...session, startedAt: new Date() } as never);
+
+      await service.createLivekitToken(SESSION_ID, CANDIDATE_ID);
+
+      expect(repository.countPresentParticipants).not.toHaveBeenCalled();
+      expect(repository.markStarted).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('findHistory', () => {
+    it('возвращает завершённые сессии с ролью пользователя и остальными участниками', async () => {
+      const startedAt = new Date('2026-08-28T16:05:00.000Z');
+      const endedAt = new Date('2026-08-28T16:52:00.000Z');
+      repository.findCompletedForUser.mockResolvedValue([
+        {
+          ...session,
+          type: 'MOCK',
+          status: SessionStatus.COMPLETED,
+          startedAt,
+          endedAt,
+          participants: [
+            { userId: OWNER_ID, role: SessionParticipantRole.INTERVIEWER },
+            { userId: CANDIDATE_ID, role: SessionParticipantRole.CANDIDATE },
+          ],
+        },
+      ] as never);
+
+      const [item] = await service.findHistory(CANDIDATE_ID);
+
+      expect(repository.findCompletedForUser).toHaveBeenCalledWith(CANDIDATE_ID);
+      expect(item).toMatchObject({ id: SESSION_ID, type: 'MOCK', startedAt, endedAt });
+      expect(item?.myRole).toBe(SessionParticipantRole.CANDIDATE);
+      expect(item?.partners.map((partner) => partner.userId)).toEqual([OWNER_ID]);
     });
   });
 });

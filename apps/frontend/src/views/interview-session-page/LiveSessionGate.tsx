@@ -111,7 +111,7 @@ export function LiveSessionGate(props: LiveSessionGateProps) {
   useEffect(() => {
     if (isCompletedForParticipant) {
       router.replace(
-        getLocalizedHref(`/sessions/${sessionId}/feedback`, locale)
+        getLocalizedHref(`/sessions/${sessionId}/feedback`, locale),
       );
     }
   }, [isCompletedForParticipant, router, locale, sessionId]);

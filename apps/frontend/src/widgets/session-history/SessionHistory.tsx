@@ -1,34 +1,37 @@
 "use client";
 
-// Слой widgets: секция "История интервью" - прошедшие сессии пользователя с оценками.
-import { useTranslations } from "@/shared/i18n-context";
+// Слой widgets: секция "История интервью" - завершённые сессии пользователя из данных бэкенда
+import { useLocale, useTranslations } from "@/shared/i18n-context";
+import { formatDate } from "@/shared/lib/format-date";
 import { Badge } from "@/shared/ui/badge";
 import { Card } from "@/shared/ui/card";
+import { ComingSoon } from "@/shared/ui/coming-soon";
 import { LocalizedLink } from "@/shared/ui/localized-link";
-import type { SessionHistoryEntry, SessionParticipantRole } from "@/entities/session";
-
-const ROLE_LABEL_KEYS: Record<SessionParticipantRole, "interviewer" | "candidate"> = {
-  candidate: "candidate",
-  interviewer: "interviewer",
-};
+import { SESSION_TYPE_LABEL_KEYS, type CompletedSession, type PastSession } from "@/entities/session";
 
 /**
- * Props for {@link SessionHistory}.
+ * Пропсы {@link SessionHistory}.
  */
 export interface SessionHistoryProps {
   /**
-   * Past sessions to list, most recent first.
+   * Завершённые сессии пользователя, сначала последние
    */
-  entries: SessionHistoryEntry[];
+  entries: CompletedSession[];
+
+  /**
+   * Мок-интервью - источник значений для размытых подсказок
+   */
+  placeholder: PastSession;
 }
 
 /**
- * "История интервью" section: past sessions with role, participants, hints used and score.
- * @param {SessionHistoryProps} props - Props for the section.
- * @returns {import('react').ReactNode} The session history section.
+ * Секция "История интервью": заголовок и карточки завершённых сессий со ссылками на их экраны
+ * @param {SessionHistoryProps} props - пропсы секции
+ * @returns {import('react').ReactNode} История интервью
  */
 export function SessionHistory(props: SessionHistoryProps) {
-  const { entries } = props;
+  const { entries, placeholder } = props;
+  const locale = useLocale();
   const t = useTranslations("session");
 
   return (
@@ -39,39 +42,43 @@ export function SessionHistory(props: SessionHistoryProps) {
       {entries.length === 0 && <p className="mt-10 text-muted-foreground">{t("historyEmpty")}</p>}
 
       <div className="mt-10 space-y-4">
-        {entries.map((entry) => (
-          <LocalizedLink
-            key={entry.id}
-            href={`/sessions/${entry.id}/summary`}
-            className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <Card className="flex items-center gap-4 p-5 transition-colors hover:border-primary/60">
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <Badge variant="muted" className="rounded-md font-mono text-[10px]">
-                    #{entry.number}
-                  </Badge>
-                  <span className="text-xs font-semibold uppercase tracking-wide text-primary">
-                    {t(ROLE_LABEL_KEYS[entry.role])}
-                  </span>
+        {entries.map((entry) => {
+          const meta = [
+            entry.partners.map((partner) => partner.name).join(", "),
+            entry.date && formatDate(entry.date, locale),
+            entry.durationMinutes !== null && `${entry.durationMinutes} ${t.raw("minutesShort")}`,
+          ].filter(Boolean);
+
+          return (
+            <LocalizedLink
+              key={entry.id}
+              href={`/sessions/${entry.id}/summary`}
+              className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Card className="flex items-center gap-4 p-5 transition-colors hover:border-primary/60">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="muted" className="rounded-md font-mono text-[10px]">
+                      #{entry.number}
+                    </Badge>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-primary">
+                      {t(entry.myRole)}
+                    </span>
+                  </div>
+
+                  <p className="mt-2 font-semibold">{t(SESSION_TYPE_LABEL_KEYS[entry.type])}</p>
+                  <p className="text-sm text-muted-foreground">{meta.join(" · ")}</p>
                 </div>
 
-                <p className="mt-2 font-semibold">{entry.title}</p>
-                <p className="text-sm text-muted-foreground">
-                  {entry.partnerName} · {entry.date} · {entry.duration} · {t("hintsUsedLabel")}:{" "}
-                  {entry.hintsUsed}/{entry.hintsTotal}
-                </p>
-              </div>
-
-              <div className="text-center">
-                <p className="text-3xl font-bold text-primary">{entry.score}</p>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                  {t("scoreOutOf")} {entry.scoreMax}
-                </p>
-              </div>
-            </Card>
-          </LocalizedLink>
-        ))}
+                <ComingSoon label={t("comingSoon")}>
+                  <p className="text-sm text-muted-foreground">
+                    {t("hintsUsedLabel")}: {placeholder.hintsUsed}/{placeholder.hintsTotal}
+                  </p>
+                </ComingSoon>
+              </Card>
+            </LocalizedLink>
+          );
+        })}
       </div>
     </section>
   );
