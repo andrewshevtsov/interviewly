@@ -1,157 +1,369 @@
 // Слой entities: описывает бизнес-сущность "сессия интервью".
 // Разрешено импортировать из shared.
 import { formatLevel } from "@/shared/lib/format-level";
-import { SESSION_ID_LENGTH } from "@/shared/config/constants";
 
 /**
- * A single interview session.
+ * Одна сессия интервью.
  */
 export interface InterviewSession {
   /**
-   * Unique session identifier.
+   * Уникальный идентификатор сессии.
    */
   id: string;
 
   /**
-   * Human-readable session title.
+   * Название сессии для людей.
    */
   title: string;
 
   /**
-   * Current lifecycle state of the session.
+   * Текущий этап жизненного цикла сессии.
    */
   status: "scheduled" | "active" | "completed";
 }
 
 /**
- * The signed-in user's part in a past session, shown on the "История" screen.
+ * Роль текущего пользователя в прошедшей сессии, показывается на экране "История".
  */
 export type SessionParticipantRole = "candidate" | "interviewer";
 
 /**
- * A completed interview session entry, shown on the "История интервью" screen.
+ * Запись о завершённой сессии интервью на экране "История интервью".
  */
 export interface SessionHistoryEntry {
   /**
-   * Unique session identifier.
+   * Уникальный идентификатор сессии.
    */
   id: string;
 
   /**
-   * Short display code, e.g. "4092" (shown as "#4092").
+   * Короткий код для отображения, например "4092" (выводится как "#4092").
    */
   number: string;
 
   /**
-   * The signed-in user's role in this session.
+   * Роль текущего пользователя в этой сессии.
    */
   role: SessionParticipantRole;
 
   /**
-   * Human-readable session title, e.g. "Алгоритмы: связные списки".
+   * Название сессии, например "Алгоритмы: связные списки".
    */
   title: string;
 
   /**
-   * Display name of the other participant.
+   * Отображаемое имя второго участника.
    */
   partnerName: string;
 
   /**
-   * Session date, formatted for display (e.g. "18 августа 2026").
+   * Дата сессии в формате для отображения (например, "18 августа 2026").
    */
   date: string;
 
   /**
-   * Session length, formatted for display (e.g. "48 мин").
+   * Длительность сессии в формате для отображения (например, "48 мин").
    */
   duration: string;
 
   /**
-   * Number of AI hints used during the session.
+   * Сколько AI-подсказок использовано за сессию.
    */
   hintsUsed: number;
 
   /**
-   * Number of AI hints available for the session.
+   * Сколько AI-подсказок доступно в сессии.
    */
   hintsTotal: number;
 
   /**
-   * Score awarded for the session.
+   * Оценка за сессию.
    */
   score: number;
 
   /**
-   * Maximum possible score.
+   * Максимально возможная оценка.
    */
   scoreMax: number;
 }
 
 /**
- * A participant shown on the "Открытая сессия" screen.
+ * Участник на экране "Открытая сессия".
  */
 export interface SessionParticipant {
   /**
-   * Display name.
+   * Отображаемое имя.
    */
   name: string;
 
   /**
-   * The participant's role in this session.
+   * Роль участника в этой сессии.
    */
   role: SessionParticipantRole;
 }
 
 /**
- * Code editor language offered when creating a session.
+ * Язык редактора кода, предлагаемый при создании сессии.
  */
 export type EditorLanguage = "python" | "javascript";
 
 /**
- * Draft values for the "Новая сессия" creation form.
+ * Черновые значения формы создания "Новая сессия".
  */
 export interface NewSessionDraft {
   /**
-   * Session title.
+   * Название сессии.
    */
   title: string;
 
   /**
-   * Code editor language for the session.
+   * Язык редактора кода в сессии.
    */
   editorLanguage: EditorLanguage;
 
   /**
-   * Whether the session requires the access code below to join.
+   * Нужен ли для входа в сессию код доступа ниже.
    */
   isPrivate: boolean;
 
   /**
-   * Access code required to join when `isPrivate` is set.
+   * Код доступа, обязательный для входа при `isPrivate`.
    */
   accessCode: string;
-
-  /**
-   * Shareable invite link for the session.
-   */
-  inviteLink: string;
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
- * Checks whether a string is a valid session identifier.
- * @param {string} id - Candidate session identifier.
- * @returns {boolean} `true` if `id` has the expected session ID length.
+ * Проверяет, что строка - корректный идентификатор сессии (на бэкенде id сессий - UUID).
+ * @param {string} id - Проверяемый идентификатор сессии.
+ * @returns {boolean} `true`, если `id` - UUID.
  */
 export function isValidSessionId(id: string): boolean {
-  return id.length === SESSION_ID_LENGTH;
+  return UUID_PATTERN.test(id);
 }
 
 /**
- * Formats a session's experience level for display.
- * @param {string} level - Raw experience level, e.g. "junior", "middle", "senior".
- * @returns {string} Human-readable representation of the level.
+ * Форматирует уровень сессии для отображения.
+ * @param {string} level - Исходный уровень, например "junior", "middle", "senior".
+ * @returns {string} Уровень в читаемом виде.
  */
 export function describeSessionLevel(level: string): string {
   return formatLevel(level);
 }
+
+/**
+ * Кто может попасть в сессию: по одобрению владельца, по одобрению и паролю или только по приглашению.
+ */
+export type SessionAccess = "OPEN" | "PASSWORD" | "INVITE";
+
+/**
+ * Этап жизненного цикла сессии в том виде, как он хранится на бэкенде.
+ */
+export type SessionStatus = "DRAFT" | "SCHEDULED" | "READY" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "EXPIRED";
+
+/**
+ * Роль участника в том виде, как она хранится на бэкенде. Владелец сессии входит как интервьюер.
+ */
+export type ApiSessionRole = "INTERVIEWER" | "CANDIDATE";
+
+/**
+ * Состояние заявки на вход в сессию.
+ */
+export type AccessRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+/**
+ * Сессия в ответе бэкенда (без участников и пароля).
+ */
+export interface ApiSession {
+  /**
+   * UUID сессии.
+   */
+  id: string;
+
+  /**
+   * UUID пользователя, создавшего сессию.
+   */
+  ownerId: string;
+
+  /**
+   * Кто может попасть в сессию.
+   */
+  access: SessionAccess;
+
+  /**
+   * Этап жизненного цикла.
+   */
+  status: SessionStatus;
+}
+
+/**
+ * Тело запроса `POST /sessions`.
+ */
+export interface CreateSessionInput {
+  /**
+   * Кто может попасть в сессию.
+   */
+  access: SessionAccess;
+
+  /**
+   * Пароль комнаты, обязателен при `access` = `"PASSWORD"`.
+   */
+  password?: string;
+}
+
+/**
+ * Публичные поля пользователя, которые видят другие люди в комнате.
+ */
+export interface SessionUserSummary {
+  /**
+   * UUID пользователя.
+   */
+  id: string;
+
+  /**
+   * Имя.
+   */
+  firstName: string;
+
+  /**
+   * Фамилия, если указана.
+   */
+  lastName: string | null;
+
+  /**
+   * Email аккаунта.
+   */
+  email: string;
+}
+
+/**
+ * Положение текущего пользователя в сессии - определяет, какой экран покажет комната.
+ */
+export interface MySessionState {
+  /**
+   * UUID текущего пользователя.
+   */
+  userId: string;
+
+  /**
+   * Является ли пользователь владельцем сессии - владелец впускает участников.
+   */
+  isOwner: boolean;
+
+  /**
+   * Этап жизненного цикла сессии.
+   */
+  sessionStatus: SessionStatus;
+
+  /**
+   * Кто может попасть в сессию (отсюда видно, нужен ли пароль).
+   */
+  access: SessionAccess;
+
+  /**
+   * Роль пользователя или `null`, если он ещё не участник.
+   */
+  role: ApiSessionRole | null;
+
+  /**
+   * Состояние последней заявки пользователя или `null`, если он её не подавал.
+   */
+  accessRequestStatus: AccessRequestStatus | null;
+}
+
+/**
+ * Заявка на вход в сессию глазами её владельца.
+ */
+export interface AccessRequest {
+  /**
+   * UUID заявки.
+   */
+  id: string;
+
+  /**
+   * Состояние заявки.
+   */
+  status: AccessRequestStatus;
+
+  /**
+   * Роль, которую автор заявки получит после одобрения.
+   */
+  requestedRole: ApiSessionRole;
+
+  /**
+   * Кто подал заявку.
+   */
+  requester: SessionUserSummary;
+}
+
+/**
+ * Человек, впущенный в сессию, как его возвращает `GET /sessions/:id/participants`.
+ */
+export interface ApiSessionParticipant {
+  /**
+   * UUID пользователя.
+   */
+  userId: string;
+
+  /**
+   * Роль участника.
+   */
+  role: ApiSessionRole;
+
+  /**
+   * Кто этот участник.
+   */
+  user: SessionUserSummary;
+}
+
+/**
+ * Что нужно клиенту LiveKit для подключения к комнате сессии.
+ */
+export interface LivekitConnection {
+  /**
+   * URL сигналинга LiveKit, например "ws://localhost:7880".
+   */
+  serverUrl: string;
+
+  /**
+   * Имя комнаты LiveKit.
+   */
+  roomName: string;
+
+  /**
+   * JWT участника для этой комнаты.
+   */
+  token: string;
+}
+
+const CLOSED_SESSION_STATUSES: ReadonlySet<SessionStatus> = new Set(["COMPLETED", "CANCELLED", "EXPIRED"]);
+
+/**
+ * Проверяет, что в сессию больше нельзя войти.
+ * @param {SessionStatus} status - Этап жизненного цикла сессии.
+ * @returns {boolean} `true`, если сессия завершена, отменена или истекла.
+ */
+export function isSessionClosed(status: SessionStatus): boolean {
+  return CLOSED_SESSION_STATUSES.has(status);
+}
+
+/**
+ * Переводит роль с бэкенда в роль для интерфейса.
+ * @param {ApiSessionRole} role - Роль в том виде, как она хранится на бэкенде.
+ * @returns {SessionParticipantRole} Роль для интерфейса.
+ */
+export function toParticipantRole(role: ApiSessionRole): SessionParticipantRole {
+  return role === "CANDIDATE" ? "candidate" : "interviewer";
+}
+
+/**
+ * Отображаемое имя пользователя: "Имя Фамилия" или только имя.
+ * @param {SessionUserSummary} user - Пользователь.
+ * @returns {string} Имя для отображения.
+ */
+export function formatUserName(user: SessionUserSummary): string {
+  return user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName;
+}
+
+export { sessionApi } from "./session-api";

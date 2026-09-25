@@ -11,6 +11,7 @@ import {
   SessionStatus,
   SessionType,
 } from '../../../prisma/generated/enums.ts';
+import type { SessionUserSummary } from '../sessions.types.ts';
 
 export class SessionParticipantEntity implements SessionParticipant {
   userId!: string;
@@ -22,8 +23,11 @@ export class SessionParticipantEntity implements SessionParticipant {
   offlineSeconds!: number;
   createdAt!: Date;
   updatedAt!: Date;
+  user?: SessionUserSummary;
 
-  constructor(partial: Partial<SessionParticipant>) {
+  constructor(
+    partial: Partial<SessionParticipant> & { user?: SessionUserSummary },
+  ) {
     Object.assign(this, partial);
   }
 }
@@ -70,8 +74,28 @@ export class SessionAccessRequestEntity implements SessionAccessRequest {
   reviewedAt!: Date | null;
   createdAt!: Date;
   updatedAt!: Date;
+  requester?: SessionUserSummary;
 
-  constructor(partial: Partial<SessionAccessRequest>) {
+  constructor(
+    partial: Partial<SessionAccessRequest> & { requester?: SessionUserSummary },
+  ) {
+    Object.assign(this, partial);
+  }
+}
+
+/**
+ * Состояние текущего пользователя относительно комнаты: по нему фронт решает,
+ * показать комнату, форму заявки, ожидание одобрения или отказ.
+ */
+export class MySessionStateResponse {
+  userId!: string;
+  isOwner!: boolean;
+  sessionStatus!: SessionStatus;
+  access!: SessionAccess;
+  role!: SessionParticipantRole | null;
+  accessRequestStatus!: SessionAccessRequestStatus | null;
+
+  constructor(partial: MySessionStateResponse) {
     Object.assign(this, partial);
   }
 }

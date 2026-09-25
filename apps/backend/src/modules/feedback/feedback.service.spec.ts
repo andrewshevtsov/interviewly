@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { beforeEach, describe, expect, it, vi, type Mocked } from 'vitest';
 import { FeedbackService } from './feedback.service.ts';
 import type { FeedbackRepository } from './feedback.repository.ts';
 
@@ -9,20 +9,20 @@ const TARGET_ID = '33333333-3333-3333-3333-333333333333';
 const OTHER_ID = '44444444-4444-4444-4444-444444444444';
 const FEEDBACK_ID = '55555555-5555-5555-5555-555555555555';
 
-function createMockRepository(): jest.Mocked<FeedbackRepository> {
+function createMockRepository(): Mocked<FeedbackRepository> {
   return {
-    isSessionParticipant: jest.fn(),
-    findUnique: jest.fn(),
-    create: jest.fn(),
-    findById: jest.fn(),
-    findManyByAuthor: jest.fn(),
-    update: jest.fn(),
-    findOtherParticipants: jest.fn(),
-  } as unknown as jest.Mocked<FeedbackRepository>;
+    isSessionParticipant: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    findById: vi.fn(),
+    findManyByAuthor: vi.fn(),
+    update: vi.fn(),
+    findOtherParticipants: vi.fn(),
+  } as unknown as Mocked<FeedbackRepository>;
 }
 
 describe('FeedbackService', () => {
-  let repository: jest.Mocked<FeedbackRepository>;
+  let repository: Mocked<FeedbackRepository>;
   let service: FeedbackService;
 
   beforeEach(() => {

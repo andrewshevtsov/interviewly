@@ -39,8 +39,9 @@ pnpm front-dev
 
 - `GET /sessions` — только свои (admin — все), без участников
 - Участники: `GET /sessions/:id/participants` (host / участники комнаты)
-- Вход: заявка → approve хостом → `join` / `livekit-token`
-- HOST может быть в нескольких комнатах; INTERVIEWER/CANDIDATE при входе в новую выходят из старой
+- Вход: заявка → approve владельцем → `join` / `livekit-token`
+- Владелец комнаты (`Session.ownerId`), в комнате он INTERVIEWER; отдельной роли HOST нет
+- Владелец держит свои комнаты открытыми; при входе в чужую комнату участник выходит из остальных
 
 ## Skills
 

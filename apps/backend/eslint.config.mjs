@@ -5,7 +5,7 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['eslint.config.mjs'],
+    ignores: ['eslint.config.mjs', 'vitest.config.ts'],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -13,7 +13,6 @@ export default tseslint.config(
     languageOptions: {
       globals: {
         ...globals.node,
-        ...globals.jest,
       },
       sourceType: 'commonjs',
       parserOptions: {
@@ -30,9 +29,8 @@ export default tseslint.config(
     },
   },
   {
-    // jest.fn() моки в expect(repository.method).toHaveBeenCalledWith(...)
-    // всегда триггерят unbound-method, хотя `this` тут не используется —
-    // это известный false positive typescript-eslint с Jest.
+    // unbound-method ругается на моки вида expect(repo.method).toHaveBeenCalledWith(...) -
+    // ложное срабатывание, `this` ни при чём
     files: ['**/*.spec.ts'],
     rules: {
       '@typescript-eslint/unbound-method': 'off',
