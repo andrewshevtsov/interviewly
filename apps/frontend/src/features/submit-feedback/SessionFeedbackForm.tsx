@@ -17,6 +17,7 @@ import { Select } from "@/shared/ui/select";
 import { Textarea } from "@/shared/ui/textarea";
 import { MAX_SESSION_SCORE } from "@/shared/config/constants";
 import { feedbackApi, type CreateFeedbackInput } from "@/entities/feedback";
+import { sessionApi } from "@/entities/session";
 
 const INCLUSIVE_RANGE_OFFSET = 1;
 const SCORE_OPTIONS = Array.from(
@@ -51,6 +52,21 @@ export function SessionFeedbackForm(props: SessionFeedbackFormProps) {
   const locale = useLocale();
   const [score, setScore] = useState(defaultScore);
   const t = useTranslations("feedback");
+  const common = useTranslations("common");
+
+  /**
+   * Fetches the current user's role in this session.
+   * @returns {ReturnType<typeof sessionApi.getMyState>} The user's state in the session.
+   */
+  function getMyState() {
+    return sessionApi.getMyState(sessionId);
+  }
+
+  const myStateQuery = useQuery({
+    queryKey: ["sessions", sessionId, "me"],
+    queryFn: getMyState,
+    retry: false,
+  });
 
   /**
    * Lists the session's other participants, eligible as feedback targets.
@@ -60,10 +76,13 @@ export function SessionFeedbackForm(props: SessionFeedbackFormProps) {
     return feedbackApi.listEligibleTargets(sessionId);
   }
 
+  const isInterviewer = myStateQuery.data?.role === "INTERVIEWER";
+
   const participantsQuery = useQuery({
     queryKey: ["sessions", sessionId, "feedback-participants"],
     queryFn: listEligibleTargets,
     retry: false,
+    enabled: isInterviewer,
   });
 
   /**
@@ -104,6 +123,21 @@ export function SessionFeedbackForm(props: SessionFeedbackFormProps) {
     >;
 
     submitMutation.mutate({ targetUserId, score, comment });
+  }
+
+  if (myStateQuery.isPending) {
+    return <p className="text-muted-foreground">{common("loading")}</p>;
+  }
+
+  if (!isInterviewer) {
+    return (
+      <Card className="p-8">
+        <p className="text-muted-foreground">{t("interviewerOnly")}</p>
+        <Button asChild variant="outline" className="mt-6">
+          <LocalizedLink href="/sessions">{t("backToHistory")}</LocalizedLink>
+        </Button>
+      </Card>
+    );
   }
 
   return (

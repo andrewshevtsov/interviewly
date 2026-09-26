@@ -38,6 +38,14 @@ export class CreateSessionParticipantDto {
 
 export class CreateSessionDto {
   @ApiPropertyOptional({
+    description: 'Название сессии, показывается в истории интервью',
+    example: 'Алгоритмы: связные списки',
+  })
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @ApiPropertyOptional({
     enum: SessionType,
     enumName: 'SessionType',
     default: SessionType.BUSINESS,

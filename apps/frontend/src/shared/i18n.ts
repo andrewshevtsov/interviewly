@@ -217,7 +217,8 @@ export const messages = {
       ru: "Ваши сессии, оценки и личные заметки.",
       en: "Your sessions, scores and personal notes.",
     },
-    hintsUsedLabel: { ru: "подсказок", en: "hints used" },
+    minutesShort: { ru: "мин", en: "min" },
+    untitledSession: { ru: "Без названия", en: "Untitled session" },
     scoreOutOf: { ru: "из", en: "out of" },
     recording: { ru: "запись", en: "recording" },
     endSession: { ru: "завершить", en: "end session" },
@@ -310,6 +311,10 @@ export const messages = {
     saveResult: { ru: "сохранить результат", en: "save result" },
     saveError: { ru: "не удалось сохранить отзыв", en: "couldn't save the feedback" },
     backToHistory: { ru: "к истории", en: "back to history" },
+    interviewerOnly: {
+      ru: "Отзыв оставляет только интервьюер.",
+      en: "Only the interviewer can leave feedback.",
+    },
   },
   interview: {
     joinButton: { ru: "присоединиться", en: "join" },

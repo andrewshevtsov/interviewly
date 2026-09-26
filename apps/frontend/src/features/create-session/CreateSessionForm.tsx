@@ -1,7 +1,7 @@
 "use client";
 
 // Слой features: форма создания сессии - название, язык редактора и приватность.
-// Отправляет реальный POST /sessions; название и язык бэкенд пока не хранит.
+// Отправляет реальный POST /sessions; язык редактора бэкенд пока не хранит.
 import { useState, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
@@ -59,6 +59,7 @@ export function CreateSessionForm(props: CreateSessionFormProps) {
   const { draft } = props;
   const router = useRouter();
   const locale = useLocale();
+  const [title, setTitle] = useState(draft.title);
   const [language, setLanguage] = useState<EditorLanguage>(draft.editorLanguage);
   const [isPrivate, setIsPrivate] = useState(draft.isPrivate);
   const [password, setPassword] = useState(draft.accessCode);
@@ -87,7 +88,8 @@ export function CreateSessionForm(props: CreateSessionFormProps) {
       return;
     }
 
-    createMutation.mutate(isPrivate ? { access: "PASSWORD", password } : { access: "OPEN" });
+    const base = { title: title.trim() || undefined };
+    createMutation.mutate(isPrivate ? { ...base, access: "PASSWORD", password } : { ...base, access: "OPEN" });
   }
 
   return (
@@ -95,7 +97,7 @@ export function CreateSessionForm(props: CreateSessionFormProps) {
       <form className="space-y-6" onSubmit={handleSubmit}>
         <div className="space-y-2">
           <Label htmlFor="session-title">{t("sessionTitleLabel")}</Label>
-          <Input id="session-title" defaultValue={draft.title} />
+          <Input id="session-title" value={title} onChange={(event) => setTitle(event.target.value)} />
         </div>
 
         <div className="space-y-2">

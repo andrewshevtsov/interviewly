@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.ts';
 import type { UpdateFeedbackDto } from './dto/update-feedback.ts';
+import type { SessionParticipantRole } from '../../prisma/generated/enums.ts';
 
 export interface CreateFeedbackData {
   sessionId: string;
@@ -19,6 +20,17 @@ export class FeedbackRepository {
       where: { userId_sessionId: { userId, sessionId } },
     });
     return participant !== null;
+  }
+
+  async findParticipantRole(
+    sessionId: string,
+    userId: string,
+  ): Promise<SessionParticipantRole | null> {
+    const participant = await this.prisma.sessionParticipant.findUnique({
+      where: { userId_sessionId: { userId, sessionId } },
+      select: { role: true },
+    });
+    return participant?.role ?? null;
   }
 
   findUnique(sessionId: string, authorId: string, targetUserId: string) {

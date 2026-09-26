@@ -1,13 +1,16 @@
 // Слой entities: запросы к /sessions - создание комнаты, заявки на вход и LiveKit-токен
 // Импортирует только entities (свой слайс) и shared
 import { httpClient } from "@/shared/api/http-client";
-import type {
-  AccessRequest,
-  ApiSession,
-  ApiSessionParticipant,
-  CreateSessionInput,
-  LivekitConnection,
-  MySessionState,
+import {
+  toParticipantRole,
+  type AccessRequest,
+  type ApiSession,
+  type ApiSessionParticipant,
+  type ApiSessionRole,
+  type CreateSessionInput,
+  type LivekitConnection,
+  type MySessionState,
+  type SessionHistoryEntry,
 } from "./index";
 
 /**
@@ -18,6 +21,16 @@ interface ParticipantsResponse {
    * Все, кого впустили в сессию.
    */
   participants: ApiSessionParticipant[];
+}
+
+/**
+ * Тело одного элемента ответа `GET /sessions/history` - роль ещё в формате бэкенда.
+ */
+interface SessionHistoryEntryDto extends Omit<SessionHistoryEntry, "role"> {
+  /**
+   * Роль текущего пользователя в формате бэкенда.
+   */
+  role: ApiSessionRole;
 }
 
 export const sessionApi = {
@@ -37,6 +50,16 @@ export const sessionApi = {
    */
   getMyState(sessionId: string): Promise<MySessionState> {
     return httpClient.get<MySessionState>(`/sessions/${sessionId}/me`).then((res) => res.data);
+  },
+
+  /**
+   * Загружает завершённые сессии текущего пользователя для экрана "История интервью"
+   * @returns {Promise<SessionHistoryEntry[]>} Строки истории, недавние сначала
+   */
+  getHistory(): Promise<SessionHistoryEntry[]> {
+    return httpClient.get<SessionHistoryEntryDto[]>("/sessions/history").then((res) =>
+      res.data.map((entry) => ({ ...entry, role: toParticipantRole(entry.role) })),
+    );
   },
 
   /**
@@ -76,6 +99,15 @@ export const sessionApi = {
    */
   rejectAccessRequest(sessionId: string, requestId: string): Promise<void> {
     return httpClient.post(`/sessions/${sessionId}/access-requests/${requestId}/reject`).then(() => undefined);
+  },
+
+  /**
+   * Завершает сессию (только владелец) - выставляет COMPLETED и endedAt
+   * @param {string} sessionId - UUID сессии
+   * @returns {Promise<ApiSession>} Завершённая сессия
+   */
+  endSession(sessionId: string): Promise<ApiSession> {
+    return httpClient.post<ApiSession>(`/sessions/${sessionId}/end`).then((res) => res.data);
   },
 
   /**

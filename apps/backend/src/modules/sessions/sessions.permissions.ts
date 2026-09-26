@@ -30,6 +30,11 @@ type SessionPermissionsConfig = {
     allowAdmin: boolean;
     allowOwner: boolean;
   };
+  endSession: {
+    description: string;
+    allowAdmin: boolean;
+    allowOwner: boolean;
+  };
   transferOwnership: {
     description: string;
     allowAdmin: boolean;
@@ -84,6 +89,13 @@ export const SESSION_PERMISSIONS = {
   manageAccessRequests: {
     description:
       'Смотреть и принимать/отклонять заявки - только владелец комнаты (или admin)',
+    allowAdmin: true,
+    allowOwner: true,
+  },
+
+  endSession: {
+    description:
+      'Завершить сессию (COMPLETED, endedAt) - только владелец комнаты (или admin)',
     allowAdmin: true,
     allowOwner: true,
   },

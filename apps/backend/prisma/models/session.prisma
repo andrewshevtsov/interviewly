@@ -39,6 +39,9 @@ model Session {
   ownerId String @db.Uuid
   owner   User   @relation(fields: [ownerId], references: [id])
 
+  // Задаётся при создании (необязательно); история интервью показывает
+  // фолбэк на фронтенде для сессий без title.
+  title           String?
   type            SessionType   @default(BUSINESS)
   access          SessionAccess @default(INVITE)
   // Для access=PASSWORD непустой хеш обязателен: это дополнительно защищено

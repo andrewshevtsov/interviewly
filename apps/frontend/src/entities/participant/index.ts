@@ -60,3 +60,5 @@ export interface Participant {
    */
   rating: string;
 }
+
+export { participantApi } from "./participant-api";

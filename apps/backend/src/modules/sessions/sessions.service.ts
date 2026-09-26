@@ -25,13 +25,73 @@ import {
   MySessionStateResponse,
   SessionAccessRequestEntity,
   SessionEntity,
+  SessionHistoryEntryResponse,
   SessionParticipantEntity,
   SessionParticipantsResponse,
 } from './entities/session.entity.ts';
 import { SESSION_PERMISSIONS } from './sessions.permissions.ts';
 import { SessionsRepository } from './sessions.repository.ts';
+import type { CompletedSessionForHistory } from './sessions.types.ts';
 
 const PASSWORD_SALT_ROUNDS = 12;
+
+// Максимальная оценка по шкале отзывов (CreateFeedbackDto.score: 0-10).
+const FEEDBACK_SCORE_MAX = 10;
+
+const MS_PER_MINUTE = 60_000;
+
+/**
+ * Короткий 4-значный код для отображения (например "#4092"), выводится из UUID
+ * сессии — стабилен без отдельного столбца-счётчика в базе.
+ * @param {string} sessionId - UUID сессии.
+ * @returns {string} 4-значный код.
+ */
+function deriveDisplayNumber(sessionId: string): string {
+  const hex = sessionId.replace(/-/g, '').slice(0, 8);
+  const NUMBER_RANGE = 10000;
+  return String(parseInt(hex, 16) % NUMBER_RANGE).padStart(4, '0');
+}
+
+/**
+ * Отображаемое имя пользователя: имя и фамилия, если она указана.
+ * @param {{ firstName: string; lastName: string | null }} user - Пользователь.
+ * @returns {string} Имя для отображения.
+ */
+function formatUserName(user: { firstName: string; lastName: string | null }): string {
+  return user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName;
+}
+
+/**
+ * Превращает завершённую сессию в строку "Истории интервью" для конкретного пользователя.
+ * @param {CompletedSessionForHistory} session - Сессия с участниками и своими отзывами.
+ * @param {string} userId - UUID текущего пользователя.
+ * @returns {SessionHistoryEntryResponse} Строка истории.
+ */
+function toHistoryEntry(
+  session: CompletedSessionForHistory,
+  userId: string,
+): SessionHistoryEntryResponse {
+  const mine = session.participants.find((participant) => participant.userId === userId);
+  const partner = session.participants.find((participant) => participant.userId !== userId);
+  const feedback = session.feedback[0];
+
+  const durationMinutes =
+    session.startedAt && session.endedAt
+      ? Math.round((session.endedAt.getTime() - session.startedAt.getTime()) / MS_PER_MINUTE)
+      : 0;
+
+  return new SessionHistoryEntryResponse({
+    id: session.id,
+    number: deriveDisplayNumber(session.id),
+    role: mine?.role ?? SessionParticipantRole.CANDIDATE,
+    title: session.title,
+    partnerName: partner ? formatUserName(partner.user) : '',
+    date: (session.endedAt ?? session.createdAt).toISOString(),
+    durationMinutes,
+    score: feedback?.score ?? 0,
+    scoreMax: FEEDBACK_SCORE_MAX,
+  });
+}
 
 const TOKEN_ALLOWED_STATUSES: ReadonlySet<SessionStatus> = new Set([
   SessionStatus.SCHEDULED,
@@ -75,6 +135,7 @@ export class SessionsService {
     const session = await this.sessionsRepository.create({
       id,
       livekitRoomName: id,
+      title: dto.title?.trim() || null,
       type: dto.type,
       access,
       passwordHash,
@@ -99,6 +160,11 @@ export class SessionsService {
     });
 
     return new SessionEntity(session);
+  }
+
+  async findHistory(userId: string): Promise<SessionHistoryEntryResponse[]> {
+    const sessions = await this.sessionsRepository.findCompletedForUser(userId);
+    return sessions.map((session) => toHistoryEntry(session, userId));
   }
 
   async findAll(actor: JwtPayload): Promise<SessionEntity[]> {
@@ -335,6 +401,30 @@ export class SessionsService {
       sessionId,
       dto.userId,
     );
+    return new SessionEntity(updated);
+  }
+
+  /**
+   * Завершает сессию: COMPLETED + endedAt. Только владелец комнаты (или admin).
+   */
+  async endSession(sessionId: string, actor: JwtPayload): Promise<SessionEntity> {
+    const session = await this.requireSession(sessionId);
+    const rule = SESSION_PERMISSIONS.endSession;
+
+    const isAllowed =
+      (rule.allowAdmin && actor.isAdmin) ||
+      (rule.allowOwner && session.ownerId === actor.sub);
+    if (!isAllowed) {
+      throw new ForbiddenException('Only the room owner can end the session');
+    }
+
+    if (CLOSED_STATUSES.has(session.status)) {
+      throw new ForbiddenException(
+        `Session "${sessionId}" is already ${session.status.toLowerCase()}`,
+      );
+    }
+
+    const updated = await this.sessionsRepository.markCompleted(sessionId);
     return new SessionEntity(updated);
   }
 

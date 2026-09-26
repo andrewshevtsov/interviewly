@@ -28,6 +28,7 @@ import {
   MySessionStateResponse,
   SessionAccessRequestEntity,
   SessionEntity,
+  SessionHistoryEntryResponse,
   SessionParticipantsResponse,
 } from './entities/session.entity.ts';
 import { SESSION_PERMISSIONS } from './sessions.permissions.ts';
@@ -69,6 +70,16 @@ export class SessionsController {
   })
   findAll(@CurrentUser() actor: JwtPayload): Promise<SessionEntity[]> {
     return this.sessionsService.findAll(actor);
+  }
+
+  // "history" объявлен раньше `:id` по той же причине, что и "permissions" выше.
+
+  @Get('history')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Завершённые сессии текущего пользователя для "Истории интервью"' })
+  findHistory(@CurrentUser('sub') userId: string): Promise<SessionHistoryEntryResponse[]> {
+    return this.sessionsService.findHistory(userId);
   }
 
   @Get(':id')
@@ -159,6 +170,18 @@ export class SessionsController {
     @CurrentUser() actor: JwtPayload,
   ): Promise<SessionAccessRequestEntity> {
     return this.sessionsService.rejectAccessRequest(id, requestId, actor);
+  }
+
+  @Post(':id/end')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Завершить сессию (COMPLETED, endedAt) - владелец / admin' })
+  endSession(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: JwtPayload,
+  ): Promise<SessionEntity> {
+    return this.sessionsService.endSession(id, actor);
   }
 
   @Post(':id/transfer-ownership')

@@ -53,6 +53,14 @@ export class ProfileController {
     return this.profileService.findAll();
   }
 
+  // "showcase" объявлен раньше `:id` по той же причине, что и "me" выше.
+
+  @Get('showcase')
+  @ApiProperty()
+  findShowcase() {
+    return this.profileService.findShowcase();
+  }
+
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
