@@ -55,7 +55,7 @@ function RoomWorkspace(props: RoomWorkspaceProps) {
 
   return (
     <>
-      <SessionHeader sessionId={sessionId} />
+      <SessionHeader sessionId={sessionId} isOwner={isOwner} />
       {mediaUnavailable && (
         <p className="border-b border-border px-6 py-2 text-sm text-muted-foreground">{t("mediaUnavailable")}</p>
       )}

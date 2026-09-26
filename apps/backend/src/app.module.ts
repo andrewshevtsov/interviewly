@@ -6,6 +6,7 @@ import { AuthModule } from './modules/auth/auth.module.ts';
 import { ProfileModule } from './modules/profile/profile.module.ts';
 import { SessionsModule } from './modules/sessions/sessions.module.ts';
 import { FeedbackModule } from './modules/feedback/feedback.module.ts';
+import { LeaderboardModule } from './modules/leaderboard/leaderboard.module.ts';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { FeedbackModule } from './modules/feedback/feedback.module.ts';
     ProfileModule,
     FeedbackModule,
     SessionsModule,
+    LeaderboardModule,
   ],
   controllers: [],
   providers: [],

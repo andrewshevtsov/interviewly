@@ -6,24 +6,12 @@ import { ParticipantBrowser } from "@/features/browse-participants";
 import { getServerTranslations } from "@/shared/i18n-server";
 import { Button } from "@/shared/ui/button";
 import { LocalizedLink } from "@/shared/ui/localized-link";
-import type { Participant } from "@/entities/participant";
-
-/**
- * Props for {@link ShowcasePage}.
- */
-export interface ShowcasePageProps {
-  /**
-   * All participants to show and filter.
-   */
-  participants: Participant[];
-}
 
 /**
  * Renders the "Витрина участников" screen: navbar, the search/filter browser and the footer.
- * @param {ShowcasePageProps} props - Props for the page.
  * @returns {import('react').ReactNode} The showcase page.
  */
-export async function ShowcasePage(props: ShowcasePageProps) {
+export async function ShowcasePage() {
   const t = await getServerTranslations("showcase");
 
   return (
@@ -43,7 +31,7 @@ export async function ShowcasePage(props: ShowcasePageProps) {
         </div>
 
         <div className="mt-10">
-          <ParticipantBrowser participants={props.participants} />
+          <ParticipantBrowser />
         </div>
       </main>
 

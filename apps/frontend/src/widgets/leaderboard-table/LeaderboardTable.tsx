@@ -1,30 +1,34 @@
+"use client";
+
 // Слой widgets: полная таблица "Лидерборд" - все участники, отсортированные по рейтингу.
-import { getServerTranslations } from "@/shared/i18n-server";
+import { useQuery } from "@tanstack/react-query";
+
+import { useTranslations } from "@/shared/i18n-context";
 import { cn } from "@/shared/lib/cn";
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
 import { Card } from "@/shared/ui/card";
-import type { LeaderboardEntry } from "@/entities/leaderboard";
+import { leaderboardApi } from "@/entities/leaderboard";
 
 const TOP_RANKS_COUNT = 3;
 
 /**
- * Props for {@link LeaderboardTable}.
- */
-export interface LeaderboardTableProps {
-  /**
-   * Leaderboard rows, ranked best first.
-   */
-  entries: LeaderboardEntry[];
-}
-
-/**
  * Full "Лидерборд" table: rank, participant, sessions conducted and average rating.
- * @param {LeaderboardTableProps} props - Props for the table.
  * @returns {import('react').ReactNode} The leaderboard table.
  */
-export async function LeaderboardTable(props: LeaderboardTableProps) {
-  const { entries } = props;
-  const t = await getServerTranslations("leaderboard");
+export function LeaderboardTable() {
+  const t = useTranslations("leaderboard");
+  const common = useTranslations("common");
+
+  const leaderboardQuery = useQuery({
+    queryKey: ["leaderboard"],
+    queryFn: leaderboardApi.getRanked,
+  });
+
+  if (leaderboardQuery.isPending) {
+    return <p className="text-muted-foreground">{common("loading")}</p>;
+  }
+
+  const entries = leaderboardQuery.data ?? [];
 
   return (
     <Card className="divide-y divide-border">

@@ -1,7 +1,7 @@
 // Слой entities: запросы к /profiles, привязанные к профилю текущего пользователя.
 // Импортирует только entities (свой слайс) и shared.
 import { httpClient } from "@/shared/api/http-client";
-import type { Profile } from "./index";
+import type { Profile, ProfileStatsData } from "./index";
 
 /**
  * A profile as returned by the API - the editable {@link Profile} fields plus its id.
@@ -55,5 +55,14 @@ export const profileApi = {
     return httpClient
       .put<ProfileDto>("/profiles/me", profile)
       .then((res) => normalizeProfile(res.data) as ProfileDto);
+  },
+
+  /**
+   * Fetches the signed-in user's aggregate stats: interviews conducted, average rating and
+   * leaderboard rank.
+   * @returns {Promise<ProfileStatsData>} The user's stats.
+   */
+  getMyStats(): Promise<ProfileStatsData> {
+    return httpClient.get<ProfileStatsData>("/profiles/me/stats").then((res) => res.data);
   },
 };

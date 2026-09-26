@@ -1,7 +1,11 @@
+"use client";
+
 // Слой widgets: карточка статистики профиля.
+import { useQuery } from "@tanstack/react-query";
+
 import { Card } from "@/shared/ui/card";
-import { getServerTranslations } from "@/shared/i18n-server";
-import type { ProfileStatsData } from "@/entities/profile";
+import { useTranslations } from "@/shared/i18n-context";
+import { profileApi } from "@/entities/profile";
 
 /**
  * A single labeled stat row.
@@ -19,29 +23,28 @@ interface StatRow {
 }
 
 /**
- * Props for {@link ProfileStats}.
- */
-export interface ProfileStatsProps {
-  /**
-   * Stats to display.
-   */
-  stats: ProfileStatsData;
-}
-
-/**
  * Sidebar card with the user's aggregate stats: interviews conducted, average rating and
  * leaderboard rank.
- * @param {ProfileStatsProps} props - Props for the card.
  * @returns {import('react').ReactNode} The stats card.
  */
-export async function ProfileStats(props: ProfileStatsProps) {
-  const { stats } = props;
-  const t = await getServerTranslations("profile");
+export function ProfileStats() {
+  const t = useTranslations("profile");
+  const common = useTranslations("common");
 
+  const statsQuery = useQuery({
+    queryKey: ["profile", "me", "stats"],
+    queryFn: profileApi.getMyStats,
+  });
+
+  if (statsQuery.isPending) {
+    return <p className="text-muted-foreground">{common("loading")}</p>;
+  }
+
+  const stats = statsQuery.data;
   const rows: StatRow[] = [
-    { label: t("interviews"), value: stats.interviews },
-    { label: t("averageRating"), value: stats.avgRating },
-    { label: t("leaderboardPlace"), value: stats.topRank },
+    { label: t("interviews"), value: stats?.interviews ?? "0" },
+    { label: t("averageRating"), value: stats?.avgRating ?? "0.0" },
+    { label: t("leaderboardPlace"), value: stats?.topRank ?? "—" },
   ];
 
   return (

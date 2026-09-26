@@ -1,32 +1,43 @@
+"use client";
+
 // Слой widgets: секция "История интервью" - прошедшие сессии пользователя с оценками.
-import { getServerTranslations } from "@/shared/i18n-server";
+import { useQuery } from "@tanstack/react-query";
+
+import { useLocale, useTranslations } from "@/shared/i18n-context";
 import { Badge } from "@/shared/ui/badge";
 import { Card } from "@/shared/ui/card";
-import type { SessionHistoryEntry, SessionParticipantRole } from "@/entities/session";
+import { sessionApi, type SessionParticipantRole } from "@/entities/session";
 
 const ROLE_LABEL_KEYS: Record<SessionParticipantRole, "interviewer" | "candidate"> = {
   candidate: "candidate",
   interviewer: "interviewer",
 };
 
-/**
- * Props for {@link SessionHistory}.
- */
-export interface SessionHistoryProps {
-  /**
-   * Past sessions to list, most recent first.
-   */
-  entries: SessionHistoryEntry[];
-}
+const LOCALE_TAGS: Record<string, string> = {
+  ru: "ru-RU",
+  en: "en-US",
+};
 
 /**
- * "История интервью" section: past sessions with role, participants, hints used and score.
- * @param {SessionHistoryProps} props - Props for the section.
+ * "История интервью" section: past sessions with role, participants and score.
  * @returns {import('react').ReactNode} The session history section.
  */
-export async function SessionHistory(props: SessionHistoryProps) {
-  const { entries } = props;
-  const t = await getServerTranslations("session");
+export function SessionHistory() {
+  const t = useTranslations("session");
+  const common = useTranslations("common");
+  const locale = useLocale();
+
+  const historyQuery = useQuery({
+    queryKey: ["sessions", "history"],
+    queryFn: sessionApi.getHistory,
+  });
+
+  if (historyQuery.isPending) {
+    return <p className="text-muted-foreground">{common("loading")}</p>;
+  }
+
+  const entries = historyQuery.data ?? [];
+  const dateFormatter = new Intl.DateTimeFormat(LOCALE_TAGS[locale] ?? locale, { dateStyle: "long" });
 
   return (
     <section className="mx-auto max-w-4xl px-6 py-16">
@@ -46,10 +57,10 @@ export async function SessionHistory(props: SessionHistoryProps) {
                 </span>
               </div>
 
-              <p className="mt-2 font-semibold">{entry.title}</p>
+              <p className="mt-2 font-semibold">{entry.title ?? t("untitledSession")}</p>
               <p className="text-sm text-muted-foreground">
-                {entry.partnerName} · {entry.date} · {entry.duration} · {t("hintsUsedLabel")}:{" "}
-                {entry.hintsUsed}/{entry.hintsTotal}
+                {entry.partnerName} · {dateFormatter.format(new Date(entry.date))} ·{" "}
+                {entry.durationMinutes} {t("minutesShort")}
               </p>
             </div>
 

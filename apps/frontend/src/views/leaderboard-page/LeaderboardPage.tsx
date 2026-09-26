@@ -4,24 +4,12 @@ import { Footer } from "@/widgets/footer";
 import { LeaderboardTable } from "@/widgets/leaderboard-table";
 import { Navbar } from "@/widgets/navbar";
 import { getServerTranslations } from "@/shared/i18n-server";
-import type { LeaderboardEntry } from "@/entities/leaderboard";
-
-/**
- * Props for {@link LeaderboardPage}.
- */
-export interface LeaderboardPageProps {
-  /**
-   * Leaderboard rows, ranked best first.
-   */
-  entries: LeaderboardEntry[];
-}
 
 /**
  * Renders the "Лидерборд" screen: navbar, the full ranking table and the footer.
- * @param {LeaderboardPageProps} props - Props for the page.
  * @returns {import('react').ReactNode} The leaderboard page.
  */
-export async function LeaderboardPage(props: LeaderboardPageProps) {
+export async function LeaderboardPage() {
   const t = await getServerTranslations("leaderboard");
 
   return (
@@ -33,7 +21,7 @@ export async function LeaderboardPage(props: LeaderboardPageProps) {
         <p className="mt-2 text-muted-foreground">{t("description")}</p>
 
         <div className="mt-10">
-          <LeaderboardTable entries={props.entries} />
+          <LeaderboardTable />
         </div>
       </main>
 

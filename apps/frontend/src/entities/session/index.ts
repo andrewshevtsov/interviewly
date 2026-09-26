@@ -47,9 +47,9 @@ export interface SessionHistoryEntry {
   role: SessionParticipantRole;
 
   /**
-   * Название сессии, например "Алгоритмы: связные списки".
+   * Название сессии, например "Алгоритмы: связные списки", или `null`, если не задано.
    */
-  title: string;
+  title: string | null;
 
   /**
    * Отображаемое имя второго участника.
@@ -57,24 +57,14 @@ export interface SessionHistoryEntry {
   partnerName: string;
 
   /**
-   * Дата сессии в формате для отображения (например, "18 августа 2026").
+   * Дата сессии в формате ISO 8601 - форматируется под локаль на фронтенде.
    */
   date: string;
 
   /**
-   * Длительность сессии в формате для отображения (например, "48 мин").
+   * Длительность сессии в минутах.
    */
-  duration: string;
-
-  /**
-   * Сколько AI-подсказок использовано за сессию.
-   */
-  hintsUsed: number;
-
-  /**
-   * Сколько AI-подсказок доступно в сессии.
-   */
-  hintsTotal: number;
+  durationMinutes: number;
 
   /**
    * Оценка за сессию.
@@ -201,6 +191,11 @@ export interface ApiSession {
  * Тело запроса `POST /sessions`.
  */
 export interface CreateSessionInput {
+  /**
+   * Название сессии, показывается в истории интервью.
+   */
+  title?: string;
+
   /**
    * Кто может попасть в сессию.
    */

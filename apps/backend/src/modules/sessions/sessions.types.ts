@@ -1,4 +1,5 @@
 import type {
+  Feedback,
   Session,
   SessionAccessRequest,
   SessionParticipant,
@@ -23,4 +24,13 @@ export type ParticipantWithUser = SessionParticipant & { user: SessionUserSummar
 
 export type AccessRequestWithRequester = SessionAccessRequest & {
   requester: SessionUserSummary;
+};
+
+/**
+ * Завершённая сессия с участниками (для определения партнёра и своей роли) и
+ * своими отзывами (для оценки) — источник для экрана "История интервью".
+ */
+export type CompletedSessionForHistory = Session & {
+  participants: ParticipantWithUser[];
+  feedback: Feedback[];
 };

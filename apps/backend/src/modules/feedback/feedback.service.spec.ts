@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi, type Mocked } from 'vitest';
 import { FeedbackService } from './feedback.service.ts';
+import { SessionParticipantRole } from '../../prisma/generated/enums.ts';
 import type { FeedbackRepository } from './feedback.repository.ts';
 
 const SESSION_ID = '11111111-1111-1111-1111-111111111111';
@@ -12,6 +13,7 @@ const FEEDBACK_ID = '55555555-5555-5555-5555-555555555555';
 function createMockRepository(): Mocked<FeedbackRepository> {
   return {
     isSessionParticipant: vi.fn(),
+    findParticipantRole: vi.fn(),
     findUnique: vi.fn(),
     create: vi.fn(),
     findById: vi.fn(),
@@ -33,7 +35,8 @@ describe('FeedbackService', () => {
   describe('create', () => {
     const dto = { targetUserId: TARGET_ID, score: 8, comment: 'Solid' };
 
-    it('создаёт отзыв, если автор и адресат оба участвовали в сессии', async () => {
+    it('создаёт отзыв, если автор - интервьюер, а адресат участвовал в сессии', async () => {
+      repository.findParticipantRole.mockResolvedValue(SessionParticipantRole.INTERVIEWER);
       repository.isSessionParticipant.mockResolvedValue(true);
       repository.findUnique.mockResolvedValue(null);
       repository.create.mockResolvedValue({ id: FEEDBACK_ID, sessionId: SESSION_ID, authorId: AUTHOR_ID, ...dto } as never);
@@ -58,20 +61,29 @@ describe('FeedbackService', () => {
     });
 
     it('отклоняет, если автор не участвовал в сессии', async () => {
-      repository.isSessionParticipant.mockImplementation((_sessionId, userId) => Promise.resolve(userId !== AUTHOR_ID));
+      repository.findParticipantRole.mockResolvedValue(null);
+
+      await expect(service.create(SESSION_ID, AUTHOR_ID, dto)).rejects.toBeInstanceOf(ForbiddenException);
+      expect(repository.create).not.toHaveBeenCalled();
+    });
+
+    it('отклоняет, если автор - кандидат, а не интервьюер', async () => {
+      repository.findParticipantRole.mockResolvedValue(SessionParticipantRole.CANDIDATE);
 
       await expect(service.create(SESSION_ID, AUTHOR_ID, dto)).rejects.toBeInstanceOf(ForbiddenException);
       expect(repository.create).not.toHaveBeenCalled();
     });
 
     it('отклоняет, если адресат не участвовал в сессии', async () => {
-      repository.isSessionParticipant.mockImplementation((_sessionId, userId) => Promise.resolve(userId === AUTHOR_ID));
+      repository.findParticipantRole.mockResolvedValue(SessionParticipantRole.INTERVIEWER);
+      repository.isSessionParticipant.mockResolvedValue(false);
 
       await expect(service.create(SESSION_ID, AUTHOR_ID, dto)).rejects.toBeInstanceOf(BadRequestException);
       expect(repository.create).not.toHaveBeenCalled();
     });
 
     it('отклоняет повторный отзыв для той же пары автор/адресат в этой сессии', async () => {
+      repository.findParticipantRole.mockResolvedValue(SessionParticipantRole.INTERVIEWER);
       repository.isSessionParticipant.mockResolvedValue(true);
       repository.findUnique.mockResolvedValue({ id: FEEDBACK_ID } as never);
 
@@ -140,7 +152,7 @@ describe('FeedbackService', () => {
 
   describe('findEligibleTargets', () => {
     it('возвращает остальных участников сессии в отображаемом виде', async () => {
-      repository.isSessionParticipant.mockResolvedValue(true);
+      repository.findParticipantRole.mockResolvedValue(SessionParticipantRole.INTERVIEWER);
       repository.findOtherParticipants.mockResolvedValue([
         { user: { id: TARGET_ID, firstName: 'Clara', lastName: 'Candidate' } },
         { user: { id: OTHER_ID, firstName: 'Ivan', lastName: null } },
@@ -156,7 +168,14 @@ describe('FeedbackService', () => {
     });
 
     it('выбрасывает ForbiddenException, если запрашивающий не участвовал в сессии', async () => {
-      repository.isSessionParticipant.mockResolvedValue(false);
+      repository.findParticipantRole.mockResolvedValue(null);
+
+      await expect(service.findEligibleTargets(SESSION_ID, AUTHOR_ID)).rejects.toBeInstanceOf(ForbiddenException);
+      expect(repository.findOtherParticipants).not.toHaveBeenCalled();
+    });
+
+    it('выбрасывает ForbiddenException, если запрашивающий - кандидат', async () => {
+      repository.findParticipantRole.mockResolvedValue(SessionParticipantRole.CANDIDATE);
 
       await expect(service.findEligibleTargets(SESSION_ID, AUTHOR_ID)).rejects.toBeInstanceOf(ForbiddenException);
       expect(repository.findOtherParticipants).not.toHaveBeenCalled();

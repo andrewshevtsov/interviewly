@@ -4,10 +4,11 @@ import { ProfileController } from './profile.controller.ts';
 import { ProfileRepository } from './profile.repository.ts';
 import { PrismaModule } from '../../prisma/prisma.module.ts';
 import { AuthModule } from '../auth/auth.module.ts';
+import { LeaderboardModule } from '../leaderboard/leaderboard.module.ts';
 import { JwtService } from '@nestjs/jwt';
 
 @Module({
-  imports: [PrismaModule, AuthModule],
+  imports: [PrismaModule, AuthModule, LeaderboardModule],
   controllers: [ProfileController],
   providers: [ProfileService, ProfileRepository, JwtService],
   exports: [ProfileService],

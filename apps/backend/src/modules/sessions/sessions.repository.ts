@@ -9,9 +9,11 @@ import type {
 import {
   SessionAccessRequestStatus,
   SessionParticipantRole,
+  SessionStatus,
 } from '../../prisma/generated/enums.ts';
 import type {
   AccessRequestWithRequester,
+  CompletedSessionForHistory,
   ParticipantWithUser,
   SessionWithParticipants,
   UpdateAccessRequestData,
@@ -65,6 +67,13 @@ export class SessionsRepository {
     return this.prisma.session.update({
       where: { id: sessionId },
       data: { ownerId },
+    });
+  }
+
+  markCompleted(sessionId: string): Promise<Session> {
+    return this.prisma.session.update({
+      where: { id: sessionId },
+      data: { status: SessionStatus.COMPLETED, endedAt: new Date() },
     });
   }
 
@@ -257,5 +266,19 @@ export class SessionsRepository {
 
   findUserById(userId: string) {
     return this.prisma.user.findUnique({ where: { id: userId } });
+  }
+
+  findCompletedForUser(userId: string): Promise<CompletedSessionForHistory[]> {
+    return this.prisma.session.findMany({
+      where: {
+        status: SessionStatus.COMPLETED,
+        participants: { some: { userId } },
+      },
+      include: {
+        participants: { include: { user: { select: USER_SUMMARY_SELECT } } },
+        feedback: { where: { targetUserId: userId } },
+      },
+      orderBy: { endedAt: 'desc' },
+    });
   }
 }

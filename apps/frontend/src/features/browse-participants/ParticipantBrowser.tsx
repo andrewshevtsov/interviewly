@@ -2,6 +2,7 @@
 
 // Слой features: поиск и фильтрация участников на "Витрине участников".
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { useTranslations } from "@/shared/i18n-context";
 import { cn } from "@/shared/lib/cn";
@@ -11,7 +12,7 @@ import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
-import type { Participant, ParticipantLevel, ParticipantStatus } from "@/entities/participant";
+import { participantApi, type Participant, type ParticipantLevel, type ParticipantStatus } from "@/entities/participant";
 
 const LEVELS: ParticipantLevel[] = ["junior", "middle", "senior"];
 
@@ -106,29 +107,24 @@ function matchesQuery(participant: Participant, query: string): boolean {
 }
 
 /**
- * Props for {@link ParticipantBrowser}.
- */
-export interface ParticipantBrowserProps {
-  /**
-   * All participants to search and filter.
-   */
-  participants: Participant[];
-}
-
-/**
  * "Витрина участников" browser: a search box, level/stack filters and the resulting grid of
  * participant cards.
- * @param {ParticipantBrowserProps} props - Props for the browser.
  * @returns {import('react').ReactNode} The participant browser.
  */
-export function ParticipantBrowser(props: ParticipantBrowserProps) {
-  const { participants } = props;
+export function ParticipantBrowser() {
   const [query, setQuery] = useState("");
   const [levels, setLevels] = useState<ParticipantLevel[]>([]);
   const [stack, setStack] = useState<string[]>([]);
   const showcase = useTranslations("showcase");
   const profile = useTranslations("profile");
   const leaderboard = useTranslations("leaderboard");
+  const common = useTranslations("common");
+
+  const participantsQuery = useQuery({
+    queryKey: ["participants", "showcase"],
+    queryFn: participantApi.getShowcase,
+  });
+  const participants = participantsQuery.data ?? [];
 
   const filtered = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -141,6 +137,10 @@ export function ParticipantBrowser(props: ParticipantBrowserProps) {
       return matchesLevel && matchesStack && matchesQuery(participant, normalizedQuery);
     });
   }, [participants, query, levels, stack]);
+
+  if (participantsQuery.isPending) {
+    return <p className="text-muted-foreground">{common("loading")}</p>;
+  }
 
   return (
     <div className="grid gap-8 md:grid-cols-[240px_1fr]">

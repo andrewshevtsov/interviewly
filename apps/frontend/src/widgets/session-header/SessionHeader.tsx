@@ -2,10 +2,14 @@
 
 // Слой widgets: верхняя панель "Открытой сессии" - бренд, короткий id, ссылка-приглашение, таймер
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
 
-import { useTranslations } from "@/shared/i18n-context";
+import { getLocalizedHref } from "@/shared/i18n";
+import { useLocale, useTranslations } from "@/shared/i18n-context";
 import { Button } from "@/shared/ui/button";
 import { LocalizedLink } from "@/shared/ui/localized-link";
+import { sessionApi } from "@/entities/session";
 
 const TIMER_TICK_MS = 1000;
 const SECONDS_PER_TICK = 1;
@@ -39,20 +43,48 @@ export interface SessionHeaderProps {
    * ID отображаемой сессии, нужен для ссылки на экран фидбека.
    */
   sessionId: string;
+
+  /**
+   * Владеет ли входящий сессией - только владелец завершает её для всех (COMPLETED).
+   */
+  isOwner: boolean;
 }
 
 /**
  * Верхняя панель экрана "Открытая сессия": логотип, короткий id сессии, кнопка копирования
- * ссылки-приглашения, таймер записи и действие "Завершить" (уход со страницы размонтирует
- * LiveKit-комнату и тем самым отключает от неё).
+ * ссылки-приглашения, таймер записи и действие "Завершить". Владелец сначала завершает
+ * сессию на бэкенде (COMPLETED, endedAt); остальные просто уходят со страницы, что
+ * размонтирует LiveKit-комнату и отключает от неё.
  * @param {SessionHeaderProps} props - Пропсы шапки.
  * @returns {import('react').ReactNode} Шапка сессии.
  */
 export function SessionHeader(props: SessionHeaderProps) {
-  const { sessionId } = props;
+  const { sessionId, isOwner } = props;
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [copied, setCopied] = useState(false);
+  const router = useRouter();
+  const locale = useLocale();
   const t = useTranslations("session");
+
+  const feedbackHref = getLocalizedHref(`/sessions/${sessionId}/feedback`, locale);
+
+  /**
+   * Завершает сессию на бэкенде (COMPLETED, endedAt) - вызывает только владелец.
+   * @returns {ReturnType<typeof sessionApi.endSession>} Завершённая сессия.
+   */
+  function endSession() {
+    return sessionApi.endSession(sessionId);
+  }
+
+  /**
+   * Переходит на экран фидбека после завершения сессии.
+   * @returns {void}
+   */
+  function goToFeedback(): void {
+    router.push(feedbackHref);
+  }
+
+  const endSessionMutation = useMutation({ mutationFn: endSession, onSuccess: goToFeedback });
 
   /**
    * Копирует URL комнаты (это и есть ссылка-приглашение) и ненадолго показывает подтверждение.
@@ -99,15 +131,29 @@ export function SessionHeader(props: SessionHeaderProps) {
           <span className="h-2 w-2 animate-pulse rounded-full bg-destructive" />
           {t("recording")} {formatElapsed(elapsedSeconds)}
         </span>
-        <Button
-          asChild
-          variant="outline"
-          className="border-destructive/40 text-destructive hover:bg-destructive/10"
-        >
-          <LocalizedLink href={`/sessions/${sessionId}/feedback`}>
-            {t("endSession")}
-          </LocalizedLink>
-        </Button>
+        {isOwner
+          ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="border-destructive/40 text-destructive hover:bg-destructive/10"
+              disabled={endSessionMutation.isPending}
+              onClick={() => endSessionMutation.mutate()}
+            >
+              {t("endSession")}
+            </Button>
+          )
+          : (
+            <Button
+              asChild
+              variant="outline"
+              className="border-destructive/40 text-destructive hover:bg-destructive/10"
+            >
+              <LocalizedLink href={`/sessions/${sessionId}/feedback`}>
+                {t("endSession")}
+              </LocalizedLink>
+            </Button>
+          )}
       </div>
     </header>
   );

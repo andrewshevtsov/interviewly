@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { FeedbackRepository } from './feedback.repository.ts';
+import { SessionParticipantRole } from '../../prisma/generated/enums.ts';
 import type { CreateFeedbackDto } from './dto/create-feedback.ts';
 import type { UpdateFeedbackDto } from './dto/update-feedback.ts';
 
@@ -12,9 +13,12 @@ export class FeedbackService {
       throw new BadRequestException('Cannot leave feedback about yourself');
     }
 
-    const authorParticipated = await this.feedbackRepository.isSessionParticipant(sessionId, authorId);
-    if (!authorParticipated) {
+    const authorRole = await this.feedbackRepository.findParticipantRole(sessionId, authorId);
+    if (!authorRole) {
       throw new ForbiddenException('You did not participate in this session');
+    }
+    if (authorRole !== SessionParticipantRole.INTERVIEWER) {
+      throw new ForbiddenException('Only the interviewer can leave feedback');
     }
 
     const targetParticipated = await this.feedbackRepository.isSessionParticipant(sessionId, dto.targetUserId);
@@ -57,9 +61,12 @@ export class FeedbackService {
   }
 
   async findEligibleTargets(sessionId: string, requesterId: string) {
-    const requesterParticipated = await this.feedbackRepository.isSessionParticipant(sessionId, requesterId);
-    if (!requesterParticipated) {
+    const requesterRole = await this.feedbackRepository.findParticipantRole(sessionId, requesterId);
+    if (!requesterRole) {
       throw new ForbiddenException('You did not participate in this session');
+    }
+    if (requesterRole !== SessionParticipantRole.INTERVIEWER) {
+      throw new ForbiddenException('Only the interviewer can leave feedback');
     }
 
     const others = await this.feedbackRepository.findOtherParticipants(sessionId, requesterId);

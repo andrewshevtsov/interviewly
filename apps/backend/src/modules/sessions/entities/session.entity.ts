@@ -35,6 +35,7 @@ export class SessionParticipantEntity implements SessionParticipant {
 export class SessionEntity implements Session {
   id!: string;
   ownerId!: string;
+  title!: string | null;
   type!: SessionType;
   access!: SessionAccess;
   status!: SessionStatus;
@@ -106,6 +107,26 @@ export class LivekitTokenResponse {
   token!: string;
 
   constructor(partial: LivekitTokenResponse) {
+    Object.assign(this, partial);
+  }
+}
+
+/**
+ * Строка экрана "История интервью": завершённая сессия с ролью текущего
+ * пользователя, партнёром и полученной оценкой.
+ */
+export class SessionHistoryEntryResponse {
+  id!: string;
+  number!: string;
+  role!: SessionParticipantRole;
+  title!: string | null;
+  partnerName!: string;
+  date!: string;
+  durationMinutes!: number;
+  score!: number;
+  scoreMax!: number;
+
+  constructor(partial: SessionHistoryEntryResponse) {
     Object.assign(this, partial);
   }
 }

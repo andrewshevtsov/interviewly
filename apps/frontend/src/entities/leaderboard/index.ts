@@ -35,3 +35,5 @@ export interface LeaderboardEntry {
    */
   rating: string;
 }
+
+export { leaderboardApi } from "./leaderboard-api";
