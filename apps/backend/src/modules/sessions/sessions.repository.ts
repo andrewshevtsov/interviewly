@@ -9,6 +9,7 @@ import type {
 import {
   SessionAccessRequestStatus,
   SessionParticipantRole,
+  SessionStatus,
 } from '../../prisma/generated/enums.ts';
 import type {
   AccessRequestWithRequester,
@@ -65,6 +66,27 @@ export class SessionsRepository {
     return this.prisma.session.update({
       where: { id: sessionId },
       data: { ownerId },
+    });
+  }
+
+  /**
+   * Переводит сессию в COMPLETED и отмечает выход всех, кто ещё был в комнате, атомарно.
+   */
+  complete(sessionId: string, endedAt: Date): Promise<Session> {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.sessionParticipant.updateMany({
+        where: { sessionId, leftAt: null, joinedAt: { not: null } },
+        data: { leftAt: endedAt },
+      });
+
+      return tx.session.update({
+        where: { id: sessionId },
+        data: {
+          status: SessionStatus.COMPLETED,
+          statusUpdatedAt: endedAt,
+          endedAt,
+        },
+      });
     });
   }
 

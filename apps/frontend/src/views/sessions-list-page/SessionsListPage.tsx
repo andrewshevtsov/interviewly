@@ -2,23 +2,23 @@
 // Разрешено импортировать widgets, features, entities, shared.
 import { Footer } from "@/widgets/footer";
 import { Navbar } from "@/widgets/navbar";
-import { SessionHistory } from "@/widgets/session-history";
-import type { SessionHistoryEntry } from "@/entities/session";
+import type { PastSession } from "@/entities/session";
+import { SessionHistorySection } from "./SessionHistorySection";
 
 /**
- * Props for {@link SessionsListPage}.
+ * Пропсы {@link SessionsListPage}.
  */
 export interface SessionsListPageProps {
   /**
-   * Past sessions to list, most recent first.
+   * Все прошедшие интервью, сначала новые; каждый пользователь видит те, где участвовал.
    */
-  entries: SessionHistoryEntry[];
+  sessions: PastSession[];
 }
 
 /**
- * Renders the "История" screen: navbar, the session history section and the footer.
- * @param {SessionsListPageProps} props - Props for the page.
- * @returns {import('react').ReactNode} The sessions list page.
+ * Экран "История"
+ * @param {SessionsListPageProps} props - пропсы страницы.
+ * @returns {import('react').ReactNode} Страница истории интервью.
  */
 export function SessionsListPage(props: SessionsListPageProps) {
   return (
@@ -26,7 +26,7 @@ export function SessionsListPage(props: SessionsListPageProps) {
       <Navbar />
 
       <main className="flex-1">
-        <SessionHistory entries={props.entries} />
+        <SessionHistorySection sessions={props.sessions} />
       </main>
 
       <Footer />

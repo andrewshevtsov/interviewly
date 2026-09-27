@@ -36,8 +36,14 @@ export class FeedbackService {
     });
   }
 
-  findMine(authorId: string) {
-    return this.feedbackRepository.findManyByAuthor(authorId);
+  async findMine(authorId: string) {
+    const feedback = await this.feedbackRepository.findManyByAuthor(authorId);
+    return feedback.map(({ targetUser, session, ...rest }) => ({
+      ...rest,
+      targetUser: { userId: targetUser.id, name: this.formatUserName(targetUser) },
+      sessionType: session.type,
+      sessionDate: session.endedAt ?? session.startedAt ?? session.scheduledAt,
+    }));
   }
 
   async findOne(id: string, requesterId: string) {
@@ -63,9 +69,10 @@ export class FeedbackService {
     }
 
     const others = await this.feedbackRepository.findOtherParticipants(sessionId, requesterId);
-    return others.map(({ user }) => ({
-      userId: user.id,
-      name: user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName,
-    }));
+    return others.map(({ user }) => ({ userId: user.id, name: this.formatUserName(user) }));
+  }
+
+  private formatUserName(user: { firstName: string; lastName: string | null }) {
+    return user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName;
   }
 }

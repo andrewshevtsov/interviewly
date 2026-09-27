@@ -36,6 +36,8 @@ Runtime-матрица: `GET /sessions/permissions`.
 Закрытые (`COMPLETED` / `CANCELLED` / `EXPIRED`) — join и заявки запрещены.  
 LiveKit-token — только для `SCHEDULED` / `READY` / `ACTIVE`.
 
+Завершение: `POST /sessions/:id/end` (владелец / admin) → `COMPLETED` + `endedAt`, всем оставшимся в комнате ставится `leftAt`, LiveKit-комната удаляется (все отключаются). Повторный вызов для `COMPLETED` ничего не меняет, для `CANCELLED` / `EXPIRED` — 409. На фронте участники завершённой сессии попадают на экран отзыва `/sessions/:id/feedback`.
+
 ---
 
 ## Роли
@@ -61,6 +63,7 @@ LiveKit-token — только для `SCHEDULED` / `READY` / `ACTIVE`.
 | Подать `access-request` (OPEN/PASSWORD) | — | если ещё не участник | если ещё не участник | — | — |
 | Смотреть / approve / reject заявки | ✅ | ❌ | ❌ | ❌ | ✅ |
 | Передать владение (только другому INTERVIEWER) | ✅ | ❌ | ❌ | ❌ | ✅ |
+| Завершить сессию для всех (`end`) | ✅ | ❌ | ❌ | ❌ | ✅ |
 | `join` / `livekit-token` | ✅ | ✅ | ✅ | ❌ пока не approved | ❌* |
 
 \* Admin **не** получает LiveKit-token только из-за isAdmin — нужен статус участника.
@@ -111,6 +114,7 @@ INVITE: шаг с заявкой пропускается, если пользо
 | POST | `/sessions/:id/access-requests/:requestId/approve` | Владелец |
 | POST | `/sessions/:id/access-requests/:requestId/reject` | Владелец |
 | POST | `/sessions/:id/transfer-ownership` | Владелец/admin; `{ userId }` другого INTERVIEWER, роли не меняются |
+| POST | `/sessions/:id/end` | Владелец/admin; `COMPLETED` + закрытие LiveKit-комнаты |
 | POST | `/sessions/:id/join` | Уже участник |
 | POST | `/sessions/:id/livekit-token` | JWT для SFU |
 

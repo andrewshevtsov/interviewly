@@ -1,7 +1,7 @@
 // Слой entities: запросы к /sessions/:sessionId/feedback и /feedback.
 // Импортирует только entities (свой слайс) и shared.
 import { httpClient } from "@/shared/api/http-client";
-import type { CreateFeedbackInput, EligibleFeedbackTarget, Feedback } from "./index";
+import type { CreateFeedbackInput, EligibleFeedbackTarget, Feedback, FeedbackHistoryEntry } from "./index";
 
 export const feedbackApi = {
   /**
@@ -26,5 +26,13 @@ export const feedbackApi = {
     return httpClient
       .get<EligibleFeedbackTarget[]>(`/sessions/${sessionId}/feedback/participants`)
       .then((res) => res.data);
+  },
+
+  /**
+   * Возвращает отзывы, оставленные текущим пользователем, сначала новые.
+   * @returns {Promise<FeedbackHistoryEntry[]>} История отзывов пользователя.
+   */
+  myFeedbackHistory(): Promise<FeedbackHistoryEntry[]> {
+    return httpClient.get<FeedbackHistoryEntry[]>("/feedback/me").then((res) => res.data);
   },
 };

@@ -117,7 +117,7 @@ export function RequestAccessForm(props: RequestAccessFormProps) {
           </div>
         )}
 
-        <Button type="submit" className="w-full" disabled={requestMutation.isPending}>
+        <Button type="submit" className="w-full" isLoading={requestMutation.isPending}>
           {requestMutation.isPending ? t("sendingRequest") : t("requestAccess")}
         </Button>
 

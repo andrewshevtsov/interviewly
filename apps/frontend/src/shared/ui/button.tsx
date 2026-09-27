@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
+import { Loader2 } from "lucide-react";
 
 import { cn } from "@/shared/lib/cn";
 
@@ -43,24 +44,42 @@ export interface ButtonProps
    * Renders the child element instead of a `<button>`, forwarding props/classes onto it.
    */
   asChild?: boolean;
+
+  /**
+   * Состояние загрузки: кнопка заблокирована, перед текстом крутится спиннер.
+   * С `asChild` спиннер не рисуется - Slot принимает ровно один дочерний элемент.
+   */
+  isLoading?: boolean;
 }
 
 /**
  * Styled button primitive (variants: default, secondary, outline, ghost, link, destructive).
- * @param {ButtonProps} props - Button props, including `variant`, `size` and `asChild`.
+ * @param {ButtonProps} props - Button props, including `variant`, `size`, `asChild` and `isLoading`.
  * @param {React.Ref<HTMLButtonElement>} ref - Forwarded ref to the underlying element.
  * @returns {React.ReactNode} The button element.
  */
 function ButtonImpl(props: ButtonProps, ref: React.Ref<HTMLButtonElement>) {
-  const { className, variant, size, asChild = false, ...rest } = props;
-  const Comp = asChild ? Slot : "button";
+  const { className, variant, size, asChild = false, isLoading = false, disabled, children, ...rest } = props;
+
+  if (asChild) {
+    return (
+      <Slot className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...rest}>
+        {children}
+      </Slot>
+    );
+  }
 
   return (
-    <Comp
+    <button
       className={cn(buttonVariants({ variant, size, className }))}
       ref={ref}
+      disabled={disabled || isLoading}
+      aria-busy={isLoading || undefined}
       {...rest}
-    />
+    >
+      {isLoading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+      {children}
+    </button>
   );
 }
 

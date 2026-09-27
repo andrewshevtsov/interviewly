@@ -193,7 +193,7 @@ export function ProfileForm(props: ProfileFormProps) {
         {saveMutation.isError && <p className="text-sm text-destructive">{t("saveError")}</p>}
         {saveMutation.isSuccess && <p className="text-sm text-muted-foreground">{t("saveSuccess")}</p>}
 
-        <Button type="submit" disabled={saveMutation.isPending}>
+        <Button type="submit" isLoading={saveMutation.isPending}>
           {saveMutation.isPending ? t("savePending") : t("saveChanges")}
         </Button>
       </form>

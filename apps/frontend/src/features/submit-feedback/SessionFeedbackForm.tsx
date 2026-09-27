@@ -164,7 +164,7 @@ export function SessionFeedbackForm(props: SessionFeedbackFormProps) {
         {submitMutation.isError && <p className="text-sm text-destructive">{t("saveError")}</p>}
 
         <div className="flex gap-3">
-          <Button type="submit" disabled={submitMutation.isPending}>
+          <Button type="submit" isLoading={submitMutation.isPending}>
             {submitMutation.isPending ? t("saving") : t("saveResult")}
           </Button>
           <Button asChild variant="outline">
