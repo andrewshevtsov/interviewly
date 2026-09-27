@@ -1,10 +1,12 @@
 "use client";
 
-// Слой views: клиентская граница для истории. Мок-история у каждого пользователя своя, а кто
-// смотрит, фронт знает только из access-токена в памяти браузера - поэтому выбор на клиенте.
+// Слой views: клиентская граница для истории. Access-токен живёт только в памяти браузера,
+// поэтому история запрашивается у бэкенда на клиенте
+import { useQuery } from "@tanstack/react-query";
+
 import { SessionHistory } from "@/widgets/session-history";
-import { getSessionHistoryFor, type PastSession } from "@/entities/session";
-import { useRequiredUserEmail } from "@/shared/api/use-required-user-email";
+import { sessionApi, toCompletedSession, type PastSession } from "@/entities/session";
+import { useGuestRedirect } from "@/shared/api/use-guest-redirect";
 import { useTranslations } from "@/shared/i18n-context";
 
 /**
@@ -12,25 +14,36 @@ import { useTranslations } from "@/shared/i18n-context";
  */
 export interface SessionHistorySectionProps {
   /**
-   * Все прошедшие интервью, сначала новые - секция оставит только те, где участвовал пользователь.
+   * Мок-интервью - источник значений для размытых блоков
    */
-  sessions: PastSession[];
+  placeholder: PastSession;
 }
 
 /**
- * Собственные прошедшие интервью текущего пользователя, либо заглушка загрузки, пока не
- * известно, кто смотрит (гостей отправляет на "/auth").
+ * Завершённые интервью текущего пользователя, либо заглушка загрузки или ошибки
+ * Гостя отправляет на "/auth"
  * @param {SessionHistorySectionProps} props - пропсы секции.
- * @returns {import('react').ReactNode} История, либо заглушка загрузки.
+ * @returns {import('react').ReactNode} История, заглушка загрузки или сообщение об ошибке
  */
 export function SessionHistorySection(props: SessionHistorySectionProps) {
-  const { sessions } = props;
-  const email = useRequiredUserEmail();
+  const { placeholder } = props;
   const common = useTranslations("common");
+  const t = useTranslations("session");
+  useGuestRedirect();
 
-  if (!email) {
+  const historyQuery = useQuery({
+    queryKey: ["sessions", "history"],
+    queryFn: sessionApi.history,
+    retry: false,
+  });
+
+  if (historyQuery.isPending) {
     return <p className="mx-auto max-w-4xl px-6 py-16 text-muted-foreground">{common("loading")}</p>;
   }
 
-  return <SessionHistory entries={getSessionHistoryFor(sessions, email)} />;
+  if (historyQuery.isError) {
+    return <p className="mx-auto max-w-4xl px-6 py-16 text-destructive">{t("historyLoadError")}</p>;
+  }
+
+  return <SessionHistory entries={historyQuery.data.map(toCompletedSession)} placeholder={placeholder} />;
 }

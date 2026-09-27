@@ -15,6 +15,7 @@ import type {
   AccessRequestWithRequester,
   ParticipantWithUser,
   SessionWithParticipants,
+  SessionWithParticipantUsers,
   UpdateAccessRequestData,
 } from './sessions.types.ts';
 
@@ -59,6 +60,25 @@ export class SessionsRepository {
         ],
       },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /**
+   * Завершённые сессии, в которых участвовал пользователь, сначала последние
+   */
+  findCompletedForUser(userId: string): Promise<SessionWithParticipantUsers[]> {
+    return this.prisma.session.findMany({
+      where: {
+        status: SessionStatus.COMPLETED,
+        participants: { some: { userId } },
+      },
+      include: {
+        participants: {
+          include: { user: { select: USER_SUMMARY_SELECT } },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+      orderBy: { endedAt: 'desc' },
     });
   }
 
@@ -132,7 +152,8 @@ export class SessionsRepository {
     role: SessionParticipantRole;
     joinedAt?: Date | null;
   }): Promise<SessionParticipant> {
-    const { sessionId, userId, role, joinedAt } = params;
+    const joinedAt = params.joinedAt === undefined ? new Date() : params.joinedAt;
+    const { sessionId, userId, role } = params;
 
     return this.prisma.sessionParticipant.upsert({
       where: {
@@ -142,12 +163,12 @@ export class SessionsRepository {
         sessionId,
         userId,
         role,
-        joinedAt: joinedAt ?? new Date(),
+        joinedAt,
       },
       update: {
         role,
         leftAt: null,
-        joinedAt: joinedAt ?? new Date(),
+        joinedAt,
         reconnectCount: { increment: 1 },
       },
     });
@@ -176,6 +197,30 @@ export class SessionsRepository {
         session: { select: { id: true, ownerId: true, livekitRoomName: true } },
       },
     });
+  }
+
+  /** Сколько участников сейчас в комнате */
+  countPresentParticipants(sessionId: string): Promise<number> {
+    return this.prisma.sessionParticipant.count({
+      where: { sessionId, joinedAt: { not: null }, leftAt: null },
+    });
+  }
+
+  /**
+   * Отмечает начало интервью. Условие на `startedAt: null` защищает от гонки двух
+   * одновременных входов, начало фиксируется один раз
+   */
+  markStarted(sessionId: string, startedAt: Date): Promise<void> {
+    return this.prisma.session
+      .updateMany({
+        where: { id: sessionId, startedAt: null },
+        data: {
+          startedAt,
+          status: SessionStatus.ACTIVE,
+          statusUpdatedAt: startedAt,
+        },
+      })
+      .then(() => undefined);
   }
 
   markLeft(sessionId: string, userId: string): Promise<SessionParticipant> {

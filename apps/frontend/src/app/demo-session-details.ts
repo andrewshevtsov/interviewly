@@ -14,58 +14,61 @@ const INTERVIEWER = { email: "interviewer@interviewly.test", name: "Ivan Intervi
 const CANDIDATE = { email: "candidate@interviewly.test", name: "Clara Candidate" };
 const USER = { email: "user@interviewly.test", name: "Noah User" };
 
+// Mock data
+const PLACEHOLDER_SESSION: PastSession = {
+  // Mock data: сид-сессия ...101 (business, запланирована на 10 сентября).
+  id: "00000000-0000-4000-8000-000000000101",
+  number: "4092",
+  title: "System design: сервис нотификаций",
+  date: "10 сентября 2026",
+  duration: "62 мин",
+  hintsUsed: 0,
+  hintsTotal: 3,
+  score: 9,
+  scoreMax: 10,
+  participants: [
+    { ...INTERVIEWER, role: "interviewer", reconnects: 0 },
+    { ...OWNER, role: "candidate", reconnects: 0 },
+  ],
+  taskTitle: "Спроектировать сервис уведомлений",
+  taskDescription:
+    "Нужно спроектировать сервис, который доставляет пользователям уведомления по нескольким каналам: " +
+    "push, email и Telegram. Обсудить очередь сообщений, ретраи, идемпотентность и масштабирование.",
+  topics: ["System design", "Очереди", "Идемпотентность"],
+  codeLanguage: "TypeScript",
+  finalCode: [
+    "interface Notification {",
+    "  id: string;",
+    "  userId: string;",
+    "  channel: \"push\" | \"email\" | \"telegram\";",
+    "  payload: unknown;",
+    "}",
+    "",
+    "async function deliver(notification: Notification) {",
+    "  // Идемпотентность: повторную доставку с тем же id пропускаем",
+    "  if (await alreadyDelivered(notification.id)) {",
+    "    return;",
+    "  }",
+    "",
+    "  await queue.publish(notification.channel, notification);",
+    "}",
+  ].join("\n"),
+  hints: [],
+  timeline: [
+    { at: "00:00", text: "Сессия началась" },
+    { at: "01:10", text: "Кандидат присоединился" },
+    { at: "05:30", text: "Обсуждение требований и ожидаемой нагрузки" },
+    { at: "24:15", text: "Выбрана очередь сообщений для доставки" },
+    { at: "48:00", text: "Разбор ретраев и идемпотентности" },
+    { at: "62:00", text: "Сессия завершена" },
+  ],
+  codeRuns: 0,
+  strengths: ["Чётко разделил приём и доставку уведомлений", "Сразу учёл идемпотентность"],
+  growthAreas: ["Не оценил стоимость хранения истории уведомлений"],
+};
+
 export const DEMO_PAST_SESSIONS: PastSession[] = [
-  {
-    // Mock data: сид-сессия ...101 (business, запланирована на 10 сентября).
-    id: "00000000-0000-4000-8000-000000000101",
-    number: "4092",
-    title: "System design: сервис нотификаций",
-    date: "10 сентября 2026",
-    duration: "62 мин",
-    hintsUsed: 0,
-    hintsTotal: 3,
-    score: 9,
-    scoreMax: 10,
-    participants: [
-      { ...INTERVIEWER, role: "interviewer", reconnects: 0 },
-      { ...OWNER, role: "candidate", reconnects: 0 },
-    ],
-    taskTitle: "Спроектировать сервис уведомлений",
-    taskDescription:
-      "Нужно спроектировать сервис, который доставляет пользователям уведомления по нескольким каналам: " +
-      "push, email и Telegram. Обсудить очередь сообщений, ретраи, идемпотентность и масштабирование.",
-    topics: ["System design", "Очереди", "Идемпотентность"],
-    codeLanguage: "TypeScript",
-    finalCode: [
-      "interface Notification {",
-      "  id: string;",
-      "  userId: string;",
-      "  channel: \"push\" | \"email\" | \"telegram\";",
-      "  payload: unknown;",
-      "}",
-      "",
-      "async function deliver(notification: Notification) {",
-      "  // Идемпотентность: повторную доставку с тем же id пропускаем",
-      "  if (await alreadyDelivered(notification.id)) {",
-      "    return;",
-      "  }",
-      "",
-      "  await queue.publish(notification.channel, notification);",
-      "}",
-    ].join("\n"),
-    hints: [],
-    timeline: [
-      { at: "00:00", text: "Сессия началась" },
-      { at: "01:10", text: "Кандидат присоединился" },
-      { at: "05:30", text: "Обсуждение требований и ожидаемой нагрузки" },
-      { at: "24:15", text: "Выбрана очередь сообщений для доставки" },
-      { at: "48:00", text: "Разбор ретраев и идемпотентности" },
-      { at: "62:00", text: "Сессия завершена" },
-    ],
-    codeRuns: 0,
-    strengths: ["Чётко разделил приём и доставку уведомлений", "Сразу учёл идемпотентность"],
-    growthAreas: ["Не оценил стоимость хранения истории уведомлений"],
-  },
+  PLACEHOLDER_SESSION,
   {
     // Mock data: сид-сессия ...105 (completed mock, Ivan Interviewer + Clara Candidate).
     id: "00000000-0000-4000-8000-000000000105",
@@ -222,3 +225,6 @@ export const DEMO_PAST_SESSIONS: PastSession[] = [
     growthAreas: ["Не рассмотрела пустой список", "Оценка сложности по памяти прозвучала не сразу"],
   },
 ];
+
+// Mock data: источник значений заблюреных блоков экрана интервью и истории
+export const DEMO_SESSION_PLACEHOLDER = PLACEHOLDER_SESSION;

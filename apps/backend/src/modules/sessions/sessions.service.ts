@@ -25,6 +25,7 @@ import {
   MySessionStateResponse,
   SessionAccessRequestEntity,
   SessionEntity,
+  SessionHistoryItemResponse,
   SessionParticipantEntity,
   SessionParticipantsResponse,
 } from './entities/session.entity.ts';
@@ -38,6 +39,9 @@ const TOKEN_ALLOWED_STATUSES: ReadonlySet<SessionStatus> = new Set([
   SessionStatus.READY,
   SessionStatus.ACTIVE,
 ]);
+
+// Интервью начинается, когда в комнате собрались двое: время ожидания владельца не учитывается
+const PARTICIPANTS_TO_START = 2;
 
 const CLOSED_STATUSES: ReadonlySet<SessionStatus> = new Set([
   SessionStatus.COMPLETED,
@@ -108,6 +112,28 @@ export class SessionsService {
         actor.isAdmin && SESSION_PERMISSIONS.listAllSessions.allowAdmin,
     });
     return sessions.map((session) => new SessionEntity(session));
+  }
+
+  async findHistory(userId: string): Promise<SessionHistoryItemResponse[]> {
+    const sessions = await this.sessionsRepository.findCompletedForUser(userId);
+
+    return sessions.map(({ participants, ...session }) => {
+      const me = participants.find((participant) => participant.userId === userId);
+      if (!me) {
+        throw new Error(`User "${userId}" is missing from session "${session.id}" participants`);
+      }
+
+      return new SessionHistoryItemResponse({
+        id: session.id,
+        type: session.type,
+        startedAt: session.startedAt,
+        endedAt: session.endedAt,
+        myRole: me.role,
+        partners: participants
+          .filter((participant) => participant !== me)
+          .map((participant) => new SessionParticipantEntity(participant)),
+      });
+    });
   }
 
   async findOne(id: string, actor: JwtPayload): Promise<SessionEntity> {
@@ -445,6 +471,8 @@ export class SessionsService {
       role: participant.role,
     });
 
+    await this.startIfEveryoneJoined(session);
+
     const user = await this.sessionsRepository.findUserById(userId);
     if (!user) {
       throw new NotFoundException(`User "${userId}" not found`);
@@ -469,6 +497,19 @@ export class SessionsService {
       roomName: session.livekitRoomName,
       token,
     });
+  }
+
+  private async startIfEveryoneJoined(
+    session: { id: string; startedAt: Date | null },
+  ): Promise<void> {
+    if (session.startedAt) {
+      return;
+    }
+
+    const present = await this.sessionsRepository.countPresentParticipants(session.id);
+    if (present >= PARTICIPANTS_TO_START) {
+      await this.sessionsRepository.markStarted(session.id, new Date());
+    }
   }
 
   /**

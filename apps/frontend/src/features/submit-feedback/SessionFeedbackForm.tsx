@@ -40,10 +40,10 @@ export interface SessionFeedbackFormProps {
 }
 
 /**
- * Session feedback form: pick the participant it's about, a 0-10 score and a comment.
- * Saving posts to the backend and returns to "История" on success.
- * @param {SessionFeedbackFormProps} props - Props for the form.
- * @returns {import('react').ReactNode} The session feedback form.
+ * Session feedback form: pick the participant it's about, a 0-10 score and a comment
+ * Saving posts to the backend and opens the interview summary on success
+ * @param {SessionFeedbackFormProps} props - Props for the form
+ * @returns {import('react').ReactNode} The session feedback form
  */
 export function SessionFeedbackForm(props: SessionFeedbackFormProps) {
   const { sessionId, defaultScore } = props;
@@ -76,11 +76,11 @@ export function SessionFeedbackForm(props: SessionFeedbackFormProps) {
   }
 
   /**
-   * Returns to "История" once the feedback has been saved.
+   * Opens the interview summary once the feedback has been saved
    * @returns {void}
    */
   function handleSubmitSuccess(): void {
-    router.push(getLocalizedHref("/sessions", locale));
+    router.push(getLocalizedHref(`/sessions/${sessionId}/summary`, locale));
   }
 
   const submitMutation = useMutation({

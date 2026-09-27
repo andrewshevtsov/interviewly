@@ -1,5 +1,5 @@
-// Слой views: экран прошедшего интервью - вся информация о нём, включая отзыв пользователя.
-// Разрешено импортировать widgets, features, entities, shared.
+// Слой views: экран прошедшего интервью - то, что есть в данных бэкенда
+// Разрешено импортировать widgets, features, entities, shared
 import { Footer } from "@/widgets/footer";
 import { Navbar } from "@/widgets/navbar";
 import { SessionSummaryDetails } from "@/widgets/session-summary-details";
@@ -11,27 +11,32 @@ import { SessionSummaryViewer } from "./SessionSummaryViewer";
  */
 export interface SessionSummaryPageProps {
   /**
-   * Прошедшее интервью для отображения.
+   * UUID прошедшего интервью.
    */
-  session: PastSession;
+  sessionId: string;
+
+  /**
+   * Мок-интервью - источник значений для размытых секций.
+   */
+  placeholder: PastSession;
 }
 
 /**
- * Рендерит экран прошедшего интервью: навбар, содержимое с точки зрения текущего
- * пользователя (шапка, его отзыв, остальные детали) и футер.
+ * Рендерит экран прошедшего интервью: навбар, данные интервью с точки зрения текущего
+ * пользователя, его отзыв, размытые мок-секции и футер.
  * @param {SessionSummaryPageProps} props - пропсы страницы.
  * @returns {import('react').ReactNode} Экран прошедшего интервью.
  */
 export function SessionSummaryPage(props: SessionSummaryPageProps) {
-  const { session } = props;
+  const { sessionId, placeholder } = props;
 
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
 
       <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-16">
-        <SessionSummaryViewer session={session}>
-          <SessionSummaryDetails session={session} />
+        <SessionSummaryViewer sessionId={sessionId} placeholder={placeholder}>
+          <SessionSummaryDetails session={placeholder} />
         </SessionSummaryViewer>
       </main>
 

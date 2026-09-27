@@ -10,9 +10,9 @@ import { SessionHistorySection } from "./SessionHistorySection";
  */
 export interface SessionsListPageProps {
   /**
-   * Все прошедшие интервью, сначала новые; каждый пользователь видит те, где участвовал.
+   * Мок-интервью - источник значений для размытых блоков
    */
-  sessions: PastSession[];
+  placeholder: PastSession;
 }
 
 /**
@@ -26,7 +26,7 @@ export function SessionsListPage(props: SessionsListPageProps) {
       <Navbar />
 
       <main className="flex-1">
-        <SessionHistorySection sessions={props.sessions} />
+        <SessionHistorySection placeholder={props.placeholder} />
       </main>
 
       <Footer />

@@ -36,6 +36,7 @@ Runtime-матрица: `GET /sessions/permissions`.
 Закрытые (`COMPLETED` / `CANCELLED` / `EXPIRED`) — join и заявки запрещены.  
 LiveKit-token — только для `SCHEDULED` / `READY` / `ACTIVE`.
 
+Начало: когда в комнате одновременно двое (второй получил `livekit-token`), сессия становится `ACTIVE` и получает `startedAt`
 Завершение: `POST /sessions/:id/end` (владелец / admin) → `COMPLETED` + `endedAt`, всем оставшимся в комнате ставится `leftAt`, LiveKit-комната удаляется (все отключаются). Повторный вызов для `COMPLETED` ничего не меняет, для `CANCELLED` / `EXPIRED` — 409. На фронте участники завершённой сессии попадают на экран отзыва `/sessions/:id/feedback`.
 
 ---
@@ -106,6 +107,7 @@ INVITE: шаг с заявкой пропускается, если пользо
 | GET | `/sessions/permissions` | Матрица прав |
 | POST | `/sessions` | Создать; ты = владелец |
 | GET | `/sessions` | Фильтр по пользователю |
+| GET | `/sessions/history` | Мои `COMPLETED`-сессии: моя роль + остальные участники |
 | GET | `/sessions/:id` | Без участников |
 | GET | `/sessions/:id/participants` | count + список |
 | POST | `/sessions/:id/access-requests` | Заявка |
