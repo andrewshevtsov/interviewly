@@ -16,7 +16,6 @@ const SECONDS_PER_TICK = 1;
 const SECONDS_PER_MINUTE = 60;
 const MINUTES_PER_HOUR = 60;
 const TIME_UNIT_DIGITS = 2;
-const SHORT_ID_LENGTH = 8;
 const COPY_CONFIRMATION_MS = 2000;
 
 /**
@@ -65,6 +64,27 @@ export function SessionHeader(props: SessionHeaderProps) {
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations("session");
+  const feedbackHref = `/sessions/${sessionId}/feedback`;
+
+  /**
+   * Завершает сессию для всех участников.
+   * @returns {Promise<void>} Завершается, когда сессия переведена в COMPLETED.
+   */
+  function endSession(): Promise<void> {
+    return sessionApi.end(sessionId);
+  }
+
+  /**
+   * Переходит на экран фидбека после завершения сессии.
+   * @returns {void}
+   */
+  function handleEndSuccess(): void {
+    router.push(getLocalizedHref(feedbackHref, locale));
+  }
+
+  const endMutation = useMutation({ mutationFn: endSession, onSuccess: handleEndSuccess });
+  // После успеха кнопка остаётся занятой, пока идёт переход на экран фидбека
+  const isEnding = endMutation.isPending || endMutation.isSuccess;
 
   const feedbackHref = getLocalizedHref(`/sessions/${sessionId}/feedback`, locale);
 
@@ -119,7 +139,7 @@ export function SessionHeader(props: SessionHeaderProps) {
           Interviewly
         </LocalizedLink>
         <span className="text-sm text-muted-foreground">
-          {t("sessionLabel")} <span className="font-mono">#{sessionId.slice(0, SHORT_ID_LENGTH)}</span>
+          {t("sessionLabel")} <span className="font-mono">#{formatSessionNumber(sessionId)}</span>
         </span>
         <Button type="button" variant="ghost" size="sm" onClick={copyInviteLink}>
           {copied ? t("inviteLinkCopied") : t("copyInviteLink")}

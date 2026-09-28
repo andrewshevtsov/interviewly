@@ -44,6 +44,23 @@ export const sessionApi = {
   },
 
   /**
+   * Загружает карточку сессии (без участников)
+   * @param {string} sessionId - UUID сессии
+   * @returns {Promise<ApiSession>} Сессия
+   */
+  get(sessionId: string): Promise<ApiSession> {
+    return httpClient.get<ApiSession>(`/sessions/${sessionId}`).then((res) => res.data);
+  },
+
+  /**
+   * Завершённые сессии текущего пользователя, сначала последние
+   * @returns {Promise<ApiSessionHistoryItem[]>} История интервью
+   */
+  history(): Promise<ApiSessionHistoryItem[]> {
+    return httpClient.get<ApiSessionHistoryItem[]>("/sessions/history").then((res) => res.data);
+  },
+
+  /**
    * Загружает состояние текущего пользователя в сессии: роль и последнюю заявку
    * @param {string} sessionId - UUID сессии
    * @returns {Promise<MySessionState>} состояние пользователя
@@ -129,6 +146,15 @@ export const sessionApi = {
    */
   transferOwnership(sessionId: string, userId: string): Promise<void> {
     return httpClient.post(`/sessions/${sessionId}/transfer-ownership`, { userId }).then(() => undefined);
+  },
+
+  /**
+   * Завершает интервью для всех и закрывает LiveKit-комнату (только владелец)
+   * @param {string} sessionId - UUID сессии
+   * @returns {Promise<void>} Завершается, когда сессия переведена в COMPLETED
+   */
+  end(sessionId: string): Promise<void> {
+    return httpClient.post(`/sessions/${sessionId}/end`).then(() => undefined);
   },
 
   /**

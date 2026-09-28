@@ -44,18 +44,32 @@ export function SessionHistory() {
       <h1 className="text-3xl font-bold tracking-tight">{t("historyTitle")}</h1>
       <p className="mt-2 text-muted-foreground">{t("historyDescription")}</p>
 
+      {entries.length === 0 && <p className="mt-10 text-muted-foreground">{t("historyEmpty")}</p>}
+
       <div className="mt-10 space-y-4">
-        {entries.map((entry) => (
-          <Card key={entry.id} className="flex items-center gap-4 p-5">
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <Badge variant="muted" className="rounded-md font-mono text-[10px]">
-                  #{entry.number}
-                </Badge>
-                <span className="text-xs font-semibold uppercase tracking-wide text-primary">
-                  {t(ROLE_LABEL_KEYS[entry.role])}
-                </span>
-              </div>
+        {entries.map((entry) => {
+          const meta = [
+            entry.partners.map((partner) => partner.name).join(", "),
+            entry.date && formatDate(entry.date, locale),
+            entry.durationMinutes !== null && `${entry.durationMinutes} ${t.raw("minutesShort")}`,
+          ].filter(Boolean);
+
+          return (
+            <LocalizedLink
+              key={entry.id}
+              href={`/sessions/${entry.id}/summary`}
+              className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Card className="flex items-center gap-4 p-5 transition-colors hover:border-primary/60">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="muted" className="rounded-md font-mono text-[10px]">
+                      #{entry.number}
+                    </Badge>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-primary">
+                      {t(entry.myRole)}
+                    </span>
+                  </div>
 
               <p className="mt-2 font-semibold">{entry.title ?? t("untitledSession")}</p>
               <p className="text-sm text-muted-foreground">
@@ -64,14 +78,15 @@ export function SessionHistory() {
               </p>
             </div>
 
-            <div className="text-center">
-              <p className="text-3xl font-bold text-primary">{entry.score}</p>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                {t("scoreOutOf")} {entry.scoreMax}
-              </p>
-            </div>
-          </Card>
-        ))}
+                <ComingSoon label={t("comingSoon")}>
+                  <p className="text-sm text-muted-foreground">
+                    {t("hintsUsedLabel")}: {placeholder.hintsUsed}/{placeholder.hintsTotal}
+                  </p>
+                </ComingSoon>
+              </Card>
+            </LocalizedLink>
+          );
+        })}
       </div>
     </section>
   );

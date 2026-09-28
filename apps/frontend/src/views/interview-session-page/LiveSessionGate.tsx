@@ -2,6 +2,7 @@
 
 // Слой views: Шлюз "Открытой сессии". По GET /sessions/:id/me решает, что показать:
 // комнату (участник), заявку/ожидание (гость по ссылке) или сообщение (закрыта / не найдена).
+// Участника завершённой сессии отправляет на экран фидбека.
 import { useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, type Query } from "@tanstack/react-query";
@@ -12,6 +13,7 @@ import { getHttpStatus } from "@/shared/api/http-client";
 import { getLocalizedHref } from "@/shared/i18n";
 import { useLocale, useTranslations } from "@/shared/i18n-context";
 import { LiveSessionRoom } from "./LiveSessionRoom";
+import { SessionEndedNotice } from "./SessionEndedNotice";
 
 const HTTP_UNAUTHORIZED = 401;
 const WAITING_POLL_INTERVAL_MS = 3000;
@@ -97,12 +99,26 @@ export function LiveSessionGate(props: LiveSessionGateProps) {
     refetchIntervalInBackground: true,
   });
   const isUnauthorized = getHttpStatus(stateQuery.error) === HTTP_UNAUTHORIZED;
+  const isCompletedForParticipant =
+    Boolean(stateQuery.data?.role) && stateQuery.data?.sessionStatus === "COMPLETED";
 
   useEffect(() => {
     if (isUnauthorized) {
       router.replace(getLocalizedHref("/auth", locale));
     }
   }, [isUnauthorized, router, locale]);
+
+  useEffect(() => {
+    if (isCompletedForParticipant) {
+      router.replace(
+        getLocalizedHref(`/sessions/${sessionId}/feedback`, locale),
+      );
+    }
+  }, [isCompletedForParticipant, router, locale, sessionId]);
+
+  if (isCompletedForParticipant) {
+    return <SessionEndedNotice />;
+  }
 
   if (stateQuery.isPending || isUnauthorized) {
     return <CenteredMessage>{common("loading")}</CenteredMessage>;

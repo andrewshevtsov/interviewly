@@ -37,9 +37,9 @@ const NAV_LINKS: NavLink[] = [
 ];
 
 /**
- * Top navigation bar: brand mark, section links and auth/CTA actions. Highlights the link
- * that matches the current route.
- * @returns {import('react').ReactNode} The navbar.
+ * Верхняя навигация: логотип, ссылки разделов (только для залогиненных) и действия входа/CTA.
+ * Подсвечивает ссылку, соответствующую текущему роуту.
+ * @returns {import('react').ReactNode} Навбар.
  */
 export function Navbar() {
   const PATHNAME = usePathname();
@@ -59,20 +59,22 @@ export function Navbar() {
           Interviewly
         </LocalizedLink>
 
-        <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
-          {NAV_LINKS.map((link) => (
-            <LocalizedLink
-              key={link.labelKey}
-              href={link.href}
-              className={cn(
-                "hover:text-foreground",
-                PATHNAME === getLocalizedHref(link.href, locale) && "text-primary",
-              )}
-            >
-              {t(link.labelKey)}
-            </LocalizedLink>
-          ))}
-        </nav>
+        {isAuthenticated && (
+          <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
+            {NAV_LINKS.map((link) => (
+              <LocalizedLink
+                key={link.labelKey}
+                href={link.href}
+                className={cn(
+                  "hover:text-foreground",
+                  PATHNAME === getLocalizedHref(link.href, locale) && "text-primary",
+                )}
+              >
+                {t(link.labelKey)}
+              </LocalizedLink>
+            ))}
+          </nav>
+        )}
 
         <div className="flex items-center gap-3">
           <LanguageSwitcher />

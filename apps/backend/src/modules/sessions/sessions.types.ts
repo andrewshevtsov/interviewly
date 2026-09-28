@@ -22,6 +22,10 @@ export type SessionUserSummary = Pick<User, 'id' | 'firstName' | 'lastName' | 'e
 
 export type ParticipantWithUser = SessionParticipant & { user: SessionUserSummary };
 
+export type SessionWithParticipantUsers = Session & {
+  participants: ParticipantWithUser[];
+};
+
 export type AccessRequestWithRequester = SessionAccessRequest & {
   requester: SessionUserSummary;
 };
