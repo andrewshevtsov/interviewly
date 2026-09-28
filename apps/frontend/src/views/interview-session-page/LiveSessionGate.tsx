@@ -4,7 +4,7 @@
 // комнату (участник), заявку/ожидание (гость по ссылке) или сообщение (закрыта / не найдена).
 // Участника завершённой сессии отправляет на экран фидбека.
 import { useEffect, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useQuery, type Query } from "@tanstack/react-query";
 
 import { RequestAccessForm } from "@/features/join-session";
@@ -12,6 +12,7 @@ import { isSessionClosed, sessionApi, type MySessionState } from "@/entities/ses
 import { getHttpStatus } from "@/shared/api/http-client";
 import { getLocalizedHref } from "@/shared/i18n";
 import { useLocale, useTranslations } from "@/shared/i18n-context";
+import { getAuthHref } from "@/shared/lib/return-path";
 import { LiveSessionRoom } from "./LiveSessionRoom";
 import { SessionEndedNotice } from "./SessionEndedNotice";
 
@@ -70,13 +71,14 @@ function CenteredMessage(props: CenteredMessageProps) {
 
 /**
  * Загружает состояние пользователя в сессии и рендерит подходящий экран; если пользователь
- * не авторизован - редирект на "/auth"
+ * не авторизован - редирект на "/auth" с возвратом в эту сессию после входа
  * @param {LiveSessionGateProps} props
  * @returns {import('react').ReactNode} Комната, экран заявки или сообщение.
  */
 export function LiveSessionGate(props: LiveSessionGateProps) {
   const { sessionId } = props;
   const router = useRouter();
+  const pathname = usePathname();
   const locale = useLocale();
   const common = useTranslations("common");
   const t = useTranslations("interview");
@@ -104,9 +106,9 @@ export function LiveSessionGate(props: LiveSessionGateProps) {
 
   useEffect(() => {
     if (isUnauthorized) {
-      router.replace(getLocalizedHref("/auth", locale));
+      router.replace(getAuthHref(pathname, locale));
     }
-  }, [isUnauthorized, router, locale]);
+  }, [isUnauthorized, router, pathname, locale]);
 
   useEffect(() => {
     if (isCompletedForParticipant) {

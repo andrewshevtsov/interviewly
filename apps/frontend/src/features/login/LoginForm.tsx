@@ -13,10 +13,22 @@ import { Label } from "@/shared/ui/label";
 import { SubmitEvent } from "react";
 
 /**
+ * Пропсы {@link LoginForm}
+ */
+export interface LoginFormProps {
+  /**
+   * Куда вернуть пользователя после входа
+   */
+  returnPath?: string;
+}
+
+/**
  * Login form: email and password fields.
+ * @param {LoginFormProps} props - Пропсы компонента
  * @returns {import('react').ReactNode} The login form.
  */
-export function LoginForm() {
+export function LoginForm(props: LoginFormProps) {
+  const { returnPath } = props;
   const router = useRouter();
   const locale = useLocale();
   const common = useTranslations("common");
@@ -26,13 +38,13 @@ export function LoginForm() {
   const loginMutation = useMutation({
     mutationFn: authApi.login,
     /**
-     * Stores the new access token and redirects to the profile page.
+     * Stores the new access token and redirects back to `returnPath` or to the profile page.
      * @param {{ accessToken: string }} tokens - The login response.
      * @returns {void}
      */
     onSuccess: (tokens) => {
       setAuthenticated(tokens.accessToken);
-      router.push(getLocalizedHref("/profile", locale));
+      router.push(getLocalizedHref(returnPath ?? "/profile", locale));
     },
   });
 
