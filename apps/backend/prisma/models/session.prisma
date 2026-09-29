@@ -10,6 +10,12 @@ enum SessionAccess {
   INVITE
 }
 
+// Язык редактора кода в комнате.
+enum EditorLanguage {
+  PYTHON
+  JAVASCRIPT
+}
+
 enum SessionStatus {
   DRAFT
   SCHEDULED
@@ -39,6 +45,9 @@ model Session {
   ownerId String @db.Uuid
   owner   User   @relation(fields: [ownerId], references: [id])
 
+  // Название задаёт владелец при создании; у старых сессий его нет.
+  title           String?
+  editorLanguage  EditorLanguage @default(PYTHON)
   type            SessionType   @default(BUSINESS)
   access          SessionAccess @default(INVITE)
   // Для access=PASSWORD непустой хеш обязателен: это дополнительно защищено

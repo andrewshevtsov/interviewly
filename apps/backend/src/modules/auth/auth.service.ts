@@ -76,7 +76,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    return this.issueTokens(user);
+    return this.issueTokens(user, dto.rememberMe ?? true);
   }
 
   /**
@@ -102,7 +102,7 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token subject no longer exists');
     }
 
-    return this.issueTokens(user);
+    return this.issueTokens(user, payload.rememberMe ?? true);
   }
 
   /**
@@ -158,13 +158,13 @@ export class AuthService {
     }
   }
 
-  private async issueTokens(user: UserEntity): Promise<AuthTokens> {
+  private async issueTokens(user: UserEntity, rememberMe = true): Promise<AuthTokens> {
     const accessPayload: JwtPayload = {
       sub: user.id,
       email: user.email,
       isAdmin: user.isAdmin,
     };
-    const refreshPayload: RefreshPayload = { sub: user.id };
+    const refreshPayload: RefreshPayload = { sub: user.id, rememberMe };
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(accessPayload, {
@@ -178,6 +178,11 @@ export class AuthService {
     ]);
 
     const { exp } = this.jwtService.decode<{ exp: number }>(refreshToken);
-    return { accessToken, refreshToken, refreshTokenExpiresAt: new Date(exp * 1000) };
+    return {
+      accessToken,
+      refreshToken,
+      refreshTokenExpiresAt: new Date(exp * 1000),
+      rememberMe,
+    };
   }
 }

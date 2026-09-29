@@ -1,7 +1,7 @@
 "use client";
 
 // Слой features: форма создания сессии - название, язык редактора и приватность.
-// Отправляет реальный POST /sessions; название и язык бэкенд пока не хранит.
+// Отправляет реальный POST /sessions.
 import { useState, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
@@ -32,8 +32,8 @@ interface LanguageOption {
 }
 
 const LANGUAGES: LanguageOption[] = [
-  { id: "python", label: "python" },
-  { id: "javascript", label: "javascript" },
+  { id: "PYTHON", label: "python" },
+  { id: "JAVASCRIPT", label: "javascript" },
 ];
 
 // Совпадает с @MinLength в CreateSessionDto на бэкенде.
@@ -87,7 +87,9 @@ export function CreateSessionForm(props: CreateSessionFormProps) {
       return;
     }
 
-    createMutation.mutate(isPrivate ? { access: "PASSWORD", password } : { access: "OPEN" });
+    const title = new FormData(event.currentTarget).get("title") as string;
+    const access = isPrivate ? { access: "PASSWORD" as const, password } : { access: "OPEN" as const };
+    createMutation.mutate({ title, editorLanguage: language, ...access });
   }
 
   return (
@@ -95,7 +97,13 @@ export function CreateSessionForm(props: CreateSessionFormProps) {
       <form className="space-y-6" onSubmit={handleSubmit}>
         <div className="space-y-2">
           <Label htmlFor="session-title">{t("sessionTitleLabel")}</Label>
-          <Input id="session-title" defaultValue={draft.title} />
+          <Input
+            id="session-title"
+            name="title"
+            defaultValue={draft.title}
+            placeholder={t("sessionTitlePlaceholder")}
+            maxLength={120}
+          />
         </div>
 
         <div className="space-y-2">

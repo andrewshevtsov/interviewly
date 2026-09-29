@@ -72,6 +72,7 @@ export const messages = {
       en: "By continuing, you agree to the",
     },
     termsOfService: { ru: "условиями сервиса", en: "terms of service" },
+    rememberMe: { ru: "запомнить меня", en: "remember me" },
     loginPending: { ru: "входим...", en: "signing in..." },
     loginError: {
       ru: "неверный email или пароль",
@@ -277,6 +278,10 @@ export const messages = {
       en: "Configure the room and invite participants.",
     },
     sessionTitleLabel: { ru: "название", en: "title" },
+    sessionTitlePlaceholder: {
+      ru: "Техническое интервью: алгоритмы",
+      en: "Technical interview: algorithms",
+    },
     editorLanguageLabel: { ru: "язык редактора", en: "editor language" },
     privateSession: { ru: "закрытая сессия", en: "private session" },
     privateSessionHint: {

@@ -15,6 +15,11 @@ export interface LoginPayload {
    * User password.
    */
   password: string;
+
+  /**
+   * Запомнить вход: `false` - сессия заканчивается при закрытии браузера.
+   */
+  rememberMe: boolean;
 }
 
 /**

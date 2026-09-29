@@ -5,13 +5,15 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  MaxLength,
   MinLength,
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  EditorLanguage,
   SessionAccess,
   SessionParticipantRole,
   SessionType,
@@ -36,7 +38,31 @@ export class CreateSessionParticipantDto {
   role?: SessionParticipantRole;
 }
 
+const SESSION_TITLE_MAX_LENGTH = 120;
+
 export class CreateSessionDto {
+  @ApiPropertyOptional({
+    description: 'Название сессии. Пустая строка после trim сохраняется как null.',
+    maxLength: SESSION_TITLE_MAX_LENGTH,
+    example: 'Техническое интервью: алгоритмы',
+  })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() || undefined : value,
+  )
+  @IsString()
+  @MaxLength(SESSION_TITLE_MAX_LENGTH)
+  title?: string;
+
+  @ApiPropertyOptional({
+    enum: EditorLanguage,
+    enumName: 'EditorLanguage',
+    default: EditorLanguage.PYTHON,
+  })
+  @IsOptional()
+  @IsEnum(EditorLanguage)
+  editorLanguage?: EditorLanguage;
+
   @ApiPropertyOptional({
     enum: SessionType,
     enumName: 'SessionType',

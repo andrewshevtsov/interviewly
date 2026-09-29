@@ -232,7 +232,7 @@ export interface SessionParticipant {
 /**
  * Язык редактора кода, предлагаемый при создании сессии.
  */
-export type EditorLanguage = "python" | "javascript";
+export type EditorLanguage = "PYTHON" | "JAVASCRIPT";
 
 /**
  * Черновые значения формы создания "Новая сессия".
@@ -338,6 +338,16 @@ export interface ApiSession {
   ownerId: string;
 
   /**
+   * Название сессии, либо `null`, если владелец его не задал.
+   */
+  title: string | null;
+
+  /**
+   * Язык редактора кода в комнате.
+   */
+  editorLanguage: EditorLanguage;
+
+  /**
    * Кто может попасть в сессию.
    */
   access: SessionAccess;
@@ -367,6 +377,16 @@ export interface ApiSession {
  * Тело запроса `POST /sessions`.
  */
 export interface CreateSessionInput {
+  /**
+   * Название сессии.
+   */
+  title?: string;
+
+  /**
+   * Язык редактора кода в комнате.
+   */
+  editorLanguage: EditorLanguage;
+
   /**
    * Кто может попасть в сессию.
    */

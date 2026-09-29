@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class LoginDto {
   @ApiProperty({
@@ -22,4 +22,14 @@ export class LoginDto {
   @MinLength(8)
   @MaxLength(72)
   password!: string;
+
+  @ApiProperty({
+    description:
+      'Запомнить вход: true - постоянная кука с refresh-токеном, false - сессионная. По умолчанию true.',
+    required: false,
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  rememberMe?: boolean;
 }

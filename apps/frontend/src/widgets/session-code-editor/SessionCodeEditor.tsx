@@ -12,13 +12,13 @@ import type { EditorLanguage } from "@/entities/session";
 const RUN_FEEDBACK_DELAY_MS = 900;
 
 const FILE_NAMES: Record<EditorLanguage, string> = {
-  python: "main.py",
-  javascript: "main.ts",
+  PYTHON: "main.py",
+  JAVASCRIPT: "main.ts",
 };
 
 const RUN_OUTPUT: Record<EditorLanguage, string> = {
-  python: "[3, 2, 1] -> None",
-  javascript: "[3, 2, 1] -> null",
+  PYTHON: "[3, 2, 1] -> None",
+  JAVASCRIPT: "[3, 2, 1] -> null",
 };
 
 /**
@@ -165,7 +165,7 @@ export interface SessionCodeEditorProps {
  */
 export function SessionCodeEditor(props: SessionCodeEditorProps) {
   const { participantsCount } = props;
-  const [activeFile, setActiveFile] = useState<EditorLanguage>("python");
+  const [activeFile, setActiveFile] = useState<EditorLanguage>("PYTHON");
   const [isRunning, setIsRunning] = useState(false);
   const [output, setOutput] = useState<string | null>(null);
   const t = useTranslations("session");
@@ -216,7 +216,7 @@ export function SessionCodeEditor(props: SessionCodeEditorProps) {
       </div>
 
       <div className="flex-1 space-y-1 overflow-auto p-4">
-        {activeFile === "python" ? <PythonSource /> : <TypeScriptSource />}
+        {activeFile === "PYTHON" ? <PythonSource /> : <TypeScriptSource />}
       </div>
 
       {output && (
