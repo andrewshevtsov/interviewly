@@ -64,10 +64,10 @@ export const DEMO_PROFILE_STATS: ProfileStatsData = {
 };
 
 export const DEMO_NEW_SESSION_DRAFT: NewSessionDraft = {
-  title: "Техническое интервью: алгоритмы",
-  editorLanguage: "python",
-  isPrivate: true,
-  accessCode: "SECURE-77-X9",
+  title: "",
+  editorLanguage: "PYTHON",
+  isPrivate: false,
+  accessCode: "",
 };
 
 export const DEMO_PARTICIPANTS: Participant[] = [

@@ -5,6 +5,7 @@ import type {
   SessionParticipant,
 } from '../../../prisma/generated/client.ts';
 import {
+  EditorLanguage,
   SessionAccess,
   SessionAccessRequestStatus,
   SessionParticipantRole,
@@ -35,6 +36,8 @@ export class SessionParticipantEntity implements SessionParticipant {
 export class SessionEntity implements Session {
   id!: string;
   ownerId!: string;
+  title!: string | null;
+  editorLanguage!: EditorLanguage;
   type!: SessionType;
   access!: SessionAccess;
   status!: SessionStatus;

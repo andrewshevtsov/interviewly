@@ -43,6 +43,7 @@ export default [
   },
   {
     id: '00000000-0000-4000-8000-000000000104',
+    livekitRoomName: '00000000-0000-4000-8000-000000000104',
     ownerEmail: 'owner@interviewly.test',
     type: SessionType.MOCK,
     access: SessionAccess.OPEN,
@@ -54,6 +55,7 @@ export default [
   },
   {
     id: '00000000-0000-4000-8000-000000000105',
+    livekitRoomName: '00000000-0000-4000-8000-000000000105',
     ownerEmail: 'interviewer@interviewly.test',
     type: SessionType.MOCK,
     access: SessionAccess.OPEN,

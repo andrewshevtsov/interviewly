@@ -37,11 +37,23 @@ const TABS: TabOption[] = [
 ];
 
 /**
+ * Пропсы {@link AuthCard}
+ */
+export interface AuthCardProps {
+  /**
+   * Куда вернуть пользователя после входа
+   */
+  returnPath?: string;
+}
+
+/**
  * Auth card: a login/registration tab toggle, the active form, a "continue with Telegram"
  * button and the terms-of-service notice.
+ * @param {AuthCardProps} props - Пропсы карточки
  * @returns {import('react').ReactNode} The auth card.
  */
-export function AuthCard() {
+export function AuthCard(props: AuthCardProps) {
+  const { returnPath } = props;
   const [activeTab, setActiveTab] = useState<AuthTab>("login");
   const t = useTranslations("auth");
 
@@ -65,7 +77,10 @@ export function AuthCard() {
         ))}
       </div>
 
-      <div className="mt-6">{activeTab === "login" ? <LoginForm /> : <RegisterForm />}</div>
+      <div className="mt-6">
+        {activeTab === "login" && <LoginForm returnPath={returnPath} />}
+        {activeTab === "register" && <RegisterForm returnPath={returnPath} />}
+      </div>
 
       {Boolean(process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME) && (
         <>
@@ -75,7 +90,7 @@ export function AuthCard() {
             <span className="h-px flex-1 bg-border" />
           </div>
 
-          <TelegramLoginButton />
+          <TelegramLoginButton returnPath={returnPath} />
         </>
       )}
 

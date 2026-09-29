@@ -79,6 +79,8 @@ export class SessionsService {
     const session = await this.sessionsRepository.create({
       id,
       livekitRoomName: id,
+      title: dto.title,
+      editorLanguage: dto.editorLanguage,
       type: dto.type,
       access,
       passwordHash,
