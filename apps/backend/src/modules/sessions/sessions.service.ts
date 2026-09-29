@@ -15,6 +15,7 @@ import {
   SessionParticipantRole,
   SessionStatus,
 } from '../../prisma/generated/enums.ts';
+import type { Session } from '../../prisma/generated/client.ts';
 import type { JwtPayload } from '../auth/auth.types.ts';
 import { CreateAccessRequestDto } from './dto/create-access-request.dto.ts';
 import { CreateSessionDto } from './dto/create-session.dto.ts';
@@ -80,6 +81,7 @@ export class SessionsService {
       id,
       livekitRoomName: id,
       title: dto.title,
+      task: dto.task,
       editorLanguage: dto.editorLanguage,
       type: dto.type,
       access,
@@ -166,6 +168,16 @@ export class SessionsService {
       role: participant?.role ?? null,
       accessRequestStatus: latestRequest?.status ?? null,
     });
+  }
+
+  /**
+   * Проверяет, что пользователь видит участников,
+   * подсказки, realtime-события, и возвращает сессию
+   */
+  async requireRoomViewer(sessionId: string, actor: JwtPayload): Promise<Session> {
+    const session = await this.requireSession(sessionId);
+    await this.assertCanViewParticipants(session, actor);
+    return session;
   }
 
   async listParticipants(

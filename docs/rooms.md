@@ -66,10 +66,45 @@ LiveKit-token — только для `SCHEDULED` / `READY` / `ACTIVE`.
 | Передать владение (только другому INTERVIEWER) | ✅ | ❌ | ❌ | ❌ | ✅ |
 | Завершить сессию для всех (`end`) | ✅ | ❌ | ❌ | ❌ | ✅ |
 | `join` / `livekit-token` | ✅ | ✅ | ✅ | ❌ пока не approved | ❌* |
+| `GET /sessions/:id/hints`, WebSocket `session:join` | ✅ | ✅ | ✅ | ❌ | ✅ |
+| `POST /sessions/:id/hints` (AI-подсказка) | ❌ | ❌ | ✅ | ❌ | ❌ |
+| `POST /sessions/:id/demo-task/next` (временно) | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 \* Admin **не** получает LiveKit-token только из-за isAdmin — нужен статус участника.
 
 Карточка сессии **никогда** не отдаёт `participants` и `passwordHash`. Состав комнаты — только отдельный endpoint.
+
+---
+
+## AI-подсказки и realtime
+
+Кандидат во время `ACTIVE`-интервью запрашивает до 3 подсказок на сессию; все участники видят их сразу.
+
+```text
+POST /sessions/:id/hints { code? }        только CANDIDATE, сессия ACTIVE, лимит 3
+  → DeepSeek /chat/completions            промпт: Session.task + code + прошлые подсказки
+  → SessionHint (order 1..3, unique)    гонка двух кликов → 409
+  → socket.io "hint:created" в комнату    все, кто сделал session:join
+GET /sessions/:id/hints                   { hints, limit, remaining } - после перезагрузки
+```
+
+- **WebSocket** (socket.io, тот же порт, что HTTP): клиент подключается с `auth: { token: <access-token> }` -
+  без валидного токена соединение отклоняется. Затем `emit("session:join", { sessionId })` → `{ ok }`
+  (права как у `participants`), `session:leave` - выйти.
+- **Ошибки DeepSeek** не тратят лимит: нет ключа или ключ неверный → 503, таймаут 20 с → 504,
+  пустой ответ → 502.
+- **Prompt injection.** Условие и код пишут участники, поэтому в промпте они в тегах `<task>`/`<code>`
+  с запретом исполнять инструкции оттуда, обрезаны по длине; блоки кода из ответа вырезаются,
+  `max_tokens` = 300. Полностью это не защищает - но подсказку видит интервьюер, а лимит 3 на сессию.
+- **Несколько инстансов бэкенда**: без `@socket.io/redis-adapter` события доходят только до клиентов
+  того же инстанса.
+- **Демо-задачи** (пока нет реалтайм-редактора; `AI_HINTS_DEMO_CONTEXT=true`): 10 задач
+- на JS/TS (`session-hints/demo-tasks.ts`). Интервьюер жмёт «новая задача» →
+  `POST /sessions/:id/demo-task/next` → `Session.demoTaskIndex` → socket.io `demo-task:changed` всем в комнате,
+  редактор показывает задачу. Подсказка берёт условие и код текущей задачи с сервера.
+  `GET /sessions/:id/demo-task` → `{ enabled, current }` - по нему фронт понимает, включён ли режим.
+- Переменные: `DEEPSEEK_API_KEY` (без него бэкенд стартует, подсказки → 503), `DEEPSEEK_BASE_URL`,
+  `DEEPSEEK_MODEL` (по умолчанию `deepseek-flash`, режим рассуждений отключён в запросе).
 
 ---
 

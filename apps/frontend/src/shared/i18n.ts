@@ -195,6 +195,32 @@ export const messages = {
     interviewer: { ru: "интервьюер", en: "interviewer" },
     you: { ru: "вы", en: "you" },
     aiHint: { ru: "AI-подсказка", en: "AI hint" },
+    aiHintsTitle: { ru: "AI-подсказки", en: "AI hints" },
+    nextDemoTask: { ru: "новая задача", en: "next task" },
+    demoTaskCounter: { ru: "задача", en: "task" },
+    demoTaskEmpty: {
+      ru: "Задача ещё не выбрана: интервьюер показывает её кнопкой «новая задача».",
+      en: "No task yet: the interviewer shows one with the “next task” button.",
+    },
+    demoTaskError: { ru: "Не удалось сменить задачу", en: "Couldn't switch the task" },
+    aiHintsEmpty: { ru: "Подсказок пока не было.", en: "No hints yet." },
+    aiHintPending: { ru: "Генерируем подсказку…", en: "Generating a hint…" },
+    aiHintWaitActive: {
+      ru: "Подсказки станут доступны, после того как присоединится второй участник",
+      en: "Hints become available once both participants are in the room",
+    },
+    aiHintLimitError: {
+      ru: "Подсказки закончились",
+      en: "No hints left for this session",
+    },
+    aiHintUnavailableError: {
+      ru: "AI-сервис недоступен, попробуйте ещё раз.",
+      en: "The AI service is unavailable, try again.",
+    },
+    aiHintError: {
+      ru: "Не удалось получить подсказку, попробуйте ещё раз.",
+      en: "Couldn't get a hint, try again.",
+    },
     aiHintExample: {
       ru: "Подумайте о сложности поиска в неотсортированном массиве против хеш-таблицы…",
       en: "Consider the search complexity of an unsorted array versus a hash table…",
@@ -282,7 +308,15 @@ export const messages = {
       ru: "Техническое интервью: алгоритмы",
       en: "Technical interview: algorithms",
     },
-    editorLanguageLabel: { ru: "язык редактора", en: "editor language" },
+    taskLabel: { ru: "условие задачи", en: "task" },
+    taskPlaceholder: {
+      ru: "Разверните связный список на месте…",
+      en: "Reverse a linked list in place…",
+    },
+    taskHint: {
+      ru: "Условие видит AI, когда кандидат просит подсказку.",
+      en: "The AI sees the task when the candidate asks for a hint.",
+    },
     privateSession: { ru: "закрытая сессия", en: "private session" },
     privateSessionHint: {
       ru: "Вход только по паролю.",

@@ -32,6 +32,16 @@ export interface LiveSessionRoomProps {
    * UUID текущего пользователя
    */
   currentUserId: string;
+
+  /**
+   * AI-подсказки запрашивает только кандидат
+   */
+  isCandidate: boolean;
+
+  /**
+   * Интервью идёт: сессия в статусе ACTIVE
+   */
+  isActive: boolean;
 }
 
 /**
@@ -50,7 +60,7 @@ interface RoomWorkspaceProps extends LiveSessionRoomProps {
  * @returns {import('react').ReactNode} Шапка, боковая панель с видео и редактор кода
  */
 function RoomWorkspace(props: RoomWorkspaceProps) {
-  const { sessionId, isOwner, currentUserId, mediaUnavailable } = props;
+  const { sessionId, isOwner, currentUserId, isCandidate, isActive, mediaUnavailable } = props;
   const participants = useParticipants();
   const t = useTranslations("session");
 
@@ -62,9 +72,19 @@ function RoomWorkspace(props: RoomWorkspaceProps) {
       )}
 
       <div className="flex flex-1 overflow-hidden">
-        <SessionVideoPanels sessionId={sessionId} isOwner={isOwner} currentUserId={currentUserId} />
+        <SessionVideoPanels
+          sessionId={sessionId}
+          isOwner={isOwner}
+          currentUserId={currentUserId}
+          isCandidate={isCandidate}
+          isActive={isActive}
+        />
         <div className="flex flex-1 p-4">
-          <SessionCodeEditor participantsCount={participants.length} />
+          <SessionCodeEditor
+            sessionId={sessionId}
+            isInterviewer={!isCandidate}
+            participantsCount={participants.length}
+          />
         </div>
       </div>
 

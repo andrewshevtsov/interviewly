@@ -37,6 +37,8 @@ export class SessionEntity implements Session {
   id!: string;
   ownerId!: string;
   title!: string | null;
+  task!: string | null;
+  demoTaskIndex!: number | null;
   editorLanguage!: EditorLanguage;
   type!: SessionType;
   access!: SessionAccess;

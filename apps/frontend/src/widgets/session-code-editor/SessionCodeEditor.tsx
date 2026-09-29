@@ -1,24 +1,23 @@
 "use client";
 
-// Слой widgets: редактор кода "Открытой сессии" - вкладки файлов, синхронизация и запуск.
+// Слой widgets: редактор кода "Открытой сессии" - файл, синхронизация и запуск. Пока нет
+// реалтайм-редактора, показывает демо-задачу, которую интервьюер выбирает кнопкой «новая задача»
 import { useState, type ReactNode } from "react";
 
 import { useTranslations } from "@/shared/i18n-context";
-import { cn } from "@/shared/lib/cn";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
-import type { EditorLanguage } from "@/entities/session";
+import { SwitchDemoTaskButton } from "@/features/switch-demo-task";
+import { useDemoTask, type DemoTask } from "@/entities/session";
 
 const RUN_FEEDBACK_DELAY_MS = 900;
+const RUN_OUTPUT = "[3, 2, 1] -> null";
+const DEFAULT_FILE_NAME = "main.ts";
+const FIRST_NUMBER = 1;
 
-const FILE_NAMES: Record<EditorLanguage, string> = {
-  PYTHON: "main.py",
-  JAVASCRIPT: "main.ts",
-};
-
-const RUN_OUTPUT: Record<EditorLanguage, string> = {
-  PYTHON: "[3, 2, 1] -> None",
-  JAVASCRIPT: "[3, 2, 1] -> null",
+const DEMO_FILE_NAMES: Record<DemoTask["language"], string> = {
+  JAVASCRIPT: "main.js",
+  TYPESCRIPT: "main.ts",
 };
 
 /**
@@ -60,41 +59,33 @@ function CodeLine(props: CodeLineProps) {
 }
 
 /**
- * Python source shown on the "main.py" tab.
- * @returns {import('react').ReactNode} The Python code lines.
+ * Пропсы {@link DemoTaskSource}
  */
-function PythonSource() {
-  const t = useTranslations("session");
+interface DemoTaskSourceProps {
+  /**
+   * Показанная задача
+   */
+  task: DemoTask;
+}
+
+/**
+ * Демо-задача: условие комментарием и код кандидата построчно
+ * @param {DemoTaskSourceProps} props - Показанная задача
+ * @returns {import('react').ReactNode} Строки кода
+ */
+function DemoTaskSource(props: DemoTaskSourceProps) {
+  const { task } = props;
+  const lines = [`// ${task.task}`, ...task.code.split("\n")];
 
   return (
     <>
-      <CodeLine number={1}>
-        <span className="text-muted-foreground"># {t("exampleTask")}</span>
-      </CodeLine>
-      <CodeLine number={2}>
-        <span className="text-primary">def</span> reverse_list(head):
-      </CodeLine>
-      <CodeLine number={3} indent={1}>
-        prev, curr = None, head
-      </CodeLine>
-      <CodeLine number={4} indent={1}>
-        <span className="text-primary">while</span> curr:
-      </CodeLine>
-      <CodeLine number={5} indent={2}>
-        next_temp = curr.next
-      </CodeLine>
-      <CodeLine number={6} indent={2}>
-        curr.next = prev
-      </CodeLine>
-      <CodeLine number={7} indent={2}>
-        prev = curr
-      </CodeLine>
-      <CodeLine number={8} indent={2}>
-        curr = next_temp
-      </CodeLine>
-      <CodeLine number={9} indent={1}>
-        <span className="text-primary">return</span> prev
-      </CodeLine>
+      {lines.map((line, index) => (
+        <CodeLine key={index} number={index + FIRST_NUMBER}>
+          <span className={index === 0 ? "whitespace-pre-wrap text-muted-foreground" : "whitespace-pre"}>
+            {line}
+          </span>
+        </CodeLine>
+      ))}
     </>
   );
 }
@@ -152,61 +143,80 @@ function TypeScriptSource() {
  */
 export interface SessionCodeEditorProps {
   /**
+   * Сессия, чья демо-задача показывается в редакторе
+   */
+  sessionId: string;
+
+  /**
+   * Текущий пользователь интервьюер
+   */
+  isInterviewer: boolean;
+
+  /**
    * Number of participants currently connected, shown next to the sync status.
    */
   participantsCount: number;
 }
 
 /**
- * Code editor for the "Открытая сессия" screen: file tabs, sync/participant status, the code
- * itself and a "Запустить код" action.
+ * Code editor for the "Открытая сессия" screen: file name, sync/participant status, the code
+ * itself and a "Запустить код" action. В демо-режиме показывает задачу, выбранную интервьюером
  * @param {SessionCodeEditorProps} props - Props for the editor.
  * @returns {import('react').ReactNode} The session code editor.
  */
 export function SessionCodeEditor(props: SessionCodeEditorProps) {
-  const { participantsCount } = props;
-  const [activeFile, setActiveFile] = useState<EditorLanguage>("PYTHON");
+  const { sessionId, isInterviewer, participantsCount } = props;
+  const demoTaskQuery = useDemoTask(sessionId);
   const [isRunning, setIsRunning] = useState(false);
   const [output, setOutput] = useState<string | null>(null);
   const t = useTranslations("session");
 
+  const isDemo = demoTaskQuery.data?.enabled ?? false;
+  const demoTask = demoTaskQuery.data?.current ?? null;
+  const fileName = demoTask ? DEMO_FILE_NAMES[demoTask.language] : DEFAULT_FILE_NAME;
+
   /**
-   * Simulates running the active file: briefly shows a running state, then a canned output line.
+   * Simulates running the file: briefly shows a running state, then a canned output line.
    * @returns {void}
    */
   function handleRun(): void {
     setIsRunning(true);
     setTimeout(() => {
       setIsRunning(false);
-      setOutput(RUN_OUTPUT[activeFile]);
+      setOutput(RUN_OUTPUT);
     }, RUN_FEEDBACK_DELAY_MS);
+  }
+
+  /**
+   * Содержимое редактора: демо-задача, приглашение выбрать её или статичный пример
+   * @returns {import('react').ReactNode} Строки кода или подсказка
+   */
+  function renderSource() {
+    if (demoTask) {
+      return <DemoTaskSource task={demoTask} />;
+    }
+
+    if (isDemo) {
+      return <p className="font-sans text-muted-foreground">{t("demoTaskEmpty")}</p>;
+    }
+
+    return <TypeScriptSource />;
   }
 
   return (
     <Card className="flex flex-1 flex-col overflow-hidden font-mono text-sm">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div className="flex items-center gap-1">
-          {(Object.keys(FILE_NAMES) as EditorLanguage[]).map((language) => (
-            <button
-              key={language}
-              type="button"
-              onClick={() => {
-                setActiveFile(language);
-                setOutput(null);
-              }}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-xs transition-colors",
-                activeFile === language
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {FILE_NAMES[language]}
-            </button>
-          ))}
-        </div>
+      <div className="flex items-center justify-between gap-4 border-b border-border px-4 py-3">
+        <span className="flex items-center gap-2">
+          <span className="rounded-md bg-muted px-3 py-1.5 text-xs text-foreground">{fileName}</span>
+          {demoTask && (
+            <span className="text-xs text-muted-foreground">
+              {t("demoTaskCounter")} {demoTask.index + FIRST_NUMBER}/{demoTask.total}
+            </span>
+          )}
+        </span>
 
         <span className="flex items-center gap-3 text-xs text-muted-foreground">
+          {isDemo && isInterviewer && <SwitchDemoTaskButton sessionId={sessionId} />}
           <span className="flex items-center gap-1.5 text-success">
             <span className="h-1.5 w-1.5 rounded-full bg-success" />
             {t("synced")}
@@ -215,9 +225,7 @@ export function SessionCodeEditor(props: SessionCodeEditorProps) {
         </span>
       </div>
 
-      <div className="flex-1 space-y-1 overflow-auto p-4">
-        {activeFile === "PYTHON" ? <PythonSource /> : <TypeScriptSource />}
-      </div>
+      <div className="flex-1 space-y-1 overflow-auto p-4">{renderSource()}</div>
 
       {output && (
         <p className="border-t border-border px-4 py-2 text-xs text-success">
