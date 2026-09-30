@@ -5,10 +5,15 @@ import type {
   AccessRequest,
   ApiSession,
   ApiSessionHistoryItem,
+  ApiSessionHint,
   ApiSessionParticipant,
   CreateSessionInput,
+  DemoTask,
+  DemoTaskState,
+  HintRequestContext,
   LivekitConnection,
   MySessionState,
+  SessionHints,
 } from "./index";
 
 /**
@@ -133,5 +138,42 @@ export const sessionApi = {
    */
   getLivekitToken(sessionId: string): Promise<LivekitConnection> {
     return httpClient.post<LivekitConnection>(`/sessions/${sessionId}/livekit-token`).then((res) => res.data);
+  },
+
+  /**
+   * AI-подсказки сессии и остаток лимита
+   * @param {string} sessionId - UUID сессии
+   * @returns {Promise<SessionHints>} Подсказки по порядку, лимит и остаток
+   */
+  listHints(sessionId: string): Promise<SessionHints> {
+    return httpClient.get<SessionHints>(`/sessions/${sessionId}/hints`).then((res) => res.data);
+  },
+
+  /**
+   * Запрашивает AI-подсказку (кандидат)
+   * @param {string} sessionId - UUID сессии
+   * @param {HintRequestContext} [context] - Текущий код кандидата для модели
+   * @returns {Promise<ApiSessionHint>} Новая подсказка
+   */
+  requestHint(sessionId: string, context: HintRequestContext = {}): Promise<ApiSessionHint> {
+    return httpClient.post<ApiSessionHint>(`/sessions/${sessionId}/hints`, context).then((res) => res.data);
+  },
+
+  /**
+   * Текущая демо-задача комнаты и включён ли демо-режим
+   * @param {string} sessionId - UUID сессии
+   * @returns {Promise<DemoTaskState>} Состояние демо-задачи
+   */
+  getDemoTask(sessionId: string): Promise<DemoTaskState> {
+    return httpClient.get<DemoTaskState>(`/sessions/${sessionId}/demo-task`).then((res) => res.data);
+  },
+
+  /**
+   * Показывает в комнате следующую демо-задачу (интервьюер)
+   * @param {string} sessionId - UUID сессии
+   * @returns {Promise<DemoTask>} Новая задача
+   */
+  nextDemoTask(sessionId: string): Promise<DemoTask> {
+    return httpClient.post<DemoTask>(`/sessions/${sessionId}/demo-task/next`).then((res) => res.data);
   },
 };

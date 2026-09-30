@@ -1,6 +1,5 @@
 /* eslint-disable indent */
 // Слой shared: общие константы без бизнес-логики, доступны всем слоям выше.
-export const MAX_AI_HINTS_PER_SESSION = 3;
 export const MAX_SESSION_SCORE = 10;
 
 /**

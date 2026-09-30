@@ -232,7 +232,7 @@ export interface SessionParticipant {
 /**
  * Язык редактора кода, предлагаемый при создании сессии.
  */
-export type EditorLanguage = "PYTHON" | "JAVASCRIPT";
+export type EditorLanguage = "PYTHON" | "JAVASCRIPT" | "TYPESCRIPT";
 
 /**
  * Черновые значения формы создания "Новая сессия".
@@ -244,9 +244,9 @@ export interface NewSessionDraft {
   title: string;
 
   /**
-   * Язык редактора кода в сессии.
+   * Условие задачи
    */
-  editorLanguage: EditorLanguage;
+  task: string;
 
   /**
    * Нужен ли для входа в сессию код доступа ниже.
@@ -343,6 +343,11 @@ export interface ApiSession {
   title: string | null;
 
   /**
+   * Условие задачи, либо `null`, если владелец его не задал.
+   */
+  task: string | null;
+
+  /**
    * Язык редактора кода в комнате.
    */
   editorLanguage: EditorLanguage;
@@ -383,9 +388,9 @@ export interface CreateSessionInput {
   title?: string;
 
   /**
-   * Язык редактора кода в комнате.
+   * Условие задачи: его видит модель, когда кандидат просит AI-подсказку.
    */
-  editorLanguage: EditorLanguage;
+  task?: string;
 
   /**
    * Кто может попасть в сессию.
@@ -658,3 +663,113 @@ export function toCompletedSession(item: ApiSessionHistoryItem): CompletedSessio
 }
 
 export { sessionApi } from "./session-api";
+
+/**
+ * AI-подсказка, запрошенная кандидатом; её видят все участники комнаты.
+ */
+export interface ApiSessionHint {
+  /**
+   * UUID подсказки.
+   */
+  id: string;
+
+  /**
+   * Номер подсказки в сессии, начиная с 1.
+   */
+  order: number;
+
+  /**
+   * Текст подсказки.
+   */
+  text: string;
+
+  /**
+   * ISO-время запроса.
+   */
+  createdAt: string;
+
+  /**
+   * Кто запросил подсказку.
+   */
+  requestedBy: SessionUserSummary;
+}
+
+/**
+ * Тело запроса `POST /sessions/:id/hints`
+ */
+export interface HintRequestContext {
+  /**
+   * Текущий код кандидата
+   */
+  code?: string;
+
+}
+
+/**
+ * Тело ответа `GET /sessions/:id/hints`.
+ */
+export interface SessionHints {
+  /**
+   * Подсказки по порядку.
+   */
+  hints: ApiSessionHint[];
+
+  /**
+   * Сколько подсказок можно запросить за сессию.
+   */
+  limit: number;
+
+  /**
+   * Сколько подсказок ещё осталось.
+   */
+  remaining: number;
+}
+
+/**
+ * Временная демо-задача, которую интервьюер показывает в комнате, пока нет реалтайм-редактора
+ */
+export interface DemoTask {
+  /**
+   * Номер задачи в наборе, начиная с 0
+   */
+  index: number;
+
+  /**
+   * Сколько всего задач в наборе
+   */
+  total: number;
+
+  /**
+   * Язык кода задачи
+   */
+  language: "JAVASCRIPT" | "TYPESCRIPT";
+
+  /**
+   * Условие задачи
+   */
+  task: string;
+
+  /**
+   * Незаконченное решение, по которому кандидат просит подсказку
+   */
+  code: string;
+}
+
+/**
+ * Тело ответа `GET /sessions/:id/demo-task`
+ */
+export interface DemoTaskState {
+  /**
+   * Включён ли демо-режим на бэкенде (AI_HINTS_DEMO_CONTEXT)
+   */
+  enabled: boolean;
+
+  /**
+   * Показанная задача или `null`, если интервьюер её ещё не выбрал
+   */
+  current: DemoTask | null;
+}
+
+export { appendSessionHint, sessionHintsQueryKey, useSessionHints } from "./use-session-hints";
+export { demoTaskQueryKey, showDemoTask, useDemoTask } from "./use-demo-task";
+

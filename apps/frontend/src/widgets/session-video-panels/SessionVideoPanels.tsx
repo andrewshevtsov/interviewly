@@ -2,7 +2,6 @@
 
 // Слой widgets: видеопотоки участников "Открытой сессии" (LiveKit), кнопки микрофона и камеры,
 // кнопка AI-подсказки и заявки на вход (у владельца). Рендерится внутри <LiveKitRoom>.
-import { useState } from "react";
 import {
   isTrackReference,
   TrackToggle,
@@ -13,15 +12,12 @@ import {
 import { Track } from "livekit-client";
 
 import { useTranslations } from "@/shared/i18n-context";
-import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
-import { hintsRemaining } from "@/features/join-session";
 import { AccessRequestsPanel } from "@/features/manage-access-requests";
 import { TransferOwnershipPanel } from "@/features/transfer-ownership";
+import { AiHintsPanel } from "@/features/request-ai-hint";
 import { toParticipantRole, type ApiSessionRole, type SessionParticipantRole } from "@/entities/session";
-import { MAX_AI_HINTS_PER_SESSION } from "@/shared/config/constants";
 
-const HINT_INCREMENT = 1;
 // Интервью - это интервьюер и кандидат; пока в комнате меньше, показываем "ждём участника".
 const EXPECTED_PARTICIPANTS = 2;
 
@@ -120,19 +116,27 @@ export interface SessionVideoPanelsProps {
    * UUID текущего пользователя
    */
   currentUserId: string;
+
+  /**
+   * Текущий пользователь кандидат
+   */
+  isCandidate: boolean;
+
+  /**
+   * Интервью идёт: сессия в статусе ACTIVE
+   */
+  isActive: boolean;
 }
 
 /**
  * Боковая панель экрана "Открытая сессия": по панели на участника, переключатели микрофона
- * и камеры, кнопка "Подсказка ИИ", а у владельца - заявки на вход и передача владения.
+ * и камеры, AI-подсказки, а у владельца - заявки на вход и передача владения.
  * @param {SessionVideoPanelsProps} props - Пропсы боковой панели.
  * @returns {import('react').ReactNode} Боковая панель с видео.
  */
 export function SessionVideoPanels(props: SessionVideoPanelsProps) {
-  const { sessionId, isOwner, currentUserId } = props;
+  const { sessionId, isOwner, currentUserId, isCandidate, isActive } = props;
   const cameraTracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }]);
-  const [usedHints, setUsedHints] = useState(0);
-  const remaining = hintsRemaining(usedHints);
   const t = useTranslations("session");
 
   return (
@@ -150,17 +154,7 @@ export function SessionVideoPanels(props: SessionVideoPanelsProps) {
         <TrackToggle source={Track.Source.Camera} className="flex-1 rounded-md border border-border p-2" />
       </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        className="uppercase tracking-wide"
-        disabled={remaining === 0}
-        onClick={() =>
-          setUsedHints((count) => Math.min(MAX_AI_HINTS_PER_SESSION, count + HINT_INCREMENT))
-        }
-      >
-        {t("aiHint")} ({remaining}/{MAX_AI_HINTS_PER_SESSION})
-      </Button>
+      <AiHintsPanel sessionId={sessionId} isCandidate={isCandidate} isActive={isActive} />
 
       {isOwner && (
         <>

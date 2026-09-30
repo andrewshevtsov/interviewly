@@ -1,6 +1,7 @@
 "use client";
 
-// Слой features: форма создания сессии - название, язык редактора и приватность.
+// Слой features: форма создания сессии - название, условие задачи и приватность.
+// Язык редактора здесь не выбирается: его задаёт задача, а позже сам редактор в комнате.
 // Отправляет реальный POST /sessions.
 import { useState, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
@@ -8,36 +9,18 @@ import { useMutation } from "@tanstack/react-query";
 
 import { getLocalizedHref } from "@/shared/i18n";
 import { useLocale, useTranslations } from "@/shared/i18n-context";
-import { cn } from "@/shared/lib/cn";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
-import { sessionApi, type ApiSession, type EditorLanguage, type NewSessionDraft } from "@/entities/session";
+import { Textarea } from "@/shared/ui/textarea";
+import { sessionApi, type ApiSession, type NewSessionDraft } from "@/entities/session";
 
-/**
- * Один вариант в группе переключателей "Язык редактора".
- */
-interface LanguageOption {
-  /**
-   * Идентификатор языка.
-   */
-  id: EditorLanguage;
-
-  /**
-   * Подпись языка, выводится моноширинным шрифтом.
-   */
-  label: string;
-}
-
-const LANGUAGES: LanguageOption[] = [
-  { id: "PYTHON", label: "python" },
-  { id: "JAVASCRIPT", label: "javascript" },
-];
-
-// Совпадает с @MinLength в CreateSessionDto на бэкенде.
+// Совпадают с ограничениями CreateSessionDto на бэкенде.
 const MIN_PASSWORD_LENGTH = 4;
+const MAX_TITLE_LENGTH = 120;
+const MAX_TASK_LENGTH = 4000;
 
 /**
  * Пропсы {@link CreateSessionForm}.
@@ -50,7 +33,7 @@ export interface CreateSessionFormProps {
 }
 
 /**
- * Форма создания сессии: название, язык редактора и переключатель приватности с паролем.
+ * Форма создания сессии: название, условие задачи и переключатель приватности с паролем.
  * Запуск создаёт сессию на бэкенде и открывает её комнату.
  * @param {CreateSessionFormProps} props - Пропсы формы.
  * @returns {import('react').ReactNode} Форма создания сессии.
@@ -59,7 +42,6 @@ export function CreateSessionForm(props: CreateSessionFormProps) {
   const { draft } = props;
   const router = useRouter();
   const locale = useLocale();
-  const [language, setLanguage] = useState<EditorLanguage>(draft.editorLanguage);
   const [isPrivate, setIsPrivate] = useState(draft.isPrivate);
   const [password, setPassword] = useState(draft.accessCode);
   const t = useTranslations("newSession");
@@ -87,9 +69,10 @@ export function CreateSessionForm(props: CreateSessionFormProps) {
       return;
     }
 
-    const title = new FormData(event.currentTarget).get("title") as string;
+    const formData = new FormData(event.currentTarget);
+    const { title, task } = Object.fromEntries(formData) as Record<"title" | "task", string>;
     const access = isPrivate ? { access: "PASSWORD" as const, password } : { access: "OPEN" as const };
-    createMutation.mutate({ title, editorLanguage: language, ...access });
+    createMutation.mutate({ title, task, ...access });
   }
 
   return (
@@ -102,29 +85,21 @@ export function CreateSessionForm(props: CreateSessionFormProps) {
             name="title"
             defaultValue={draft.title}
             placeholder={t("sessionTitlePlaceholder")}
-            maxLength={120}
+            maxLength={MAX_TITLE_LENGTH}
           />
         </div>
 
         <div className="space-y-2">
-          <Label>{t("editorLanguageLabel")}</Label>
-          <div className="flex gap-2">
-            {LANGUAGES.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setLanguage(item.id)}
-                className={cn(
-                  "rounded-md border px-4 py-2 font-mono text-sm font-medium transition-colors",
-                  language === item.id
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
+          <Label htmlFor="session-task">{t("taskLabel")}</Label>
+          <Textarea
+            id="session-task"
+            name="task"
+            defaultValue={draft.task}
+            rows={4}
+            placeholder={t("taskPlaceholder")}
+            maxLength={MAX_TASK_LENGTH}
+          />
+          <p className="text-xs text-muted-foreground">{t("taskHint")}</p>
         </div>
 
         <Card className="bg-muted/30 p-5">

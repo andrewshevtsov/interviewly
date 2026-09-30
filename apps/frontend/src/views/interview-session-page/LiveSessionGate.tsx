@@ -144,5 +144,13 @@ export function LiveSessionGate(props: LiveSessionGateProps) {
     );
   }
 
-  return <LiveSessionRoom sessionId={sessionId} isOwner={state.isOwner} currentUserId={state.userId} />;
+  return (
+    <LiveSessionRoom
+      sessionId={sessionId}
+      isOwner={state.isOwner}
+      currentUserId={state.userId}
+      isCandidate={state.role === "CANDIDATE"}
+      isActive={state.sessionStatus === "ACTIVE"}
+    />
+  );
 }

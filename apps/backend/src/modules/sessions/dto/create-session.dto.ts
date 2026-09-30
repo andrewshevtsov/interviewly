@@ -39,6 +39,11 @@ export class CreateSessionParticipantDto {
 }
 
 const SESSION_TITLE_MAX_LENGTH = 120;
+const SESSION_TASK_MAX_LENGTH = 4000;
+
+// Пустая строка после trim превращается в undefined и сохраняется как null.
+const trimToUndefined = ({ value }: { value: unknown }) =>
+  typeof value === 'string' ? value.trim() || undefined : value;
 
 export class CreateSessionDto {
   @ApiPropertyOptional({
@@ -47,17 +52,27 @@ export class CreateSessionDto {
     example: 'Техническое интервью: алгоритмы',
   })
   @IsOptional()
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim() || undefined : value,
-  )
+  @Transform(trimToUndefined)
   @IsString()
   @MaxLength(SESSION_TITLE_MAX_LENGTH)
   title?: string;
 
   @ApiPropertyOptional({
+    description:
+      'Условие задачи. Его видит модель, когда кандидат просит AI-подсказку. Пустая строка после trim сохраняется как null.',
+    maxLength: SESSION_TASK_MAX_LENGTH,
+    example: 'Разверните связный список на месте',
+  })
+  @IsOptional()
+  @Transform(trimToUndefined)
+  @IsString()
+  @MaxLength(SESSION_TASK_MAX_LENGTH)
+  task?: string;
+
+  @ApiPropertyOptional({
     enum: EditorLanguage,
     enumName: 'EditorLanguage',
-    default: EditorLanguage.PYTHON,
+    default: EditorLanguage.TYPESCRIPT,
   })
   @IsOptional()
   @IsEnum(EditorLanguage)
