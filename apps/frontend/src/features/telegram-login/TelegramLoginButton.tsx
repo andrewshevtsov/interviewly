@@ -31,14 +31,26 @@ declare global {
 }
 
 /**
+ * Пропсы {@link TelegramLoginButton}
+ */
+export interface TelegramLoginButtonProps {
+  /**
+   * Куда вернуть пользователя после входа
+   */
+  returnPath?: string;
+}
+
+/**
  * "Войти через Telegram": рендерит официальный Telegram Login Widget и логинится через
  * `/auth/telegram` данными, которые виджет присылает в свой callback. Ничего не рендерит,
  * если `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` не задан (например, локальная разработка без
  * своего dev-бота) - руками эндпоинт всё равно можно проверить, см.
  * docs/dev/telegram-auth-manual-testing.md.
+ * @param {TelegramLoginButtonProps} props - Пропсы компонента.
  * @returns {import('react').ReactNode} Контейнер виджета, или `null`.
  */
-export function TelegramLoginButton() {
+export function TelegramLoginButton(props: TelegramLoginButtonProps) {
+  const { returnPath } = props;
   const router = useRouter();
   const locale = useLocale();
   const auth = useTranslations("auth");
@@ -49,13 +61,13 @@ export function TelegramLoginButton() {
   const telegramLoginMutation = useMutation({
     mutationFn: authApi.telegramLogin,
     /**
-     * Stores the new access token and redirects to the profile page.
+     * Stores the new access token and redirects back to `returnPath` or to the profile page.
      * @param {{ accessToken: string }} tokens - The login response.
      * @returns {void}
      */
     onSuccess: (tokens) => {
       setAuthenticated(tokens.accessToken);
-      router.push(getLocalizedHref("/profile", locale));
+      router.push(getLocalizedHref(returnPath ?? "/profile", locale));
     },
   });
 

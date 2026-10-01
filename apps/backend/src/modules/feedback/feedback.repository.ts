@@ -39,6 +39,15 @@ export class FeedbackRepository {
     return this.prisma.feedback.findMany({
       where: { authorId },
       orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        sessionId: true,
+        score: true,
+        comment: true,
+        createdAt: true,
+        targetUser: { select: { id: true, firstName: true, lastName: true } },
+        session: { select: { type: true, startedAt: true, endedAt: true, scheduledAt: true } },
+      },
     });
   }
 

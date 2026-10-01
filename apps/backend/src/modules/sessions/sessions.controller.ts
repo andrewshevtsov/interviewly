@@ -28,6 +28,7 @@ import {
   MySessionStateResponse,
   SessionAccessRequestEntity,
   SessionEntity,
+  SessionHistoryItemResponse,
   SessionParticipantsResponse,
 } from './entities/session.entity.ts';
 import { SESSION_PERMISSIONS } from './sessions.permissions.ts';
@@ -69,6 +70,19 @@ export class SessionsController {
   })
   findAll(@CurrentUser() actor: JwtPayload): Promise<SessionEntity[]> {
     return this.sessionsService.findAll(actor);
+  }
+
+  // Объявлен до ':id', иначе "history" попадёт в ParseUUIDPipe
+  @Get('history')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'История: завершённые сессии пользователя с участниками и его ролью',
+  })
+  findHistory(
+    @CurrentUser('sub') userId: string,
+  ): Promise<SessionHistoryItemResponse[]> {
+    return this.sessionsService.findHistory(userId);
   }
 
   @Get(':id')
@@ -174,6 +188,20 @@ export class SessionsController {
     @Body() dto: TransferOwnershipDto,
   ): Promise<SessionEntity> {
     return this.sessionsService.transferOwnership(id, actor, dto);
+  }
+
+  @Post(':id/end')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Завершить интервью для всех и закрыть LiveKit-комнату (владелец / admin)',
+  })
+  end(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: JwtPayload,
+  ): Promise<SessionEntity> {
+    return this.sessionsService.end(id, actor);
   }
 
   @Post(':id/join')

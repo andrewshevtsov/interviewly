@@ -14,10 +14,22 @@ import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 
 /**
+ * Пропсы {@link RegisterForm}.
+ */
+export interface RegisterFormProps {
+  /**
+   * Куда вернуть пользователя после входа
+   */
+  returnPath?: string;
+}
+
+/**
  * Registration form: first/last name, email, password and password-confirmation fields.
+ * @param {RegisterFormProps} props - Пропсы компонента
  * @returns {import('react').ReactNode} The registration form.
  */
-export function RegisterForm() {
+export function RegisterForm(props: RegisterFormProps) {
+  const { returnPath } = props;
   const router = useRouter();
   const locale = useLocale();
   const common = useTranslations("common");
@@ -28,13 +40,13 @@ export function RegisterForm() {
   const registerMutation = useMutation({
     mutationFn: authApi.register,
     /**
-     * Stores the new access token and redirects to the profile page.
+     * Stores the new access token and redirects back to `returnPath` or to the profile page.
      * @param {{ accessToken: string }} tokens - The registration response.
      * @returns {void}
      */
     onSuccess: (tokens) => {
       setAuthenticated(tokens.accessToken);
-      router.push(getLocalizedHref("/profile", locale));
+      router.push(getLocalizedHref(returnPath ?? "/profile", locale));
     },
   });
 
@@ -126,7 +138,7 @@ export function RegisterForm() {
       {passwordMismatch && <p className="text-sm text-destructive">{auth("passwordMismatch")}</p>}
       {registerMutation.isError && <p className="text-sm text-destructive">{auth("registerError")}</p>}
 
-      <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
+      <Button type="submit" className="w-full" isLoading={registerMutation.isPending}>
         {registerMutation.isPending ? auth("registerPending") : auth("register")}
       </Button>
     </form>

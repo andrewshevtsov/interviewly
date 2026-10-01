@@ -97,12 +97,14 @@ export class AuthController {
 
   /**
    * Кладёт refresh-токен в httpOnly-куку и возвращает клиенту только access-токен —
-   * refresh-токен в теле ответа больше не отдаётся.
+   * refresh-токен в теле ответа больше не отдаётся. Без «запомнить меня» кука
+   * сессионная (без `expires`): браузер удалит её при закрытии, сам JWT
+   * живёт свой обычный срок
    */
   private respondWithTokens(res: Response, tokens: AuthTokens): { accessToken: string } {
     res.cookie(REFRESH_TOKEN_COOKIE, tokens.refreshToken, {
       ...refreshTokenCookieOptions(),
-      expires: tokens.refreshTokenExpiresAt,
+      ...(tokens.rememberMe && { expires: tokens.refreshTokenExpiresAt }),
     });
     return { accessToken: tokens.accessToken };
   }

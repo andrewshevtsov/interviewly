@@ -39,6 +39,7 @@ model User {
   feedbackReceived      Feedback[]           @relation("FeedbackReceived")
   sessionAccessRequests SessionAccessRequest[] @relation("SessionAccessRequester")
   reviewedAccessRequests SessionAccessRequest[] @relation("SessionAccessReviewer")
+  requestedHints        SessionHint[]
 
   @@id([id])
 }

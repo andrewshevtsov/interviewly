@@ -3,19 +3,22 @@
 // Слой views: живая комната - получает LiveKit-токен и подключается к SFU. Всё внутри
 // <LiveKitRoom> видит комнату через контекст; уход со страницы отключает от неё
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LiveKitRoom, RoomAudioRenderer } from "@livekit/components-react";
-import { ConnectionError } from "livekit-client";
+import { ConnectionError, DisconnectReason } from "livekit-client";
 
 import { SessionCodeEditor } from "@/widgets/session-code-editor";
 import { SessionHeader } from "@/widgets/session-header";
 import { SessionVideoPanels } from "@/widgets/session-video-panels";
 import { sessionApi } from "@/entities/session";
 import { useTranslations } from "@/shared/i18n-context";
+import { SessionEndedNotice } from "./SessionEndedNotice";
 
-// В текущем релизе все сессии с редактором используют TypeScript.
-// Позже значение будет приходить из лобби или API.
-const CODING_LANGUAGE = "javascript" as const;
+const EDITOR_LANGUAGES = {
+  PYTHON: "python",
+  JAVASCRIPT: "javascript",
+  TYPESCRIPT: "typescript",
+} as const;
 
 /**
  * Пропсы {@link LiveSessionRoom}.
@@ -35,6 +38,16 @@ export interface LiveSessionRoomProps {
    * UUID текущего пользователя
    */
   currentUserId: string;
+
+  /**
+   * AI-подсказки запрашивает только кандидат
+   */
+  isCandidate: boolean;
+
+  /**
+   * Интервью идёт: сессия в статусе ACTIVE
+   */
+  isActive: boolean;
 }
 
 /**
@@ -53,12 +66,19 @@ interface RoomWorkspaceProps extends LiveSessionRoomProps {
  * @returns {import('react').ReactNode} Шапка, боковая панель с видео и редактор кода
  */
 function RoomWorkspace(props: RoomWorkspaceProps) {
-  const { sessionId, isOwner, currentUserId, mediaUnavailable } = props;
+  const { sessionId, isOwner, currentUserId, isCandidate, isActive, mediaUnavailable } = props;
   const t = useTranslations("session");
+  const sessionQuery = useQuery({
+    queryKey: ["sessions", sessionId],
+    queryFn: () => sessionApi.get(sessionId),
+  });
+  const editorLanguage = sessionQuery.data
+    ? EDITOR_LANGUAGES[sessionQuery.data.editorLanguage]
+    : "typescript";
 
   return (
     <>
-      <SessionHeader sessionId={sessionId} />
+      <SessionHeader sessionId={sessionId} isOwner={isOwner} />
       {mediaUnavailable && (
         <p className="border-b border-border px-6 py-2 text-sm text-muted-foreground">
           {t("mediaUnavailable")}
@@ -66,12 +86,18 @@ function RoomWorkspace(props: RoomWorkspaceProps) {
       )}
 
       <div className="flex flex-1 overflow-hidden">
-        <SessionVideoPanels sessionId={sessionId} isOwner={isOwner} currentUserId={currentUserId} />
+        <SessionVideoPanels
+          sessionId={sessionId}
+          isOwner={isOwner}
+          currentUserId={currentUserId}
+          isCandidate={isCandidate}
+          isActive={isActive}
+        />
         <div className="flex flex-1 p-4">
           <SessionCodeEditor
             sessionId={sessionId}
             currentUserId={currentUserId}
-            language={CODING_LANGUAGE}
+            language={editorLanguage}
           />
         </div>
       </div>
@@ -91,6 +117,8 @@ export function LiveSessionRoom(props: LiveSessionRoomProps) {
   const { sessionId } = props;
   const [connectionFailed, setConnectionFailed] = useState(false);
   const [mediaUnavailable, setMediaUnavailable] = useState(false);
+  const [roomDeleted, setRoomDeleted] = useState(false);
+  const queryClient = useQueryClient();
   const t = useTranslations("session");
 
   /**
@@ -104,6 +132,19 @@ export function LiveSessionRoom(props: LiveSessionRoomProps) {
       setConnectionFailed(true);
     } else {
       setMediaUnavailable(true);
+    }
+  }
+
+  /**
+   * Владелец завершил сессию и закрыл комнату: вместо отключённой комнаты показываем
+   * "интервью завершено" и перечитываем состояние, чтобы шлюз сразу увёл на экран фидбека.
+   * @param {DisconnectReason} [reason] - Причина отключения от комнаты.
+   * @returns {void}
+   */
+  function handleDisconnected(reason?: DisconnectReason): void {
+    if (reason === DisconnectReason.ROOM_DELETED) {
+      setRoomDeleted(true);
+      void queryClient.invalidateQueries({ queryKey: ["sessions", sessionId, "me"] });
     }
   }
 
@@ -124,6 +165,10 @@ export function LiveSessionRoom(props: LiveSessionRoomProps) {
     refetchOnWindowFocus: false,
   });
 
+  if (roomDeleted) {
+    return <SessionEndedNotice />;
+  }
+
   if (tokenQuery.isError || connectionFailed) {
     return <p className="p-6 text-center text-muted-foreground">{t("connectionError")}</p>;
   }
@@ -140,6 +185,7 @@ export function LiveSessionRoom(props: LiveSessionRoomProps) {
       video
       audio
       onError={handleRoomError}
+      onDisconnected={handleDisconnected}
       className="flex h-screen flex-col"
     >
       <RoomWorkspace {...props} mediaUnavailable={mediaUnavailable} />

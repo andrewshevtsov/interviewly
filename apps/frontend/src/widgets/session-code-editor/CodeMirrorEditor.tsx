@@ -19,7 +19,7 @@ import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
 import * as Y from "yjs";
 
 /** Языки, для которых редактор умеет подключать синтаксический анализ и подсветку. */
-export type EditorLanguage = "javascript" | "python";
+export type EditorLanguage = "javascript" | "typescript" | "python";
 
 /**
  * Пропсы низкоуровневой обёртки над CodeMirror.
@@ -72,7 +72,11 @@ const codeHighlightStyle = HighlightStyle.define([
  * @returns {Extension} Расширение синтаксиса и подсветки.
  */
 function getLanguageExtension(language: EditorLanguage): Extension {
-  return language === "python" ? python() : javascript({ typescript: true });
+  if (language === "python") {
+    return python();
+  }
+
+  return javascript({ typescript: language === "typescript" });
 }
 
 /**

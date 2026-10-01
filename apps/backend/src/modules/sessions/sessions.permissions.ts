@@ -36,6 +36,11 @@ type SessionPermissionsConfig = {
     allowOwner: boolean;
     allowTargetRoles: RoleList;
   };
+  endSession: {
+    description: string;
+    allowAdmin: boolean;
+    allowOwner: boolean;
+  };
   connectToRoom: {
     description: string;
     allowAdmin: boolean;
@@ -45,6 +50,14 @@ type SessionPermissionsConfig = {
     description: string;
     enabled: boolean;
     exemptOwner: boolean;
+  };
+  requestAiHint: {
+    description: string;
+    allowRoles: RoleList;
+  };
+  switchDemoTask: {
+    description: string;
+    allowRoles: RoleList;
   };
 };
 
@@ -69,7 +82,7 @@ export const SESSION_PERMISSIONS = {
 
   viewParticipants: {
     description:
-      'Видеть участников и их количество: только владелец комнаты, её участники или admin',
+      'Видеть участников и их количество, AI-подсказки и события комнаты по WebSocket: только владелец комнаты, её участники или admin',
     allowAdmin: true,
     allowOwner: true,
     allowParticipant: true,
@@ -96,6 +109,13 @@ export const SESSION_PERMISSIONS = {
     allowTargetRoles: [SessionParticipantRole.INTERVIEWER],
   },
 
+  endSession: {
+    description:
+      'Завершить интервью для всех (COMPLETED + закрытие LiveKit-комнаты) - владелец или admin',
+    allowAdmin: true,
+    allowOwner: true,
+  },
+
   connectToRoom: {
     description:
       'Войти в комнату / получить LiveKit token — только участник сессии',
@@ -108,6 +128,18 @@ export const SESSION_PERMISSIONS = {
       'Одна активная комната для участника; свои комнаты владелец держит сколько угодно',
     enabled: true,
     exemptOwner: true,
+  },
+
+  requestAiHint: {
+    description:
+      'Запросить AI-подсказку во время ACTIVE-интервью (лимит на сессию)',
+    allowRoles: [SessionParticipantRole.CANDIDATE],
+  },
+
+  switchDemoTask: {
+    description:
+      'Временно (AI_HINTS_DEMO_CONTEXT): показать в комнате следующую демо-задачу - только интервьюер',
+    allowRoles: [SessionParticipantRole.INTERVIEWER],
   },
 } as const satisfies SessionPermissionsConfig;
 

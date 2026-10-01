@@ -5,6 +5,7 @@ import type {
   SessionParticipant,
 } from '../../../prisma/generated/client.ts';
 import {
+  EditorLanguage,
   SessionAccess,
   SessionAccessRequestStatus,
   SessionParticipantRole,
@@ -35,6 +36,10 @@ export class SessionParticipantEntity implements SessionParticipant {
 export class SessionEntity implements Session {
   id!: string;
   ownerId!: string;
+  title!: string | null;
+  task!: string | null;
+  demoTaskIndex!: number | null;
+  editorLanguage!: EditorLanguage;
   type!: SessionType;
   access!: SessionAccess;
   status!: SessionStatus;
@@ -60,6 +65,22 @@ export class SessionParticipantsResponse {
   participants!: SessionParticipantEntity[];
 
   constructor(partial: SessionParticipantsResponse) {
+    Object.assign(this, partial);
+  }
+}
+
+/**
+ * Завершённая сессия в истории пользователя: его роль и остальные участники
+ */
+export class SessionHistoryItemResponse {
+  id!: string;
+  type!: SessionType;
+  startedAt!: Date | null;
+  endedAt!: Date | null;
+  myRole!: SessionParticipantRole;
+  partners!: SessionParticipantEntity[];
+
+  constructor(partial: SessionHistoryItemResponse) {
     Object.assign(this, partial);
   }
 }

@@ -8,21 +8,24 @@ export interface JwtPayload {
 }
 
 /**
- * Полезная нагрузка refresh-токена — минимальная, только субъект.
+ * Полезная нагрузка refresh-токена
  */
 export interface RefreshPayload {
   sub: string;
+  rememberMe?: boolean;
 }
 
 /**
  * Пара токенов, возвращаемая на register/login/refresh. `refreshTokenExpiresAt`
- * нужен только контроллеру — выставить `Expires` у httpOnly-куки, в которой
- * едет refresh-токен, в клиентский JSON-ответ не попадает.
+ * и `rememberMe` нужны только контроллеру: по ним он решает, ставить ли
+ * `Expires` у httpOnly-куки с refresh-токеном (постоянная или сессионная).
+ * В клиентский JSON-ответ не попадают.
  */
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
   refreshTokenExpiresAt: Date;
+  rememberMe: boolean;
 }
 
 /**

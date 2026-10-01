@@ -5,18 +5,18 @@ import { CodeMirrorEditor, type EditorLanguage } from "./CodeMirrorEditor";
 import { useSessionCollaboration } from "./useSessionCollaboration";
 
 const FILE_NAMES: Record<EditorLanguage, string> = {
-  javascript: "main.ts",
+  javascript: "main.js",
+  typescript: "main.ts",
   python: "main.py",
 };
 
 const LANGUAGE_LABELS: Record<EditorLanguage, string> = {
-  javascript: "TypeScript",
+  javascript: "JavaScript",
+  typescript: "TypeScript",
   python: "Python",
 };
 
-/**
- * Пропсы редактора кода внутри сессии.
- */
+/** Пропсы редактора кода внутри сессии. */
 export interface SessionCodeEditorProps {
   /** UUID сессии, определяющий совместный документ. */
   sessionId: string;
@@ -29,7 +29,7 @@ export interface SessionCodeEditorProps {
 }
 
 /**
- * Показывает рабочий редактор на зафиксированном для сессии языке.
+ * Показывает рабочий совместный редактор на зафиксированном для сессии языке.
  * @param {SessionCodeEditorProps} props - Данные комнаты для панели редактора.
  * @returns {import("react").ReactNode} Редактор кода с панелью инструментов.
  */
