@@ -9,6 +9,8 @@ ENV CI=true
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/frontend/package.json ./apps/frontend/package.json
 COPY apps/backend/package.json ./apps/backend/package.json
+COPY apps/collaboration/package.json ./apps/collaboration/package.json
+COPY patches ./patches
 
 RUN pnpm config set fetch-timeout 500000 && \
     pnpm config set fetch-retry-mintimeout 100000 && \

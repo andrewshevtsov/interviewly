@@ -4,7 +4,7 @@
 // <LiveKitRoom> видит комнату через контекст; уход со страницы отключает от неё
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { LiveKitRoom, RoomAudioRenderer, useParticipants } from "@livekit/components-react";
+import { LiveKitRoom, RoomAudioRenderer } from "@livekit/components-react";
 import { ConnectionError } from "livekit-client";
 
 import { SessionCodeEditor } from "@/widgets/session-code-editor";
@@ -12,6 +12,10 @@ import { SessionHeader } from "@/widgets/session-header";
 import { SessionVideoPanels } from "@/widgets/session-video-panels";
 import { sessionApi } from "@/entities/session";
 import { useTranslations } from "@/shared/i18n-context";
+
+// В текущем релизе все сессии с редактором используют TypeScript.
+// Позже значение будет приходить из лобби или API.
+const CODING_LANGUAGE = "javascript" as const;
 
 /**
  * Пропсы {@link LiveSessionRoom}.
@@ -50,20 +54,25 @@ interface RoomWorkspaceProps extends LiveSessionRoomProps {
  */
 function RoomWorkspace(props: RoomWorkspaceProps) {
   const { sessionId, isOwner, currentUserId, mediaUnavailable } = props;
-  const participants = useParticipants();
   const t = useTranslations("session");
 
   return (
     <>
       <SessionHeader sessionId={sessionId} />
       {mediaUnavailable && (
-        <p className="border-b border-border px-6 py-2 text-sm text-muted-foreground">{t("mediaUnavailable")}</p>
+        <p className="border-b border-border px-6 py-2 text-sm text-muted-foreground">
+          {t("mediaUnavailable")}
+        </p>
       )}
 
       <div className="flex flex-1 overflow-hidden">
         <SessionVideoPanels sessionId={sessionId} isOwner={isOwner} currentUserId={currentUserId} />
         <div className="flex flex-1 p-4">
-          <SessionCodeEditor participantsCount={participants.length} />
+          <SessionCodeEditor
+            sessionId={sessionId}
+            currentUserId={currentUserId}
+            language={CODING_LANGUAGE}
+          />
         </div>
       </div>
 
