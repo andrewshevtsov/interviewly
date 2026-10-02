@@ -74,7 +74,9 @@ if [ ! -d "${DEPLOY_PATH}/.git" ]; then
 else
   git -C "${DEPLOY_PATH}" remote set-url origin "${auth_url}"
   git -C "${DEPLOY_PATH}" fetch origin "${GIT_REF}"
-  git -C "${DEPLOY_PATH}" checkout -B "${GIT_REF}" "origin/${GIT_REF}"
+  # Деплой-клон = origin; -f сбрасывает ручные правки (scp и т.п.), иначе checkout падает.
+  git -C "${DEPLOY_PATH}" checkout -f -B "${GIT_REF}" "origin/${GIT_REF}"
+  git -C "${DEPLOY_PATH}" clean -fd
 fi
 
 if [ ! -f "${DEPLOY_PATH}/.env" ]; then
