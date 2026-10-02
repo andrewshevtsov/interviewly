@@ -167,6 +167,7 @@ export class SessionsService {
       access: session.access,
       role: participant?.role ?? null,
       accessRequestStatus: latestRequest?.status ?? null,
+      editorOpen: session.editorOpen,
     });
   }
 

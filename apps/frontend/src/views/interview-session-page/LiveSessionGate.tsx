@@ -151,6 +151,7 @@ export function LiveSessionGate(props: LiveSessionGateProps) {
       currentUserId={state.userId}
       isCandidate={state.role === "CANDIDATE"}
       isActive={state.sessionStatus === "ACTIVE"}
+      editorOpen={state.editorOpen}
     />
   );
 }

@@ -11,7 +11,7 @@ Runtime-матрица: `GET /sessions/permissions`.
 
 | Сущность | Назначение |
 |----------|------------|
-| `Session` | Комната в БД: owner, `access`, `status`, `livekitRoomName` |
+| `Session` | Комната в БД: owner, `access`, `status`, `livekitRoomName`, `editorOpen` |
 | `SessionParticipant` | Принятый участник (`INTERVIEWER` / `CANDIDATE`) |
 | `SessionAccessRequest` | Заявка на вход (`PENDING` → approve/reject) |
 
@@ -69,10 +69,33 @@ LiveKit-token — только для `SCHEDULED` / `READY` / `ACTIVE`.
 | `GET /sessions/:id/hints`, WebSocket `session:join` | ✅ | ✅ | ✅ | ❌ | ✅ |
 | `POST /sessions/:id/hints` (AI-подсказка) | ❌ | ❌ | ✅ | ❌ | ❌ |
 | `POST /sessions/:id/demo-task/next` (временно) | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `PUT /sessions/:id/editor` (открыть / закрыть редактор) | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 \* Admin **не** получает LiveKit-token только из-за isAdmin — нужен статус участника.
 
 Карточка сессии **никогда** не отдаёт `participants` и `passwordHash`. Состав комнаты — только отдельный endpoint.
+
+---
+
+## Режимы комнаты: знакомство и лайв-кодинг
+
+Комната открывается **без редактора**: только видео участников крупно по центру — знакомство и вопросы
+по теории. Когда все готовы к лайв-кодингу, любой интервьюер комнаты жмёт «Открыть редактор»: видео
+уезжают в колонку слева (там же AI-подсказки), редактор выезжает справа. «Закрыть редактор» возвращает
+знакомство. AI-подсказки есть только в режиме лайв-кодинга.
+
+```text
+PUT /sessions/:id/editor { open: boolean }   только INTERVIEWER комнаты, сессия не закрыта (иначе 409)
+  → Session.editorOpen                       по умолчанию false
+  → socket.io "editor:toggled" { open }      всем, кто сделал session:join; повтор того же значения не рассылается
+GET /sessions/:id/me → editorOpen            режим после перезагрузки / при позднем входе
+```
+
+- Право — `toggleEditor` в `sessions.permissions.ts`; кандидат → 403.
+- Фронт держит флаг в кэше `/me` (`entities/session/use-editor-open.ts`), кнопка — `features/toggle-editor`.
+- Анимация перехода — FLIP на CSS-переходах без keyframes (`shared/lib/use-flip.ts`): видео-карточки
+  переезжают и меняют размер, редактор выезжает через `transform`. При `prefers-reduced-motion` режим
+  переключается без анимации.
 
 ---
 
@@ -90,7 +113,8 @@ GET /sessions/:id/hints                   { hints, limit, remaining } - посл
 
 - **WebSocket** (socket.io, тот же порт, что HTTP): клиент подключается с `auth: { token: <access-token> }` -
   без валидного токена соединение отклоняется. Затем `emit("session:join", { sessionId })` → `{ ok }`
-  (права как у `participants`), `session:leave` - выйти.
+  (права как у `participants`), `session:leave` - выйти. События комнаты: `hint:created`, `demo-task:changed`,
+  `editor:toggled`.
 - **Ошибки DeepSeek** не тратят лимит: нет ключа или ключ неверный → 503, таймаут 20 с → 504,
   пустой ответ → 502.
 - **Prompt injection.** Условие и код пишут участники, поэтому в промпте они в тегах `<task>`/`<code>`
@@ -146,12 +170,13 @@ INVITE: шаг с заявкой пропускается, если пользо
 | GET | `/sessions/:id` | Без участников |
 | GET | `/sessions/:id/participants` | count + список |
 | POST | `/sessions/:id/access-requests` | Заявка |
-| GET | `/sessions/:id/me` | Моя роль, `isOwner`, статус моей заявки |
+| GET | `/sessions/:id/me` | Моя роль, `isOwner`, статус моей заявки, `editorOpen` |
 | GET | `/sessions/:id/access-requests` | Только владелец/admin |
 | POST | `/sessions/:id/access-requests/:requestId/approve` | Владелец |
 | POST | `/sessions/:id/access-requests/:requestId/reject` | Владелец |
 | POST | `/sessions/:id/transfer-ownership` | Владелец/admin; `{ userId }` другого INTERVIEWER, роли не меняются |
 | POST | `/sessions/:id/end` | Владелец/admin; `COMPLETED` + закрытие LiveKit-комнаты |
+| PUT | `/sessions/:id/editor` | Интервьюер; `{ open }` - режим знакомства / лайв-кодинга, `editor:toggled` по WebSocket |
 | POST | `/sessions/:id/join` | Уже участник |
 | POST | `/sessions/:id/livekit-token` | JWT для SFU |
 

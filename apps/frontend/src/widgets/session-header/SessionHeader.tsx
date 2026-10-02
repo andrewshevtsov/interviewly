@@ -1,10 +1,12 @@
 "use client";
 
-// Слой widgets: верхняя панель "Открытой сессии" - бренд, короткий id, ссылка-приглашение, таймер
+// Слой widgets: верхняя панель "Открытой сессии" - бренд, короткий id, ссылка-приглашение, таймер,
+// переключение редактора
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 
+import { ToggleEditorButton } from "@/features/toggle-editor";
 import { formatSessionNumber, sessionApi } from "@/entities/session";
 import { getLocalizedHref } from "@/shared/i18n";
 import { useLocale, useTranslations } from "@/shared/i18n-context";
@@ -47,6 +49,16 @@ export interface SessionHeaderProps {
    * Владеет ли пользователь сессией: владелец завершает её для всех, остальные просто выходят.
    */
   isOwner: boolean;
+
+  /**
+   * Интервьюер
+   */
+  isInterviewer: boolean;
+
+  /**
+   * Редактор открыт/закрыт
+   */
+  editorOpen: boolean;
 }
 
 /**
@@ -57,7 +69,7 @@ export interface SessionHeaderProps {
  * @returns {import('react').ReactNode} Шапка сессии.
  */
 export function SessionHeader(props: SessionHeaderProps) {
-  const { sessionId, isOwner } = props;
+  const { sessionId, isOwner, isInterviewer, editorOpen } = props;
   const router = useRouter();
   const locale = useLocale();
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -130,6 +142,7 @@ export function SessionHeader(props: SessionHeaderProps) {
           <span className="h-2 w-2 animate-pulse rounded-full bg-destructive" />
           {t("recording")} {formatElapsed(elapsedSeconds)}
         </span>
+        {isInterviewer && <ToggleEditorButton sessionId={sessionId} editorOpen={editorOpen} />}
         {endMutation.isError && <span className="text-sm text-destructive">{t("endSessionError")}</span>}
         {isOwner
           ? (
