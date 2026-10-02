@@ -74,6 +74,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Generate Prisma Client
+        run: pnpm --filter @app/backend exec prisma generate
+        env:
+          DATABASE_URL: postgresql://interviewly:interviewly@127.0.0.1:5432/interviewly?schema=public
       - run: pnpm --filter @app/backend run typecheck
       - run: pnpm --filter @app/backend exec eslint "{src,apps,libs,test}/**/*.ts"
 
