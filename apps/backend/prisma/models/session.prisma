@@ -53,6 +53,8 @@ model Session {
   // Временно (AI_HINTS_DEMO_CONTEXT): номер демо-задачи, которую интервьюер
   // показал в комнате. Удалить вместе с демо-задачами.
   demoTaskIndex   Int?
+  // Интервьюер открыл редактор кода, комната в режиме лайв-кодинга
+  editorOpen      Boolean       @default(false)
   editorLanguage  EditorLanguage @default(TYPESCRIPT)
   type            SessionType   @default(BUSINESS)
   access          SessionAccess @default(INVITE)

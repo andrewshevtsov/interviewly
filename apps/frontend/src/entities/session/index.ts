@@ -461,6 +461,11 @@ export interface MySessionState {
    * Состояние последней заявки пользователя или `null`, если он её не подавал.
    */
   accessRequestStatus: AccessRequestStatus | null;
+
+  /**
+   * Открыт ли в комнате редактор кода: `false` - этап знакомства (только видео).
+   */
+  editorOpen: boolean;
 }
 
 /**
@@ -770,6 +775,17 @@ export interface DemoTaskState {
   current: DemoTask | null;
 }
 
+/**
+ * Тело ответа `PUT /sessions/:id/editor` и события `editor:toggled`
+ */
+export interface EditorState {
+  /**
+   * Открыт ли редактор кода в комнате
+   */
+  open: boolean;
+}
+
 export { appendSessionHint, sessionHintsQueryKey, useSessionHints } from "./use-session-hints";
 export { demoTaskQueryKey, showDemoTask, useDemoTask } from "./use-demo-task";
+export { applyEditorOpen, useEditorOpenSync } from "./use-editor-open";
 
