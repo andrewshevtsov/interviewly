@@ -33,7 +33,7 @@ export interface RequestAccessFormProps {
 
 /**
  * Выбирает текст ошибки для неудавшейся заявки
- * @param {unknown} error
+ * @param {unknown} error - Ошибка ответа API при создании заявки.
  * @returns {"wrongPassword" | "inviteOnly" | "requestError"} ключ перевода
  */
 function getRequestErrorKey(error: unknown): "wrongPassword" | "inviteOnly" | "requestError" {
@@ -48,7 +48,7 @@ function getRequestErrorKey(error: unknown): "wrongPassword" | "inviteOnly" | "r
 /**
  * Экран для неучастника, открывшего ссылку на сессию: отправляет заявку владельцу, затем
  * показывает ожидание одобрения (или отказ)
- * @param {RequestAccessFormProps} props
+ * @param {RequestAccessFormProps} props - ID сессии и текущее состояние пользователя.
  * @returns {import('react').ReactNode} Карточка заявки на вход
  */
 export function RequestAccessForm(props: RequestAccessFormProps) {
@@ -78,7 +78,7 @@ export function RequestAccessForm(props: RequestAccessFormProps) {
 
   /**
    * Отправляет заявку
-   * @param {SubmitEvent<HTMLFormElement>} event
+   * @param {SubmitEvent<HTMLFormElement>} event - Submit формы заявки.
    * @returns {void}
    */
   function handleSubmit(event: SubmitEvent<HTMLFormElement>): void {

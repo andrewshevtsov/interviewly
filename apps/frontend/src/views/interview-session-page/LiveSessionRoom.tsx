@@ -110,7 +110,7 @@ export function LiveSessionRoom(props: LiveSessionRoomProps) {
   /**
    * LiveKitRoom сообщает сюда и об ошибках подключения, и об ошибках захвата камеры/микрофона;
    * сессию обрывают только первые - без камеры пользователь остаётся в комнате.
-   * @param {Error} error
+   * @param {Error} error - Ошибка LiveKit (подключение или захват медиа).
    * @returns {void}
    */
   function handleRoomError(error: Error): void {
