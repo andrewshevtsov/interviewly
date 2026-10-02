@@ -79,24 +79,28 @@ export function Navbar() {
         <div className="flex items-center gap-3">
           <LanguageSwitcher />
           <ThemeToggle />
-          {isAuthenticated ? (
-            <>
-              <Button asChild variant="ghost" size="icon" className={cn(PATHNAME === localizedProfileHref && "text-primary")}>
-                <LocalizedLink
-                  href="/profile"
-                  aria-label={t("profile")}
-                  aria-current={PATHNAME === localizedProfileHref ? "page" : undefined}
-                >
-                  <CircleUserRound className="h-5 w-5" />
-                </LocalizedLink>
-              </Button>
-              <LogoutButton />
-            </>
-          ) : (
-            <LocalizedLink href="/auth" className="text-sm text-foreground hover:text-muted-foreground">
-              {t("signIn")}
-            </LocalizedLink>
-          )}
+          {isAuthenticated
+            ? (
+              <>
+                <Button asChild variant="ghost" size="icon" className={cn(PATHNAME === localizedProfileHref && "text-primary")}>
+                  <LocalizedLink
+                    href="/profile"
+                    aria-label={t("profile")}
+                    aria-current={PATHNAME === localizedProfileHref
+                      ? "page"
+                      : undefined}
+                  >
+                    <CircleUserRound className="h-5 w-5" />
+                  </LocalizedLink>
+                </Button>
+                <LogoutButton />
+              </>
+            )
+            : (
+              <LocalizedLink href="/auth" className="text-sm text-foreground hover:text-muted-foreground">
+                {t("signIn")}
+              </LocalizedLink>
+            )}
           {isAuthenticated && (
             <Button asChild size="sm">
               <LocalizedLink href="/sessions/new">{t("createSession")}</LocalizedLink>
