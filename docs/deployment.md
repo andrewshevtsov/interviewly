@@ -45,3 +45,51 @@ docker compose up --build
 
 Применённые `migration.sql` не редактируются. Дополнительные изменения базы, включая
 PostgreSQL `CHECK`, индексы и триггеры, оформляются следующей миграцией.
+
+## CI/CD
+
+Пайплайн: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). Он запускается на pull request
+в `dev` и на push в `dev` (в том числе merge). Отдельные долгоживущие ветки `frontend` и `backend`
+не нужны.
+
+На каждом запуске считается diff от базы pull request или от предыдущего коммита `dev` до `HEAD`.
+По изменённым путям выбирается приложение:
+
+| Пути | Что запускается |
+| --- | --- |
+| `apps/frontend/**` | typecheck и eslint frontend, на push в `dev` — образ frontend |
+| `apps/backend/**` | typecheck и eslint backend, на push в `dev` — образ backend |
+| `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `.npmrc`, `patches/**` | оба приложения |
+
+Проверки в CI: `pnpm --filter @app/frontend run typecheck`, eslint frontend без `--fix`,
+`pnpm --filter @app/backend run typecheck`, eslint backend без `--fix`.
+
+CD после успешных проверок собирает только затронутый Dockerfile и пушит образ в GHCR:
+
+- `ghcr.io/<owner>/interviewly-frontend:<sha>` и тег `dev`
+- `ghcr.io/<owner>/interviewly-backend:<sha>` и тег `dev`
+
+Затем по SSH скрипт [`infra/deploy/server.sh`](../infra/deploy/server.sh) готовит сервер и
+поднимает образ. Пустой сервер он приводит в рабочее состояние сам:
+
+- ставит `git`, `curl` и `ca-certificates`, если их нет (`apt`, `dnf` или `yum`);
+- ставит Docker Engine и плагин Compose скриптом `get.docker.com`, если `docker compose` ещё не отвечает;
+- клонирует репозиторий в `DEPLOY_PATH` (по умолчанию `/home/<SSH_USER>/interviewly`) или обновляет уже существующий клон;
+- если `.env` нет, копирует `.env.example` и подставляет публичный хост вместо `localhost` в URL фронтенда, API и LiveKit;
+- в `infra/livekit/livekit.yaml` на сервере заменяет `node_ip: 127.0.0.1` на этот хост, чтобы WebRTC был доступен снаружи;
+- поднимает `postgres` и `livekit`;
+- для собранного приложения делает `docker login` в GHCR, `docker compose pull` и `up -d --no-build`.
+
+Пользователь SSH должен иметь passwordless sudo: установка пакетов идёт через `sudo -n`.
+Имя образа задаётся переменными `FRONTEND_IMAGE` и `BACKEND_IMAGE` в `docker-compose.yml`.
+Локально они не заданы, и compose по-прежнему собирает `interviewly-frontend` / `interviewly-backend`.
+
+В GitHub Actions secrets репозитория:
+
+- `SSH_HOST` — хост сервера
+- `SSH_USER` — пользователь SSH
+- `SSH_KEY` — приватный RSA-ключ, публичная пара которого уже лежит в `authorized_keys` на сервере
+- `DEPLOY_PATH` — необязательно, абсолютный путь к клону; иначе `/home/<SSH_USER>/interviewly`
+
+Пакеты GHCR приватные. Токен для `git clone` и `docker login` на сервере — `GITHUB_TOKEN` того же
+job. Отдельный PAT не нужен, пока выкладка идёт из этого workflow.

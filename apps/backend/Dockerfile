@@ -8,6 +8,7 @@ ENV CI=true
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/backend/package.json ./apps/backend/package.json
 COPY apps/frontend/package.json ./apps/frontend/package.json
+COPY patches ./patches
 
 
 RUN pnpm config set fetch-timeout 500000 && \
@@ -19,4 +20,4 @@ COPY . .
 
 EXPOSE 4000
 
-CMD ["sh", "-c", "pnpm run prisma-generate && pnpm run back-dev"]
+CMD ["sh", "-c", "pnpm --filter @app/backend exec prisma generate && pnpm --filter @app/backend exec prisma migrate deploy && pnpm --filter @app/backend exec prisma db seed && pnpm run back-dev"]
