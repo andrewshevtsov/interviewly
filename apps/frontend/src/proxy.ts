@@ -9,6 +9,7 @@ import {
 
 const LOCALE_PATH_SEGMENT_INDEX = 1;
 
+
 /**
  * Redirects non-localized pages and exposes the URL locale to server components.
  * @param {NextRequest} request - Incoming Next.js request.
