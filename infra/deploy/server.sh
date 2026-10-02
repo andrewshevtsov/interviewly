@@ -13,42 +13,49 @@ SERVICE="${SERVICE:-}"
 IMAGE="${IMAGE:-}"
 GHCR_USER="${GHCR_USER:-}"
 
-if ! sudo -n true 2>/dev/null; then
-  echo "Пользователю ${USER} нужен passwordless sudo, чтобы поставить Docker."
-  echo "На сервере от root: echo '${USER} ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/${USER}"
-  exit 1
-fi
-
 export DEBIAN_FRONTEND=noninteractive
 
-install_packages() {
+require_sudo() {
+  if sudo -n true 2>/dev/null; then
+    return 0
+  fi
+  echo "Пользователю ${USER} нужен passwordless sudo, чтобы доустановить пакеты."
+  echo "На сервере от root: echo '${USER} ALL=(ALL) NOPASSWD:ALL' | tee /etc/sudoers.d/${USER} && chmod 440 /etc/sudoers.d/${USER}"
+  exit 1
+}
+
+if ! command -v git >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1; then
+  require_sudo
   if command -v apt-get >/dev/null 2>&1; then
-    sudo apt-get update
-    sudo apt-get install -y ca-certificates curl git
+    sudo -n apt-get update
+    sudo -n apt-get install -y ca-certificates curl git
   elif command -v dnf >/dev/null 2>&1; then
-    sudo dnf install -y ca-certificates curl git
+    sudo -n dnf install -y ca-certificates curl git
   elif command -v yum >/dev/null 2>&1; then
-    sudo yum install -y ca-certificates curl git
+    sudo -n yum install -y ca-certificates curl git
   else
     echo "Не найден apt-get, dnf или yum. Поставьте git и curl вручную."
     exit 1
   fi
-}
-
-if ! command -v git >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1; then
-  install_packages
 fi
 
-if ! command -v docker >/dev/null 2>&1 || ! sudo docker compose version >/dev/null 2>&1; then
-  curl -fsSL https://get.docker.com | sudo sh
+if ! docker info >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
+  require_sudo
+  if ! command -v docker >/dev/null 2>&1 || ! sudo -n docker compose version >/dev/null 2>&1; then
+    curl -fsSL https://get.docker.com | sudo -n sh
+  fi
+  sudo -n systemctl enable --now docker
+  sudo -n usermod -aG docker "${USER}" || true
+  if ! docker compose version >/dev/null 2>&1 && ! sudo -n docker compose version >/dev/null 2>&1; then
+    echo "Docker Compose plugin не установился."
+    exit 1
+  fi
 fi
 
-sudo systemctl enable --now docker
-sudo usermod -aG docker "${USER}" || true
-
-if ! sudo docker compose version >/dev/null 2>&1; then
-  echo "Docker Compose plugin не установился."
-  exit 1
+if docker info >/dev/null 2>&1; then
+  docker_cmd() { docker "$@"; }
+else
+  docker_cmd() { sudo -n docker "$@"; }
 fi
 
 auth_url="https://x-access-token:${GIT_TOKEN}@github.com/${REPO}.git"
@@ -83,22 +90,22 @@ if [ -f "${livekit_config}" ]; then
 fi
 
 cd "${DEPLOY_PATH}"
-sudo docker compose up -d postgres livekit
+docker_cmd compose up -d postgres livekit
 
 if [ -n "${SERVICE}" ]; then
   if [ -z "${IMAGE}" ] || [ -z "${GHCR_USER}" ]; then
     echo "Для обновления ${SERVICE} нужны IMAGE и GHCR_USER."
     exit 1
   fi
-  printf '%s\n' "${GIT_TOKEN}" | sudo docker login ghcr.io -u "${GHCR_USER}" --password-stdin
+  printf '%s\n' "${GIT_TOKEN}" | docker_cmd login ghcr.io -u "${GHCR_USER}" --password-stdin
   case "${SERVICE}" in
     frontend)
-      sudo env FRONTEND_IMAGE="${IMAGE}" docker compose pull frontend
-      sudo env FRONTEND_IMAGE="${IMAGE}" docker compose up -d --no-build frontend
+      FRONTEND_IMAGE="${IMAGE}" docker_cmd compose pull frontend
+      FRONTEND_IMAGE="${IMAGE}" docker_cmd compose up -d --no-build frontend
       ;;
     backend)
-      sudo env BACKEND_IMAGE="${IMAGE}" docker compose pull backend
-      sudo env BACKEND_IMAGE="${IMAGE}" docker compose up -d --no-build backend
+      BACKEND_IMAGE="${IMAGE}" docker_cmd compose pull backend
+      BACKEND_IMAGE="${IMAGE}" docker_cmd compose up -d --no-build backend
       ;;
     *)
       echo "Неизвестный сервис: ${SERVICE}"

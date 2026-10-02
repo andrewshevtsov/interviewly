@@ -80,7 +80,8 @@ CD после успешных проверок собирает только з
 - поднимает `postgres` и `livekit`;
 - для собранного приложения делает `docker login` в GHCR, `docker compose pull` и `up -d --no-build`.
 
-Пользователь SSH должен иметь passwordless sudo: установка пакетов идёт через `sudo -n`.
+Если Docker, git и curl уже есть и пользователь входит в группу `docker`, sudo не нужен.
+Passwordless sudo требуется только когда этих пакетов нет и их надо доустановить.
 Имя образа задаётся переменными `FRONTEND_IMAGE` и `BACKEND_IMAGE` в `docker-compose.yml`.
 Локально они не заданы, и compose по-прежнему собирает `interviewly-frontend` / `interviewly-backend`.
 
