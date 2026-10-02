@@ -79,12 +79,34 @@ services:
       - .:/app
       - frontend_node_modules:/app/node_modules
 
+  collaboration:
+    build:
+      context: .
+      dockerfile: apps/collaboration/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      BACKEND_INTERNAL_URL: http://backend:4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-interviewly}:${POSTGRES_PASSWORD:-interviewly}@postgres:5432/${POSTGRES_DB:-interviewly}?schema=public
+    ports:
+      - "${COLLABORATION_PORT:-1234}:1234"
+    depends_on:
+      - backend
+    networks:
+      - interviewly-network
+    volumes:
+      - .:/app
+      - collaboration_node_modules:/app/node_modules
+
   backend:
     build:
       context: .
       dockerfile: apps/backend/Dockerfile
     restart: unless-stopped
     env_file: ./.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-interviewly}:${POSTGRES_PASSWORD:-interviewly}@postgres:5432/${POSTGRES_DB:-interviewly}?schema=public
     ports:
       - 4000:4000
     depends_on:
@@ -102,4 +124,5 @@ networks:
 volumes:
   frontend_node_modules:
   backend_node_modules:
+  collaboration_node_modules:
   postgres_data:

@@ -10,6 +10,7 @@
   },
   "scripts": {
     "back-dev": "pnpm --filter @app/backend run start:dev",
+    "collaboration-dev": "pnpm --filter @app/collaboration run dev",
     "front-dev": "pnpm --filter @app/frontend run dev",
     "db-dev": "docker compose up -d postgres livekit",
     "format": "prettier --write .",

@@ -4,7 +4,7 @@
 // <LiveKitRoom> видит комнату через контекст; уход со страницы отключает от неё
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { LiveKitRoom, RoomAudioRenderer, useParticipants } from "@livekit/components-react";
+import { LiveKitRoom, RoomAudioRenderer } from "@livekit/components-react";
 import { ConnectionError, DisconnectReason } from "livekit-client";
 
 import { SessionCodeEditor } from "@/widgets/session-code-editor";
@@ -13,6 +13,12 @@ import { SessionVideoPanels } from "@/widgets/session-video-panels";
 import { sessionApi } from "@/entities/session";
 import { useTranslations } from "@/shared/i18n-context";
 import { SessionEndedNotice } from "./SessionEndedNotice";
+
+const EDITOR_LANGUAGES = {
+  PYTHON: "python",
+  JAVASCRIPT: "javascript",
+  TYPESCRIPT: "typescript",
+} as const;
 
 /**
  * Пропсы {@link LiveSessionRoom}.
@@ -61,14 +67,22 @@ interface RoomWorkspaceProps extends LiveSessionRoomProps {
  */
 function RoomWorkspace(props: RoomWorkspaceProps) {
   const { sessionId, isOwner, currentUserId, isCandidate, isActive, mediaUnavailable } = props;
-  const participants = useParticipants();
   const t = useTranslations("session");
+  const sessionQuery = useQuery({
+    queryKey: ["sessions", sessionId],
+    queryFn: () => sessionApi.get(sessionId),
+  });
+  const editorLanguage = sessionQuery.data
+    ? EDITOR_LANGUAGES[sessionQuery.data.editorLanguage]
+    : "typescript";
 
   return (
     <>
       <SessionHeader sessionId={sessionId} isOwner={isOwner} />
       {mediaUnavailable && (
-        <p className="border-b border-border px-6 py-2 text-sm text-muted-foreground">{t("mediaUnavailable")}</p>
+        <p className="border-b border-border px-6 py-2 text-sm text-muted-foreground">
+          {t("mediaUnavailable")}
+        </p>
       )}
 
       <div className="flex flex-1 overflow-hidden">
@@ -82,8 +96,8 @@ function RoomWorkspace(props: RoomWorkspaceProps) {
         <div className="flex flex-1 p-4">
           <SessionCodeEditor
             sessionId={sessionId}
-            isInterviewer={!isCandidate}
-            participantsCount={participants.length}
+            currentUserId={currentUserId}
+            language={editorLanguage}
           />
         </div>
       </div>
