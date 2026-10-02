@@ -79,14 +79,28 @@ fi
 
 if [ ! -f "${DEPLOY_PATH}/.env" ]; then
   cp "${DEPLOY_PATH}/.env.example" "${DEPLOY_PATH}/.env"
-  sed -i "s#http://localhost:3000#http://${PUBLIC_HOST}:3000#g" "${DEPLOY_PATH}/.env"
-  sed -i "s#http://localhost:4000#http://${PUBLIC_HOST}:4000#g" "${DEPLOY_PATH}/.env"
-  sed -i "s#ws://localhost:7880#ws://${PUBLIC_HOST}:7880#g" "${DEPLOY_PATH}/.env"
+  # Домен (без схемы) → https/wss URL; иначе оставляем http://HOST:port для сырого IP.
+  if [[ "${PUBLIC_HOST}" == *.* && "${PUBLIC_HOST}" != *:* ]]; then
+    sed -i "s#http://localhost:3000#https://${PUBLIC_HOST}#g" "${DEPLOY_PATH}/.env"
+    sed -i "s#http://localhost:4000#https://api.${PUBLIC_HOST}#g" "${DEPLOY_PATH}/.env"
+    sed -i "s#ws://localhost:7880#ws://livekit.${PUBLIC_HOST}:7880#g" "${DEPLOY_PATH}/.env"
+    if grep -q '^DEV_TUNNEL_ORIGIN=' "${DEPLOY_PATH}/.env"; then
+      sed -i "s|^DEV_TUNNEL_ORIGIN=.*|DEV_TUNNEL_ORIGIN=${PUBLIC_HOST},www.${PUBLIC_HOST}|" "${DEPLOY_PATH}/.env"
+    else
+      printf 'DEV_TUNNEL_ORIGIN=%s,www.%s\n' "${PUBLIC_HOST}" "${PUBLIC_HOST}" >> "${DEPLOY_PATH}/.env"
+    fi
+  else
+    sed -i "s#http://localhost:3000#http://${PUBLIC_HOST}:3000#g" "${DEPLOY_PATH}/.env"
+    sed -i "s#http://localhost:4000#http://${PUBLIC_HOST}:4000#g" "${DEPLOY_PATH}/.env"
+    sed -i "s#ws://localhost:7880#ws://${PUBLIC_HOST}:7880#g" "${DEPLOY_PATH}/.env"
+  fi
 fi
 
 livekit_config="${DEPLOY_PATH}/infra/livekit/livekit.yaml"
 if [ -f "${livekit_config}" ]; then
-  sed -i "s#node_ip: 127.0.0.1#node_ip: ${PUBLIC_HOST}#g" "${livekit_config}"
+  # ICE/WebRTC нужен публичный IP origin, не Cloudflare anycast и не домен.
+  livekit_ip="${SSH_HOST:-${PUBLIC_HOST}}"
+  sed -i "s#node_ip: 127.0.0.1#node_ip: ${livekit_ip}#g" "${livekit_config}"
 fi
 
 cd "${DEPLOY_PATH}"

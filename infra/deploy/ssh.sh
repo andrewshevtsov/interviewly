@@ -57,5 +57,5 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 ssh -i "${HOME}/.ssh/deploy_key" -o StrictHostKeyChecking=accept-new \
   "${SSH_USER}@${SSH_HOST}" \
-  "GIT_TOKEN=$(printf '%q' "${GIT_TOKEN}") GHCR_USER=$(printf '%q' "${GHCR_USER}") REPO=$(printf '%q' "${REPO}") DEPLOY_PATH=$(printf '%q' "${DEPLOY_PATH}") PUBLIC_HOST=$(printf '%q' "${PUBLIC_HOST}") GIT_REF=$(printf '%q' "${GIT_REF}") SERVICE=$(printf '%q' "${SERVICE}") IMAGE=$(printf '%q' "${IMAGE}") bash -s" \
+  "GIT_TOKEN=$(printf '%q' "${GIT_TOKEN}") GHCR_USER=$(printf '%q' "${GHCR_USER}") REPO=$(printf '%q' "${REPO}") DEPLOY_PATH=$(printf '%q' "${DEPLOY_PATH}") PUBLIC_HOST=$(printf '%q' "${PUBLIC_HOST}") SSH_HOST=$(printf '%q' "${SSH_HOST}") GIT_REF=$(printf '%q' "${GIT_REF}") SERVICE=$(printf '%q' "${SERVICE}") IMAGE=$(printf '%q' "${IMAGE}") bash -s" \
   < "${script_dir}/server.sh"
