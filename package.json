@@ -10,6 +10,7 @@
   },
   "scripts": {
     "back-dev": "pnpm --filter @app/backend run start:dev",
+    "collaboration-dev": "pnpm --filter @app/collaboration run dev",
     "front-dev": "pnpm --filter @app/frontend run dev",
     "prisma-generate": "pnpm --filter @app/backend prisma-generate",
     "db-dev": "docker compose up -d --wait postgres livekit",

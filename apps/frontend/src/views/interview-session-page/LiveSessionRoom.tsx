@@ -4,7 +4,7 @@
 // <LiveKitRoom> видит комнату через контекст; уход со страницы отключает от неё
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { LiveKitRoom, RoomAudioRenderer, useParticipants } from "@livekit/components-react";
+import { LiveKitRoom, RoomAudioRenderer } from "@livekit/components-react";
 import { ConnectionError, DisconnectReason } from "livekit-client";
 
 import { SessionCodeEditor } from "@/widgets/session-code-editor";
@@ -15,6 +15,12 @@ import { useTranslations } from "@/shared/i18n-context";
 import { cn } from "@/shared/lib/cn";
 import { FLIP_DURATION_MS } from "@/shared/lib/use-flip";
 import { SessionEndedNotice } from "./SessionEndedNotice";
+
+const EDITOR_LANGUAGES = {
+  PYTHON: "python",
+  JAVASCRIPT: "javascript",
+  TYPESCRIPT: "typescript",
+} as const;
 
 /**
  * Пропсы {@link LiveSessionRoom}.
@@ -68,9 +74,15 @@ interface RoomWorkspaceProps extends LiveSessionRoomProps {
  */
 function RoomWorkspace(props: RoomWorkspaceProps) {
   const { sessionId, isOwner, currentUserId, isCandidate, isActive, editorOpen, mediaUnavailable } = props;
-  const participants = useParticipants();
   const t = useTranslations("session");
   useEditorOpenSync(sessionId);
+  const sessionQuery = useQuery({
+    queryKey: ["sessions", sessionId],
+    queryFn: () => sessionApi.get(sessionId),
+  });
+  const editorLanguage = sessionQuery.data
+    ? EDITOR_LANGUAGES[sessionQuery.data.editorLanguage]
+    : "typescript";
 
   return (
     <>
@@ -81,7 +93,9 @@ function RoomWorkspace(props: RoomWorkspaceProps) {
         editorOpen={editorOpen}
       />
       {mediaUnavailable && (
-        <p className="border-b border-border px-6 py-2 text-sm text-muted-foreground">{t("mediaUnavailable")}</p>
+        <p className="border-b border-border px-6 py-2 text-sm text-muted-foreground">
+          {t("mediaUnavailable")}
+        </p>
       )}
 
       <div className="relative flex flex-1 overflow-hidden">
@@ -104,8 +118,8 @@ function RoomWorkspace(props: RoomWorkspaceProps) {
         >
           <SessionCodeEditor
             sessionId={sessionId}
-            isInterviewer={!isCandidate}
-            participantsCount={participants.length}
+            currentUserId={currentUserId}
+            language={editorLanguage}
           />
         </div>
       </div>

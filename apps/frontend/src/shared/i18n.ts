@@ -281,7 +281,10 @@ export const messages = {
       ru: "Нет доступа к камере или микрофону — проверьте разрешения браузера. Вы в комнате без них.",
       en: "No access to the camera or microphone — check the browser permissions. You're in the room without them.",
     },
-    waitingForParticipants: { ru: "Ждём второго участника…", en: "Waiting for the other participant…" },
+    waitingForParticipants: {
+      ru: "Ждём второго участника…",
+      en: "Waiting for the other participant…",
+    },
     accessRequestsTitle: { ru: "заявки на вход", en: "access requests" },
     approveRequest: { ru: "принять", en: "approve" },
     rejectRequest: { ru: "отклонить", en: "reject" },
