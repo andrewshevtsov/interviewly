@@ -1,4 +1,4 @@
-// Слой widgets: полная таблица "Лидерборд" - все участники, отсортированные по рейтингу.
+// Слой widgets: полная таблица "Лидерборд" - участники по числу пройденных интервью.
 import { getServerTranslations } from "@/shared/i18n-server";
 import { cn } from "@/shared/lib/cn";
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
@@ -18,7 +18,7 @@ export interface LeaderboardTableProps {
 }
 
 /**
- * Full "Лидерборд" table: rank, participant, sessions conducted and average rating.
+ * Full "Лидерборд" table: rank, participant and completed interviews.
  * @param {LeaderboardTableProps} props - Props for the table.
  * @returns {import('react').ReactNode} The leaderboard table.
  */
@@ -32,7 +32,6 @@ export async function LeaderboardTable(props: LeaderboardTableProps) {
         <span className="w-8">#</span>
         <span className="flex-1">{t("participantColumn")}</span>
         <span className="w-20 text-right">{t("interviewsColumn")}</span>
-        <span className="w-16 text-right">{t("rating")}</span>
       </div>
 
       {entries.map((entry, index) => (
@@ -52,11 +51,10 @@ export async function LeaderboardTable(props: LeaderboardTableProps) {
 
           <div className="flex-1">
             <p className="font-semibold">{entry.name}</p>
-            <p className="text-sm text-muted-foreground">{entry.role}</p>
+            {entry.role && <p className="text-sm text-muted-foreground">{entry.role}</p>}
           </div>
 
-          <span className="w-20 text-right">{entry.sessionsCount}</span>
-          <span className="w-16 text-right font-mono text-success">{entry.rating}</span>
+          <span className="w-20 text-right font-mono">{entry.interviewsCount}</span>
         </div>
       ))}
     </Card>
