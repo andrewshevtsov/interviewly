@@ -11,9 +11,9 @@ import type { LeaderboardEntry } from "@/entities/leaderboard";
  */
 export interface LeaderboardPageProps {
   /**
-   * Leaderboard rows, ranked best first.
+   * Строки лидерборда
    */
-  entries: LeaderboardEntry[];
+  entries: LeaderboardEntry[] | null;
 }
 
 /**
@@ -22,6 +22,7 @@ export interface LeaderboardPageProps {
  * @returns {import('react').ReactNode} The leaderboard page.
  */
 export async function LeaderboardPage(props: LeaderboardPageProps) {
+  const { entries } = props;
   const t = await getServerTranslations("leaderboard");
 
   return (
@@ -33,7 +34,9 @@ export async function LeaderboardPage(props: LeaderboardPageProps) {
         <p className="mt-2 text-muted-foreground">{t("description")}</p>
 
         <div className="mt-10">
-          <LeaderboardTable entries={props.entries} />
+          {entries === null && <p className="text-destructive">{t("loadError")}</p>}
+          {entries?.length === 0 && <p className="text-muted-foreground">{t("empty")}</p>}
+          {entries && entries.length > 0 && <LeaderboardTable entries={entries} />}
         </div>
       </main>
 

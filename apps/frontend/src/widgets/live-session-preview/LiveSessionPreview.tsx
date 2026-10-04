@@ -43,13 +43,24 @@ function VideoPanel(props: VideoPanelProps) {
  */
 export async function LiveSessionPreview() {
   const t = await getServerTranslations("session");
+  const preview = await getServerTranslations("livePreview");
 
   return (
     <section className="mx-auto max-w-6xl px-6 py-16">
-      <Card className="grid gap-4 p-4 md:grid-cols-[280px_1fr]">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">{preview("title")}</h2>
+          <p className="mt-2 text-muted-foreground">
+            {preview("description")}
+            <br />
+            {preview("details")}
+          </p>
+        </div>
+      </div>
+      <Card className="mt-8 grid gap-4 p-4 md:grid-cols-[280px_1fr]">
         <div className="flex flex-col gap-4">
-          <VideoPanel label={t("interviewerVideo")} name={`Мария (${t("interviewer")})`} />
-          <VideoPanel label={t("candidateVideo")} name={t("you")} />
+          <VideoPanel label={t("interviewerVideo")} name={`Мария (${t("interviewer")})`}/>
+          <VideoPanel label={t("candidateVideo")} name={t("you")}/>
 
           <Card className="bg-muted/40 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-primary">
@@ -70,7 +81,7 @@ export async function LiveSessionPreview() {
               <span className="text-xs text-muted-foreground">{t("autosaving")}</span>
             </div>
             <span className="flex items-center gap-1.5 text-xs text-success">
-              <span className="h-1.5 w-1.5 rounded-full bg-success" />
+              <span className="h-1.5 w-1.5 rounded-full bg-success"/>
               {t("synced")}
             </span>
           </div>
