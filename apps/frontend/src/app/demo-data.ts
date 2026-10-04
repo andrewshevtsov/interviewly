@@ -3,7 +3,6 @@
 import type { NewSessionDraft, SessionHistoryEntry } from "@/entities/session";
 import type { Profile, ProfileStatsData } from "@/entities/profile";
 import type { Participant } from "@/entities/participant";
-import type { LeaderboardEntry } from "@/entities/leaderboard";
 
 export const DEMO_SESSION_HISTORY: SessionHistoryEntry[] = [
   {
@@ -136,64 +135,5 @@ export const DEMO_PARTICIPANTS: Participant[] = [
     status: "available",
     sessionsCount: "23",
     rating: "8.9/10",
-  },
-];
-
-export const DEMO_LEADERBOARD: LeaderboardEntry[] = [
-  {
-    id: "l-1",
-    rank: "01",
-    name: "Марк Ченов",
-    role: "Senior Architect",
-    sessionsCount: "142",
-    rating: "9.9",
-  },
-  {
-    id: "l-2",
-    rank: "02",
-    name: "София Родригес",
-    role: "Fullstack Dev",
-    sessionsCount: "128",
-    rating: "9.7",
-  },
-  {
-    id: "l-3",
-    rank: "03",
-    name: "Мария Лебедева",
-    role: "Systems Engineer",
-    sessionsCount: "95",
-    rating: "9.5",
-  },
-  {
-    id: "l-4",
-    rank: "04",
-    name: "Артём Соколов",
-    role: "Senior Frontend",
-    sessionsCount: "81",
-    rating: "9.4",
-  },
-  {
-    id: "l-5",
-    rank: "05",
-    name: "Дмитрий Кузьмин",
-    role: "Backend Engineer",
-    sessionsCount: "63",
-    rating: "8.9",
-  },
-  {
-    id: "l-6",
-    rank: "06",
-    name: "Елена Волкова",
-    role: "Backend Specialist",
-    sessionsCount: "47",
-    rating: "9.1",
-  },
-  {
-    id: "l-7",
-    rank: "07",
-    name: "Игорь Мельник",
-    role: "Frontend Developer",
-    sessionsCount: "22",
-    rating: "8.2",
   },
 ];

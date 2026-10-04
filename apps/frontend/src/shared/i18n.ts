@@ -125,16 +125,34 @@ export const messages = {
     searchPlaceholder: { ru: "Имя, роль или стек...", en: "Name, role or stack..." },
     foundCount: { ru: "найдено карточек", en: "profiles found" },
   },
+  livePreview: {
+    title: { ru: "видеосессии", en: "video sessions" },
+    description: {
+      ru: "Создавайте комнаты и участвуйте в видео-интервью.",
+      en: "Create rooms and join video interviews.",
+    },
+    details: {
+      ru: "Решайте задачи в совместном редакторе. Запускайте код для проверки и отладки.",
+      en: "Solve tasks in a shared editor. Run code to test and debug it.",
+    },
+  },
   leaderboard: {
     title: { ru: "лидерборд", en: "leaderboard" },
     description: {
-      ru: "Топ участников по количеству проведённых интервью.",
-      en: "Top participants by number of completed interviews.",
+      ru: "Топ участников по количеству пройденных интервью",
+      en: "Top participants by number of completed interviews",
     },
     sessions: { ru: "сессий", en: "sessions" },
-    rating: { ru: "рейтинг", en: "rating" },
     participantColumn: { ru: "участник", en: "participant" },
     interviewsColumn: { ru: "интервью", en: "interviews" },
+    empty: {
+      ru: "Пока никто не завершил ни одного интервью - станьте первым.",
+      en: "Nobody has finished an interview yet - be the first.",
+    },
+    loadError: {
+      ru: "Не удалось загрузить лидерборд. Попробуйте обновить страницу позже.",
+      en: "Couldn't load the leaderboard. Please refresh the page later.",
+    },
   },
   profile: {
     title: { ru: "личный кабинет", en: "profile" },

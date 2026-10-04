@@ -2,9 +2,9 @@
 // Разрешено импортировать widgets, features, entities, shared.
 import { Footer } from "@/widgets/footer";
 import { Navbar } from "@/widgets/navbar";
-import { CreateSessionForm } from "@/features/create-session";
 import { getServerTranslations } from "@/shared/i18n-server";
 import type { NewSessionDraft } from "@/entities/session";
+import { NewSessionFormSection } from "./NewSessionFormSection";
 
 /**
  * Props for {@link NewSessionPage}.
@@ -33,7 +33,7 @@ export async function NewSessionPage(props: NewSessionPageProps) {
         <p className="mt-2 text-muted-foreground">{t("description")}</p>
 
         <div className="mt-10">
-          <CreateSessionForm draft={props.draft} />
+          <NewSessionFormSection draft={props.draft} />
         </div>
       </main>
 

@@ -2,36 +2,80 @@
 // Разрешено импортировать из shared.
 
 /**
- * A single row on the "Лидерборд" screen.
+ * Строка лидерборда в ответе `GET /leaderboard`.
  */
-export interface LeaderboardEntry {
+export interface ApiLeaderboardEntry {
   /**
-   * Unique id, used as the React key.
+   * Место в рейтинге, начиная с 1.
    */
-  id: string;
+  rank: number;
 
   /**
-   * Rank, formatted for display (e.g. "01").
+   * UUID пользователя.
    */
-  rank: string;
+  userId: string;
 
   /**
-   * Display name.
+   * Имя и фамилия.
    */
   name: string;
 
   /**
-   * Role/title shown under the name.
+   * Роль из профиля или `null`, если профиля нет.
    */
-  role: string;
+  role: string | null;
 
   /**
-   * Number of interview sessions conducted, formatted for display (e.g. "142").
+   * Завершённые интервью.
    */
-  sessionsCount: string;
-
-  /**
-   * Average rating, formatted for display (e.g. "9.9").
-   */
-  rating: string;
+  interviewsCount: number;
 }
+
+/**
+ * Строка на экране "Лидерборд"
+ */
+export interface LeaderboardEntry {
+  /**
+   * UUID пользователя, ключ строки.
+   */
+  id: string;
+
+  /**
+   * Место для отображения, например "01".
+   */
+  rank: string;
+
+  /**
+   * Имя для отображения.
+   */
+  name: string;
+
+  /**
+   * Роль под именем или `null`, если её нет.
+   */
+  role: string | null;
+
+  /**
+   * Число завершённых интервью, например "12".
+   */
+  interviewsCount: string;
+}
+
+const RANK_DIGITS = 2;
+
+/**
+ * Готовит строку ответа API к отображению
+ * @param {ApiLeaderboardEntry} entry - Строка из `GET /leaderboard`
+ * @returns {LeaderboardEntry} Строка для таблицы
+ */
+export function toLeaderboardEntry(entry: ApiLeaderboardEntry): LeaderboardEntry {
+  return {
+    id: entry.userId,
+    rank: String(entry.rank).padStart(RANK_DIGITS, "0"),
+    name: entry.name,
+    role: entry.role,
+    interviewsCount: String(entry.interviewsCount),
+  };
+}
+
+export { getLeaderboard } from "./leaderboard-api";
