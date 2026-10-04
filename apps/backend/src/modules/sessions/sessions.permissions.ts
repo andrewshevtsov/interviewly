@@ -59,6 +59,10 @@ type SessionPermissionsConfig = {
     description: string;
     allowRoles: RoleList;
   };
+  toggleEditor: {
+    description: string;
+    allowRoles: RoleList;
+  };
 };
 
 /**
@@ -139,6 +143,12 @@ export const SESSION_PERMISSIONS = {
   switchDemoTask: {
     description:
       'Временно (AI_HINTS_DEMO_CONTEXT): показать в комнате следующую демо-задачу - только интервьюер',
+    allowRoles: [SessionParticipantRole.INTERVIEWER],
+  },
+
+  toggleEditor: {
+    description:
+      'Открыть/закрыть редактор кода в комнате (знакомство <-> лайв-кодинг)',
     allowRoles: [SessionParticipantRole.INTERVIEWER],
   },
 } as const satisfies SessionPermissionsConfig;

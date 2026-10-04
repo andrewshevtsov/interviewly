@@ -12,12 +12,14 @@
     "back-dev": "pnpm --filter @app/backend run start:dev",
     "collaboration-dev": "pnpm --filter @app/collaboration run dev",
     "front-dev": "pnpm --filter @app/frontend run dev",
-    "db-dev": "docker compose up -d postgres livekit",
+    "prisma-generate": "pnpm --filter @app/backend prisma-generate",
+    "db-dev": "docker compose up -d --wait postgres livekit",
+    "db-prepare": "pnpm --filter @app/backend exec prisma migrate deploy && pnpm --filter @app/backend exec prisma db seed",
+    "dev": "pnpm db-dev && pnpm db-prepare && pnpm back-dev",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r --if-present run typecheck",
-    "prepare": "husky",
-    "prisma-generate": "pnpm --filter @app/backend prisma-generate"
+    "prepare": "husky"
   },
   "devDependencies": {
     "husky": "^9.1.7"

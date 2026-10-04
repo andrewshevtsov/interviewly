@@ -10,6 +10,7 @@ import type {
   CreateSessionInput,
   DemoTask,
   DemoTaskState,
+  EditorState,
   HintRequestContext,
   LivekitConnection,
   MySessionState,
@@ -175,5 +176,14 @@ export const sessionApi = {
    */
   nextDemoTask(sessionId: string): Promise<DemoTask> {
     return httpClient.post<DemoTask>(`/sessions/${sessionId}/demo-task/next`).then((res) => res.data);
+  },
+  /**
+   * Открывает или закрывает редактор кода в комнате (интервьюер)
+   * @param {string} sessionId - UUID сессии
+   * @param {boolean} open - `true` - лайв-кодинг, `false` - знакомство
+   * @returns {Promise<boolean>} Новое состояние редактора
+   */
+  setEditorOpen(sessionId: string, open: boolean): Promise<boolean> {
+    return httpClient.put<EditorState>(`/sessions/${sessionId}/editor`, { open }).then((res) => res.data.open);
   },
 };

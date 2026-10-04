@@ -203,6 +203,9 @@ export const messages = {
       en: "No task yet: the interviewer shows one with the “next task” button.",
     },
     demoTaskError: { ru: "Не удалось сменить задачу", en: "Couldn't switch the task" },
+    openEditor: { ru: "Открыть редактор", en: "Open editor" },
+    closeEditor: { ru: "Закрыть редактор", en: "Close editor" },
+    toggleEditorError: { ru: "Не удалось переключить редактор", en: "Couldn't toggle the editor" },
     aiHintsEmpty: { ru: "Подсказок пока не было.", en: "No hints yet." },
     aiHintPending: { ru: "Генерируем подсказку…", en: "Generating a hint…" },
     aiHintWaitActive: {
