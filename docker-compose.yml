@@ -69,9 +69,13 @@ services:
     build:
       context: .
       dockerfile: apps/frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
     restart: unless-stopped
     env_file:
       - ./.env
+    # На сервере FRONTEND_SCRIPT=start (production). Локально по умолчанию - next dev.
+    command: ["pnpm", "--filter", "@app/frontend", "run", "${FRONTEND_SCRIPT:-dev}"]
     ports:
       - 3000:3000
     networks:

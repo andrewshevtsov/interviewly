@@ -84,12 +84,17 @@ if [ ! -f "${DEPLOY_PATH}/.env" ]; then
   # Домен (без схемы) → https/wss URL; иначе оставляем http://HOST:port для сырого IP.
   if [[ "${PUBLIC_HOST}" == *.* && "${PUBLIC_HOST}" != *:* ]]; then
     sed -i "s#http://localhost:3000#https://${PUBLIC_HOST}#g" "${DEPLOY_PATH}/.env"
-    sed -i "s#http://localhost:4000#https://api.${PUBLIC_HOST}#g" "${DEPLOY_PATH}/.env"
+    sed -i "s#http://localhost:4000#https://${PUBLIC_HOST}/api#g" "${DEPLOY_PATH}/.env"
     sed -i "s#ws://localhost:7880#ws://livekit.${PUBLIC_HOST}:7880#g" "${DEPLOY_PATH}/.env"
     if grep -q '^DEV_TUNNEL_ORIGIN=' "${DEPLOY_PATH}/.env"; then
       sed -i "s|^DEV_TUNNEL_ORIGIN=.*|DEV_TUNNEL_ORIGIN=${PUBLIC_HOST},www.${PUBLIC_HOST}|" "${DEPLOY_PATH}/.env"
     else
       printf 'DEV_TUNNEL_ORIGIN=%s,www.%s\n' "${PUBLIC_HOST}" "${PUBLIC_HOST}" >> "${DEPLOY_PATH}/.env"
+    fi
+    if grep -q '^FRONTEND_SCRIPT=' "${DEPLOY_PATH}/.env"; then
+      sed -i 's|^FRONTEND_SCRIPT=.*|FRONTEND_SCRIPT=start|' "${DEPLOY_PATH}/.env"
+    else
+      printf 'FRONTEND_SCRIPT=start\n' >> "${DEPLOY_PATH}/.env"
     fi
   else
     sed -i "s#http://localhost:3000#http://${PUBLIC_HOST}:3000#g" "${DEPLOY_PATH}/.env"
@@ -118,6 +123,12 @@ if [ -n "${SERVICE}" ]; then
     frontend)
       FRONTEND_IMAGE="${IMAGE}" docker_cmd compose pull frontend
       FRONTEND_IMAGE="${IMAGE}" docker_cmd compose up -d --no-build frontend
+      # Bind-mount `.:/app` перекрывает .next из образа — собираем на сервере.
+      if grep -q '^FRONTEND_SCRIPT=start$' "${DEPLOY_PATH}/.env" 2>/dev/null; then
+        FRONTEND_IMAGE="${IMAGE}" docker_cmd compose exec -T frontend \
+          pnpm --filter @app/frontend run build
+        FRONTEND_IMAGE="${IMAGE}" docker_cmd compose up -d --no-build --force-recreate frontend
+      fi
       ;;
     backend)
       BACKEND_IMAGE="${IMAGE}" docker_cmd compose pull backend
