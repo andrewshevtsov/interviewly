@@ -13,6 +13,9 @@ const ACCESS_TOKEN_REFRESH_MARGIN_MS = 60_000;
 const REFRESH_RETRY_MS = 10_000;
 const HTTP_UNAUTHORIZED = 401;
 
+/** Если первый refresh не ответил за это время, считаем пользователя гостем. */
+const SESSION_RESTORE_TIMEOUT_MS = 5_000;
+
 /**
  * Читает время истечения JWT без проверки подписи: подпись всё равно проверяет backend,
  * а frontend использует значение только для планирования обновления.
@@ -47,7 +50,14 @@ export function AuthSessionInit(): null {
   const setAnonymous = useAuthStore((state) => state.setAnonymous);
 
   useEffect(() => {
+    let cancelled = false;
     let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const restoreTimeoutId = window.setTimeout(() => {
+      if (!cancelled && useAuthStore.getState().status === "initializing") {
+        setAnonymous();
+      }
+    }, SESSION_RESTORE_TIMEOUT_MS);
 
     /**
      * Планирует обновление немного раньше истечения текущего токена доступа.
@@ -75,6 +85,10 @@ export function AuthSessionInit(): null {
      */
     function refreshSession(): void {
       void refreshAccessToken().catch((error: unknown) => {
+        if (cancelled) {
+          return;
+        }
+
         if (getHttpStatus(error) === HTTP_UNAUTHORIZED) {
           // Refresh-cookie отсутствует или истёк: нужна повторная авторизация.
           setAnonymous();
@@ -102,6 +116,8 @@ export function AuthSessionInit(): null {
     refreshSession();
 
     return () => {
+      cancelled = true;
+      window.clearTimeout(restoreTimeoutId);
       clearTimeout(refreshTimer);
       unsubscribe();
       document.removeEventListener("visibilitychange", handleResume);

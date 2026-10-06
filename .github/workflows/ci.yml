@@ -1,0 +1,208 @@
+name: CI/CD
+
+on:
+  pull_request:
+    branches: [dev, infra/IN-02]
+  push:
+    branches: [dev, infra/IN-02]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+      collaboration: ${{ steps.filter.outputs.collaboration }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: filter
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+          else
+            base="${{ github.event.before }}"
+          fi
+          if [ "$base" = "0000000000000000000000000000000000000000" ]; then
+            base="HEAD~1"
+          fi
+          frontend=false
+          backend=false
+          collaboration=false
+          while IFS= read -r file; do
+            case "$file" in
+              apps/frontend/*) frontend=true ;;
+              apps/backend/*) backend=true ;;
+              apps/collaboration/*) collaboration=true ;;
+              package.json|pnpm-lock.yaml|pnpm-workspace.yaml|.npmrc) frontend=true; backend=true; collaboration=true ;;
+              patches/*) frontend=true; backend=true; collaboration=true ;;
+            esac
+          done < <(git diff --name-only "$base" HEAD)
+          echo "frontend=$frontend" >> "$GITHUB_OUTPUT"
+          echo "backend=$backend" >> "$GITHUB_OUTPUT"
+          echo "collaboration=$collaboration" >> "$GITHUB_OUTPUT"
+
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @app/frontend run typecheck
+      - run: pnpm --filter @app/frontend exec eslint . --ext .ts,.tsx,.js,.jsx
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Generate Prisma Client
+        run: pnpm --filter @app/backend exec prisma generate
+        env:
+          DATABASE_URL: postgresql://interviewly:interviewly@127.0.0.1:5432/interviewly?schema=public
+      - run: pnpm --filter @app/backend run typecheck
+      - run: pnpm --filter @app/backend exec eslint "{src,apps,libs,test}/**/*.ts"
+
+  collaboration:
+    needs: changes
+    if: needs.changes.outputs.collaboration == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @app/collaboration run typecheck
+
+  provision:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools and sync the repository
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          GIT_REF: ${{ github.ref_name }}
+        run: bash infra/deploy/ssh.sh
+
+  frontend-image:
+    needs: [changes, frontend, provision]
+    if: >-
+      always() &&
+      github.event_name == 'push' &&
+      needs.changes.outputs.frontend == 'true' &&
+      needs.frontend.result == 'success' &&
+      needs.provision.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - id: image
+        run: |
+          owner=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          echo "name=ghcr.io/${owner}/interviewly-frontend" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/frontend/Dockerfile
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL || 'https://interviewly.top/api' }}
+          tags: |
+            ${{ steps.image.outputs.name }}:${{ github.sha }}
+            ${{ steps.image.outputs.name }}:dev
+      - name: Load image on the server
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          IMAGE: ${{ steps.image.outputs.name }}:${{ github.sha }}
+          GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          REPO: ${{ github.repository }}
+          GIT_REF: ${{ github.ref_name }}
+          SERVICE: frontend
+        run: bash infra/deploy/ssh.sh
+
+  backend-image:
+    needs: [changes, backend, provision]
+    if: >-
+      always() &&
+      github.event_name == 'push' &&
+      needs.changes.outputs.backend == 'true' &&
+      needs.backend.result == 'success' &&
+      needs.provision.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - id: image
+        run: |
+          owner=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          echo "name=ghcr.io/${owner}/interviewly-backend" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/backend/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.image.outputs.name }}:${{ github.sha }}
+            ${{ steps.image.outputs.name }}:dev
+      - name: Load image on the server
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          IMAGE: ${{ steps.image.outputs.name }}:${{ github.sha }}
+          GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          REPO: ${{ github.repository }}
+          GIT_REF: ${{ github.ref_name }}
+          SERVICE: backend
+        run: bash infra/deploy/ssh.sh

@@ -58,8 +58,8 @@ interface CenteredMessageProps {
 
 /**
  * Сообщение по центру экрана для состояний вне комнаты
- * @param {CenteredMessageProps} props
- * @returns {ReactNode}
+ * @param {CenteredMessageProps} props - Текст или узел для отображения по центру.
+ * @returns {ReactNode} Центрированный layout с сообщением.
  */
 function CenteredMessage(props: CenteredMessageProps) {
   return (
@@ -72,7 +72,7 @@ function CenteredMessage(props: CenteredMessageProps) {
 /**
  * Загружает состояние пользователя в сессии и рендерит подходящий экран; если пользователь
  * не авторизован - редирект на "/auth" с возвратом в эту сессию после входа
- * @param {LiveSessionGateProps} props
+ * @param {LiveSessionGateProps} props - ID сессии для загрузки состояния пользователя.
  * @returns {import('react').ReactNode} Комната, экран заявки или сообщение.
  */
 export function LiveSessionGate(props: LiveSessionGateProps) {

@@ -28,3 +28,4 @@ import { LeaderboardModule } from './modules/leaderboard/leaderboard.module.ts';
   providers: [],
 })
 export class AppModule { }
+

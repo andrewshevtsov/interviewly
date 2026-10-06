@@ -26,9 +26,11 @@ export interface FeedbackPageProps {
 export default async function Page(props: FeedbackPageProps) {
   const { sessionId } = await props.params;
 
-  return <SessionFeedbackPage
-    sessionId={sessionId}
-    sessionNumber={formatSessionNumber(sessionId)}
-    defaultScore={0}
-  />;
+  return (
+    <SessionFeedbackPage
+      sessionId={sessionId}
+      sessionNumber={formatSessionNumber(sessionId)}
+      defaultScore={0}
+    />
+  );
 }

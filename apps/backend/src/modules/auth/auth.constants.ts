@@ -14,10 +14,15 @@ export const REFRESH_TOKEN_COOKIE = 'refreshToken';
 export const TELEGRAM_AUTH_MAX_AGE_SECONDS = 24 * 60 * 60;
 
 export function refreshTokenCookieOptions(): CookieOptions {
+  const frontendUrl = process.env.FRONTEND_URL ?? '';
+  const secure =
+    process.env.NODE_ENV === 'production' || frontendUrl.startsWith('https://');
+
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure,
     sameSite: 'lax',
-    path: '/auth',
+    // `/` — кука уходит и на `/auth/*`, и на `/api/auth/*` (same-origin прокси).
+    path: '/',
   };
 }
