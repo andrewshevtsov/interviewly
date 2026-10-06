@@ -1,5 +1,5 @@
-# Docker Compose для ЛОКАЛЬНОЙ РАЗРАБОТКИ. Поднимает frontend, backend, postgres
-# и LiveKit (SFU для видео/аудио сессий).
+# Docker Compose для ЛОКАЛЬНОЙ РАЗРАБОТКИ. Поднимает frontend, backend, postgres,
+# LiveKit (SFU для видео/аудио) и collaboration (Hocuspocus/Yjs для редактора).
 #
 # Быстрый старт всех Docker-сервисов:
 #   cp .env.example .env
@@ -13,8 +13,9 @@
 #   # или: pnpm db-dev
 #
 # Дальше:
-#   frontend: http://localhost:3000
-#   backend:  http://localhost:4000
+#   frontend:       http://localhost:3000
+#   backend:        http://localhost:4000
+#   collaboration:  ws://localhost:1234
 #   postgres: localhost:5432 (при запуске в Docker backend подключается к postgres
 #             по имени сервиса "postgres" в сети interviewly-network; при локальном
 #             запуске backend вне Docker — через localhost, см. DATABASE_URL в .env)
@@ -74,6 +75,9 @@ services:
     restart: unless-stopped
     env_file:
       - ./.env
+    environment:
+      # Серверные компоненты Next.js ходят к backend внутри Docker-сети, а не через localhost
+      BACKEND_INTERNAL_URL: http://backend:4000
     # На сервере FRONTEND_SCRIPT=start (production). Локально по умолчанию - next dev.
     command: ["pnpm", "--filter", "@app/frontend", "run", "${FRONTEND_SCRIPT:-dev}"]
     ports:
@@ -85,6 +89,26 @@ services:
       - frontend_node_modules:/app/node_modules
       - frontend_app_node_modules:/app/apps/frontend/node_modules
 
+  collaboration:
+    build:
+      context: .
+      dockerfile: apps/collaboration/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      BACKEND_INTERNAL_URL: http://backend:4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-interviewly}:${POSTGRES_PASSWORD:-interviewly}@postgres:5432/${POSTGRES_DB:-interviewly}?schema=public
+    ports:
+      - "${COLLABORATION_PORT:-1234}:1234"
+    depends_on:
+      - backend
+    networks:
+      - interviewly-network
+    volumes:
+      - .:/app
+      - collaboration_node_modules:/app/node_modules
+
   backend:
     image: ${BACKEND_IMAGE:-interviewly-backend}
     build:
@@ -92,6 +116,8 @@ services:
       dockerfile: apps/backend/Dockerfile
     restart: unless-stopped
     env_file: ./.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-interviewly}:${POSTGRES_PASSWORD:-interviewly}@postgres:5432/${POSTGRES_DB:-interviewly}?schema=public
     ports:
       - 4000:4000
     depends_on:
@@ -111,5 +137,6 @@ volumes:
   frontend_node_modules:
   frontend_app_node_modules:
   backend_node_modules:
+  collaboration_node_modules:
   backend_app_node_modules:
   postgres_data:

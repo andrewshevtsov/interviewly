@@ -1,10 +1,11 @@
 import * as bcrypt from 'bcrypt';
-import { createPrismaAdapter } from '../src/prisma/prisma-client-adapter.ts';
-import { PrismaClient } from '../src/prisma/generated/client.ts';
-import usersSeedData from './seed-data/users.ts';
-import sessionsSeedData from './seed-data/sessions.ts';
-import participantsSeedData from './seed-data/session-participants.ts';
-import profilesSeedData from './seed-data/profiles.ts';
+import { createPrismaAdapter } from '../src/prisma/prisma-client-adapter';
+import { PrismaClient } from '../src/prisma/generated/client';
+import usersSeedData from './seed-data/users';
+import sessionsSeedData from './seed-data/sessions';
+import participantsSeedData from './seed-data/session-participants';
+import profilesSeedData from './seed-data/profiles';
+import feedbackSeedData from './seed-data/feedback';
 
 // Тот же фактор, что и в AuthService, чтобы сид-хеши были неотличимы
 // от реальных регистраций.
@@ -106,10 +107,32 @@ async function main() {
     });
   }
 
+  for (const eachFeedback of feedbackSeedData) {
+    const authorId = userIdByEmail.get(eachFeedback.authorEmail);
+    const targetUserId = userIdByEmail.get(eachFeedback.targetEmail);
+
+    if (!authorId || !targetUserId) {
+      throw new Error(
+        `Seed feedback user was not found: ${eachFeedback.authorEmail} -> ${eachFeedback.targetEmail}`,
+      );
+    }
+
+    const { sessionId, score, comment } = eachFeedback;
+
+    await prisma.feedback.upsert({
+      where: {
+        sessionId_authorId_targetUserId: { sessionId, authorId, targetUserId },
+      },
+      update: { score, comment },
+      create: { sessionId, authorId, targetUserId, score, comment },
+    });
+  }
+
   console.log(`Seeded ${userIdByEmail.size} users`);
   console.log(`Seeded ${sessionsSeedData.length} sessions`);
   console.log(`Seeded ${participantsSeedData.length} session participants`);
   console.log(`Seeded ${profilesSeedData.length} profiles`);
+  console.log(`Seeded ${feedbackSeedData.length} feedback entries`);
 }
 
 main()

@@ -82,6 +82,13 @@ export class SessionsRepository {
     });
   }
 
+  setEditorOpen(sessionId: string, editorOpen: boolean): Promise<Session> {
+    return this.prisma.session.update({
+      where: { id: sessionId },
+      data: { editorOpen },
+    });
+  }
+
   updateOwner(sessionId: string, ownerId: string): Promise<Session> {
     return this.prisma.session.update({
       where: { id: sessionId },

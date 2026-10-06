@@ -53,6 +53,8 @@ model Session {
   // Временно (AI_HINTS_DEMO_CONTEXT): номер демо-задачи, которую интервьюер
   // показал в комнате. Удалить вместе с демо-задачами.
   demoTaskIndex   Int?
+  // Интервьюер открыл редактор кода, комната в режиме лайв-кодинга
+  editorOpen      Boolean       @default(false)
   editorLanguage  EditorLanguage @default(TYPESCRIPT)
   type            SessionType   @default(BUSINESS)
   access          SessionAccess @default(INVITE)
@@ -69,11 +71,26 @@ model Session {
   updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
 
   participants   SessionParticipant[]
-  feedback     Feedback[]
+  feedback       Feedback[]
   accessRequests SessionAccessRequest[]
+  document       SessionDocument?
   hints          SessionHint[]
 
   @@id([id])
+}
+
+// Последний сохранённый бинарный снимок Yjs-документа сессии.
+// Активный Y.Doc живёт в памяти сервера совместного редактирования;
+// эта запись нужна для восстановления после его выгрузки или перезапуска.
+model SessionDocument {
+  sessionId String  @id @db.Uuid
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  snapshot Bytes
+  version  Int   @default(1)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
 }
 
 model SessionParticipant {
@@ -114,8 +131,8 @@ model SessionAccessRequest {
   status        SessionAccessRequestStatus @default(PENDING)
   requestedRole SessionParticipantRole     @default(CANDIDATE)
 
-  reviewedById String? @db.Uuid
-  reviewedBy   User?   @relation("SessionAccessReviewer", fields: [reviewedById], references: [id])
+  reviewedById String?   @db.Uuid
+  reviewedBy   User?     @relation("SessionAccessReviewer", fields: [reviewedById], references: [id])
   reviewedAt   DateTime? @db.Timestamptz(3)
 
   createdAt DateTime @default(now()) @db.Timestamptz(3)

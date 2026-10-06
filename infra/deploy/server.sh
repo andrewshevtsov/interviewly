@@ -86,6 +86,9 @@ if [ ! -f "${DEPLOY_PATH}/.env" ]; then
     sed -i "s#http://localhost:3000#https://${PUBLIC_HOST}#g" "${DEPLOY_PATH}/.env"
     sed -i "s#http://localhost:4000#https://${PUBLIC_HOST}/api#g" "${DEPLOY_PATH}/.env"
     sed -i "s#ws://localhost:7880#ws://livekit.${PUBLIC_HOST}:7880#g" "${DEPLOY_PATH}/.env"
+    if grep -q '^NEXT_PUBLIC_COLLABORATION_URL=' "${DEPLOY_PATH}/.env"; then
+      sed -i "s|^NEXT_PUBLIC_COLLABORATION_URL=.*|NEXT_PUBLIC_COLLABORATION_URL=ws://${PUBLIC_HOST}:1234|" "${DEPLOY_PATH}/.env"
+    fi
     if grep -q '^DEV_TUNNEL_ORIGIN=' "${DEPLOY_PATH}/.env"; then
       sed -i "s|^DEV_TUNNEL_ORIGIN=.*|DEV_TUNNEL_ORIGIN=${PUBLIC_HOST},www.${PUBLIC_HOST}|" "${DEPLOY_PATH}/.env"
     else

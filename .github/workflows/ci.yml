@@ -19,6 +19,7 @@ jobs:
     outputs:
       frontend: ${{ steps.filter.outputs.frontend }}
       backend: ${{ steps.filter.outputs.backend }}
+      collaboration: ${{ steps.filter.outputs.collaboration }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,16 +37,19 @@ jobs:
           fi
           frontend=false
           backend=false
+          collaboration=false
           while IFS= read -r file; do
             case "$file" in
               apps/frontend/*) frontend=true ;;
               apps/backend/*) backend=true ;;
-              package.json|pnpm-lock.yaml|pnpm-workspace.yaml|.npmrc) frontend=true; backend=true ;;
-              patches/*) frontend=true; backend=true ;;
+              apps/collaboration/*) collaboration=true ;;
+              package.json|pnpm-lock.yaml|pnpm-workspace.yaml|.npmrc) frontend=true; backend=true; collaboration=true ;;
+              patches/*) frontend=true; backend=true; collaboration=true ;;
             esac
           done < <(git diff --name-only "$base" HEAD)
           echo "frontend=$frontend" >> "$GITHUB_OUTPUT"
           echo "backend=$backend" >> "$GITHUB_OUTPUT"
+          echo "collaboration=$collaboration" >> "$GITHUB_OUTPUT"
 
   frontend:
     needs: changes
@@ -80,6 +84,20 @@ jobs:
           DATABASE_URL: postgresql://interviewly:interviewly@127.0.0.1:5432/interviewly?schema=public
       - run: pnpm --filter @app/backend run typecheck
       - run: pnpm --filter @app/backend exec eslint "{src,apps,libs,test}/**/*.ts"
+
+  collaboration:
+    needs: changes
+    if: needs.changes.outputs.collaboration == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @app/collaboration run typecheck
 
   provision:
     if: github.event_name == 'push'

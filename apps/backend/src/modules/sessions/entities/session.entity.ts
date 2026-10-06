@@ -39,6 +39,7 @@ export class SessionEntity implements Session {
   title!: string | null;
   task!: string | null;
   demoTaskIndex!: number | null;
+  editorOpen!: boolean;
   editorLanguage!: EditorLanguage;
   type!: SessionType;
   access!: SessionAccess;
@@ -115,8 +116,17 @@ export class MySessionStateResponse {
   access!: SessionAccess;
   role!: SessionParticipantRole | null;
   accessRequestStatus!: SessionAccessRequestStatus | null;
+  editorOpen!: boolean;
 
   constructor(partial: MySessionStateResponse) {
+    Object.assign(this, partial);
+  }
+}
+
+export class SessionEditorStateResponse {
+  open!: boolean;
+
+  constructor(partial: SessionEditorStateResponse) {
     Object.assign(this, partial);
   }
 }

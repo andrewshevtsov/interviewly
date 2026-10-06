@@ -4,15 +4,23 @@
 // <LiveKitRoom> видит комнату через контекст; уход со страницы отключает от неё
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { LiveKitRoom, RoomAudioRenderer, useParticipants } from "@livekit/components-react";
+import { LiveKitRoom, RoomAudioRenderer } from "@livekit/components-react";
 import { ConnectionError, DisconnectReason } from "livekit-client";
 
 import { SessionCodeEditor } from "@/widgets/session-code-editor";
 import { SessionHeader } from "@/widgets/session-header";
 import { SessionVideoPanels } from "@/widgets/session-video-panels";
-import { sessionApi } from "@/entities/session";
+import { sessionApi, useEditorOpenSync } from "@/entities/session";
 import { useTranslations } from "@/shared/i18n-context";
+import { cn } from "@/shared/lib/cn";
+import { FLIP_DURATION_MS } from "@/shared/lib/use-flip";
 import { SessionEndedNotice } from "./SessionEndedNotice";
+
+const EDITOR_LANGUAGES = {
+  PYTHON: "python",
+  JAVASCRIPT: "javascript",
+  TYPESCRIPT: "typescript",
+} as const;
 
 /**
  * Пропсы {@link LiveSessionRoom}.
@@ -42,6 +50,11 @@ export interface LiveSessionRoomProps {
    * Интервью идёт: сессия в статусе ACTIVE
    */
   isActive: boolean;
+
+  /**
+   * Лайвкодинг режим
+   */
+  editorOpen: boolean;
 }
 
 /**
@@ -55,35 +68,58 @@ interface RoomWorkspaceProps extends LiveSessionRoomProps {
 }
 
 /**
- * Содержимое комнаты; живёт внутри <LiveKitRoom>, чтобы считать подключённых участников
- * @param {RoomWorkspaceProps} props - Сессия, владеет ли ею входящий и состояние медиа
- * @returns {import('react').ReactNode} Шапка, боковая панель с видео и редактор кода
+ * Содержимое комнаты
+ * @param {RoomWorkspaceProps} props - Сессия, роль участника, режим комнаты и состояние медиа
+ * @returns {import('react').ReactNode} Шапка, видео и редактор кода
  */
 function RoomWorkspace(props: RoomWorkspaceProps) {
-  const { sessionId, isOwner, currentUserId, isCandidate, isActive, mediaUnavailable } = props;
-  const participants = useParticipants();
+  const { sessionId, isOwner, currentUserId, isCandidate, isActive, editorOpen, mediaUnavailable } = props;
   const t = useTranslations("session");
+  useEditorOpenSync(sessionId);
+  const sessionQuery = useQuery({
+    queryKey: ["sessions", sessionId],
+    queryFn: () => sessionApi.get(sessionId),
+  });
+  const editorLanguage = sessionQuery.data
+    ? EDITOR_LANGUAGES[sessionQuery.data.editorLanguage]
+    : "typescript";
 
   return (
     <>
-      <SessionHeader sessionId={sessionId} isOwner={isOwner} />
+      <SessionHeader
+        sessionId={sessionId}
+        isOwner={isOwner}
+        isInterviewer={!isCandidate}
+        editorOpen={editorOpen}
+      />
       {mediaUnavailable && (
-        <p className="border-b border-border px-6 py-2 text-sm text-muted-foreground">{t("mediaUnavailable")}</p>
+        <p className="border-b border-border px-6 py-2 text-sm text-muted-foreground">
+          {t("mediaUnavailable")}
+        </p>
       )}
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="relative flex flex-1 overflow-hidden">
         <SessionVideoPanels
           sessionId={sessionId}
           isOwner={isOwner}
           currentUserId={currentUserId}
           isCandidate={isCandidate}
           isActive={isActive}
+          editorOpen={editorOpen}
         />
-        <div className="flex flex-1 p-4">
+        <div
+          inert={!editorOpen}
+          style={{ transitionDuration: `${FLIP_DURATION_MS}ms` }}
+          className={cn(
+            "absolute inset-y-0 left-0 right-0 flex p-4 transition-transform ease-in-out md:left-80",
+            "motion-reduce:transition-none",
+            editorOpen ? "translate-x-0" : "translate-x-full",
+          )}
+        >
           <SessionCodeEditor
             sessionId={sessionId}
-            isInterviewer={!isCandidate}
-            participantsCount={participants.length}
+            currentUserId={currentUserId}
+            language={editorLanguage}
           />
         </div>
       </div>

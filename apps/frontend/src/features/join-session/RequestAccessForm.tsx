@@ -4,6 +4,7 @@
 // ожидание одобрения и отказ. Статус заявки опрашивает страница комнаты через GET /sessions/:id/me
 import { useState, type SubmitEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
 
 import { getHttpStatus } from "@/shared/api/http-client";
 import { useTranslations } from "@/shared/i18n-context";
@@ -91,7 +92,12 @@ export function RequestAccessForm(props: RequestAccessFormProps) {
   }
 
   if (state.accessRequestStatus === "PENDING") {
-    return <p className="text-muted-foreground">{t("waitingForApproval")}</p>;
+    return (
+      <div className="flex flex-col items-center gap-4">
+        <p className="text-muted-foreground">{t("waitingForApproval")}</p>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
+      </div>
+    );
   }
 
   return (
