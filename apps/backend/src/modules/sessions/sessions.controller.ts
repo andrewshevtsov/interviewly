@@ -19,6 +19,7 @@ import {
 import { CurrentUser } from '../auth/decorators/current-user.decorator.ts';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.ts';
 import type { JwtPayload } from '../auth/auth.types.ts';
+import { CancelSessionDto } from './dto/cancel-session.dto.ts';
 import { CreateAccessRequestDto } from './dto/create-access-request.dto.ts';
 import { CreateSessionDto } from './dto/create-session.dto.ts';
 import { JoinSessionDto } from './dto/join-session.dto.ts';
@@ -202,6 +203,21 @@ export class SessionsController {
     @CurrentUser() actor: JwtPayload,
   ): Promise<SessionEntity> {
     return this.sessionsService.end(id, actor);
+  }
+
+  @Post(':id/cancel')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Отменить интервью до начала; причина необязательна (владелец / участник / admin)',
+  })
+  cancel(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: JwtPayload,
+    @Body() dto: CancelSessionDto,
+  ): Promise<SessionEntity> {
+    return this.sessionsService.cancel(id, actor, dto);
   }
 
   @Post(':id/join')

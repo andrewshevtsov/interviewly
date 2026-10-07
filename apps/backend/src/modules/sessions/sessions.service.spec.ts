@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi, type Mocked } from 'vitest';
 import { SessionParticipantRole, SessionStatus } from '../../prisma/generated/enums.ts';
 import type { LivekitService } from '../../infrastructure/livekit/livekit.service.ts';
 import type { JwtPayload } from '../auth/auth.types.ts';
+import type { NotificationsService } from '../notifications/notifications.service.ts';
 import { SessionsService } from './sessions.service.ts';
 import type { SessionsRepository } from './sessions.repository.ts';
 
@@ -32,12 +33,15 @@ function createMockRepository(): Mocked<SessionsRepository> {
     findUserById: vi.fn(),
     countPresentParticipants: vi.fn(),
     markStarted: vi.fn(),
+    cancel: vi.fn(),
+    create: vi.fn(),
   } as unknown as Mocked<SessionsRepository>;
 }
 
 describe('SessionsService', () => {
   let repository: Mocked<SessionsRepository>;
   let livekit: Mocked<LivekitService>;
+  let notifications: Mocked<NotificationsService>;
   let service: SessionsService;
 
   beforeEach(() => {
@@ -47,7 +51,11 @@ describe('SessionsService', () => {
       createParticipantToken: vi.fn().mockResolvedValue('token'),
       getServerUrl: vi.fn().mockReturnValue('ws://livekit'),
     } as unknown as Mocked<LivekitService>;
-    service = new SessionsService(repository, livekit);
+    notifications = {
+      cancelSessionReminder: vi.fn(),
+      notifySessionCancelled: vi.fn(),
+    } as unknown as Mocked<NotificationsService>;
+    service = new SessionsService(repository, livekit, notifications);
     repository.findById.mockResolvedValue(session as never);
   });
 
@@ -110,6 +118,102 @@ describe('SessionsService', () => {
       await expect(
         service.transferOwnership(SESSION_ID, owner, { userId: INTERVIEWER_ID }),
       ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
+
+  describe('cancel', () => {
+    const scheduled = { ...session, status: SessionStatus.SCHEDULED };
+    const candidate: JwtPayload = { sub: CANDIDATE_ID, email: 'c@test', isAdmin: false };
+    const stranger: JwtPayload = { sub: '55555555-5555-5555-5555-555555555555', email: 's@test', isAdmin: false };
+
+    beforeEach(() => {
+      repository.findById.mockResolvedValue(scheduled as never);
+      repository.findParticipant.mockResolvedValue(null);
+      repository.cancel.mockResolvedValue({ ...scheduled, status: SessionStatus.CANCELLED } as never);
+    });
+
+    it('участник отменяет интервью до начала и оставляет причину', async () => {
+      repository.findParticipant.mockResolvedValue({ role: SessionParticipantRole.CANDIDATE } as never);
+
+      const result = await service.cancel(SESSION_ID, candidate, { reason: 'Заболел' });
+
+      const [, params] = repository.cancel.mock.calls[0] ?? [];
+      expect(params).toMatchObject({ cancelledById: CANDIDATE_ID, reason: 'Заболел' });
+      expect(params?.at).toBeInstanceOf(Date);
+      expect(result.status).toBe(SessionStatus.CANCELLED);
+      expect(livekit.deleteRoom).toHaveBeenCalledWith(SESSION_ID);
+    });
+
+    it('снимает напоминание и уведомляет второго участника об отмене', async () => {
+      await service.cancel(SESSION_ID, owner, { reason: 'Не смогу' });
+
+      expect(notifications.cancelSessionReminder).toHaveBeenCalledWith(SESSION_ID);
+      expect(notifications.notifySessionCancelled).toHaveBeenCalledWith(SESSION_ID, OWNER_ID);
+    });
+
+    it('владелец и admin тоже могут отменить', async () => {
+      await expect(service.cancel(SESSION_ID, owner, {})).resolves.toBeDefined();
+      await expect(
+        service.cancel(SESSION_ID, { ...stranger, isAdmin: true }, {}),
+      ).resolves.toBeDefined();
+    });
+
+    it('запрещает отмену постороннему', async () => {
+      await expect(service.cancel(SESSION_ID, stranger, {})).rejects.toBeInstanceOf(ForbiddenException);
+      expect(repository.cancel).not.toHaveBeenCalled();
+    });
+
+    it('повторная отмена ничего не меняет', async () => {
+      repository.findById.mockResolvedValue({ ...scheduled, status: SessionStatus.CANCELLED } as never);
+
+      await service.cancel(SESSION_ID, owner, {});
+
+      expect(repository.cancel).not.toHaveBeenCalled();
+      expect(notifications.notifySessionCancelled).not.toHaveBeenCalled();
+    });
+
+    it.each([SessionStatus.ACTIVE, SessionStatus.COMPLETED, SessionStatus.EXPIRED])(
+      'не отменяет сессию в статусе %s',
+      async (status) => {
+        repository.findById.mockResolvedValue({ ...scheduled, status } as never);
+
+        await expect(service.cancel(SESSION_ID, owner, {})).rejects.toBeInstanceOf(ConflictException);
+      },
+    );
+
+    it('отвечает 409, если интервью началось между проверкой и отменой', async () => {
+      repository.cancel.mockResolvedValue(null);
+
+      await expect(service.cancel(SESSION_ID, owner, {})).rejects.toBeInstanceOf(ConflictException);
+      expect(livekit.deleteRoom).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('createMatchSession', () => {
+    it('создаёт запланированную MOCK-сессию, владелец - интервьюер, кандидат приглашён', async () => {
+      repository.create.mockResolvedValue({ id: 'new' } as never);
+      const tx = {} as never;
+      const scheduledAt = new Date('2026-10-12T11:00:00.000Z');
+
+      await service.createMatchSession(
+        { interviewerId: INTERVIEWER_ID, candidateId: CANDIDATE_ID, scheduledAt },
+        tx,
+      );
+
+      const [data, db] = repository.create.mock.calls[0] ?? [];
+      expect(db).toBe(tx);
+      expect(data).toMatchObject({
+        type: 'MOCK',
+        access: 'INVITE',
+        status: SessionStatus.SCHEDULED,
+        scheduledAt,
+        owner: { connect: { id: INTERVIEWER_ID } },
+      });
+      expect(data?.participants?.create).toEqual([
+        { userId: INTERVIEWER_ID, role: SessionParticipantRole.INTERVIEWER, joinedAt: null },
+        { userId: CANDIDATE_ID, role: SessionParticipantRole.CANDIDATE, joinedAt: null },
+      ]);
+      expect(data?.livekitRoomName).toBe(data?.id);
     });
   });
 

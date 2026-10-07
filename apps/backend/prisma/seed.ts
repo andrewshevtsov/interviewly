@@ -89,21 +89,17 @@ async function main() {
     });
   }
 
-  for (const eachProfile of profilesSeedData) {
-    const userId = userIdByEmail.get(eachProfile.email);
+  for (const { userEmail, ...profileData } of profilesSeedData) {
+    const userId = userIdByEmail.get(userEmail);
+
+    if (!userId) {
+      throw new Error(`Seed profile user was not found: ${userEmail}`);
+    }
 
     await prisma.profile.upsert({
-      where: {
-        email: eachProfile.email,
-      },
-      update: {
-        ...eachProfile,
-        userId,
-      },
-      create: {
-        ...eachProfile,
-        userId,
-      },
+      where: { userId },
+      update: profileData,
+      create: { ...profileData, userId },
     });
   }
 
