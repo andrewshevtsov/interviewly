@@ -19,6 +19,9 @@
 #             по имени сервиса "postgres" в сети interviewly-network; при локальном
 #             запуске backend вне Docker — через localhost, см. DATABASE_URL в .env)
 #   livekit:  ws://localhost:7880 (signaling); RTC TCP 7881, UDP 7882
+#   redis:    localhost:6379 (очередь уведомлений BullMQ)
+#   mailpit:  SMTP localhost:1025, веб-интерфейс http://localhost:8025 - сюда в разработке
+#             приходят письма backend'а, наружу ничего не уходит
 #
 # Сервис backend сам применяет миграции и сиды при каждом старте контейнера:
 # prisma generate && prisma migrate deploy && prisma db seed.
@@ -63,6 +66,33 @@ services:
       timeout: 5s
       retries: 10
       start_period: 5s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # AOF: отложенные задания (напоминание за 2 часа до встречи) переживают перезапуск Redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - interviewly-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mailpit:
+    # Ловушка для писем: принимает SMTP и показывает письма в браузере
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    networks:
+      - interviewly-network
 
   frontend:
     build:
@@ -110,10 +140,14 @@ services:
     env_file: ./.env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-interviewly}:${POSTGRES_PASSWORD:-interviewly}@postgres:5432/${POSTGRES_DB:-interviewly}?schema=public
+      REDIS_URL: redis://redis:6379
+      SMTP_HOST: mailpit
     ports:
       - 4000:4000
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - interviewly-network
@@ -125,6 +159,7 @@ networks:
   interviewly-network:
     driver: bridge
 volumes:
+  redis_data:
   frontend_node_modules:
   backend_node_modules:
   collaboration_node_modules:

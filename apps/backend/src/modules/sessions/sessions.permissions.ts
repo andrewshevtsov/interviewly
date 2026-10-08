@@ -41,6 +41,12 @@ type SessionPermissionsConfig = {
     allowAdmin: boolean;
     allowOwner: boolean;
   };
+  cancelSession: {
+    description: string;
+    allowAdmin: boolean;
+    allowOwner: boolean;
+    allowParticipant: boolean;
+  };
   connectToRoom: {
     description: string;
     allowAdmin: boolean;
@@ -118,6 +124,14 @@ export const SESSION_PERMISSIONS = {
       'Завершить интервью для всех (COMPLETED + закрытие LiveKit-комнаты) - владелец или admin',
     allowAdmin: true,
     allowOwner: true,
+  },
+
+  cancelSession: {
+    description:
+      'Отменить интервью до его начала (CANCELLED) - владелец, любой участник или admin',
+    allowAdmin: true,
+    allowOwner: true,
+    allowParticipant: true,
   },
 
   connectToRoom: {

@@ -1,0 +1,46 @@
+enum ShowcaseResponseStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED // отозван
+  EXPIRED // время встречи прошло но решения не было
+}
+
+// Отклик на карточку витрины. Откликающийся сразу выбирает роль, в которой хочет прийти;
+// владелец карточки принимает отклик или отклоняет его с причиной.
+// Время встречи откликающийся предлагает сразу с откликом: в случае принятия создаётся сессия на это время.
+// Откликов одного человека на одну карточку может быть несколько (повтор после отказа через
+// SHOWCASE_RESPONSE_COOLDOWN_HOURS), но «в ожидании» - только один: это держит частичный
+// уникальный индекс из миграции (Prisma такие индексы описать не может).
+model ShowcaseResponse {
+  id String @id @default(uuid()) @db.Uuid
+
+  cardId String  @db.Uuid
+  card   Profile @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  responderId String @db.Uuid
+  responder   User   @relation(fields: [responderId], references: [id], onDelete: Cascade)
+
+  // Роль откликнувшегося; владелец карточки получает противоположную.
+  role   SessionParticipantRole
+  status ShowcaseResponseStatus @default(PENDING)
+
+  // Предложенное начало встречи. Длительность для проверки пересечений - INTERVIEW_DURATION_MINUTES.
+  scheduledAt DateTime @db.Timestamptz(3)
+
+  // Обязательна при REJECTED, 100-500 символов: CHECK ShowcaseResponse_rejection_reason.
+  rejectionReason String?
+  reviewedAt      DateTime? @db.Timestamptz(3)
+  // Отказ только из-за времени: пауза перед повторным откликом не действует.
+  timeMismatch Boolean @default(false)
+
+  // Сессия, созданная при принятии.
+  sessionId String?  @unique @db.Uuid
+  session   Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([cardId, status])
+  @@index([responderId, createdAt])
+}

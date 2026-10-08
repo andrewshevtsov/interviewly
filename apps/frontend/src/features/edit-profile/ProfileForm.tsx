@@ -64,7 +64,7 @@ export interface ProfileFormProps {
 }
 
 /**
- * Editable profile form: name, role, contact fields, level toggle, stack tags and bio.
+ * Editable profile form: role, level toggle, stack tags and bio.
  * Saves the whole card to the signed-in user's profile on submit.
  * @param {ProfileFormProps} props - Props for the form.
  * @returns {import('react').ReactNode} The profile form.
@@ -72,7 +72,6 @@ export interface ProfileFormProps {
 export function ProfileForm(props: ProfileFormProps) {
   const { profile } = props;
   const queryClient = useQueryClient();
-  const common = useTranslations("common");
   const t = useTranslations("profile");
 
   /**
@@ -81,9 +80,7 @@ export function ProfileForm(props: ProfileFormProps) {
    * @returns {string} The field's translated label.
    */
   function fieldLabel(field: (typeof PROFILE_FIELDS)[number]): string {
-    return field.group === "common"
-      ? common(field.lang as MessageKey<"common">)
-      : t(field.lang as MessageKey<"profile">);
+    return t(field.lang as MessageKey<"profile">);
   }
 
   const saveMutation = useMutation({
@@ -107,13 +104,13 @@ export function ProfileForm(props: ProfileFormProps) {
     event.preventDefault();
 
     const formData = new FormData(event.currentTarget);
-    const { name, role, email, telegram, level, bio } = Object.fromEntries(formData) as Record<
-      "name" | "role" | "email" | "telegram" | "level" | "bio",
+    const { role, level, bio } = Object.fromEntries(formData) as Record<
+      "role" | "level" | "bio",
       string
     >;
     const stack = formData.getAll("stack") as string[];
 
-    saveMutation.mutate({ name, role, email, telegram, level: level as ProfileLevel, stack, bio });
+    saveMutation.mutate({ role, level: level as ProfileLevel, stack, bio });
   }
 
   return (
