@@ -2,10 +2,14 @@ packages:
   - "apps/frontend"
   - "apps/backend"
   - "apps/collaboration"
+  # Изолированный HTTP-сервис запуска пользовательского кода.
+  - "apps/coderunner"
 # pnpm блокирует install/postinstall-скрипты зависимостей без явного разрешения.
 # Prisma CLI и engines разрешены здесь, чтобы подготовить платформенные бинарники
 # для generate/migrate; esbuild и unrs-resolver нужны существующим frontend-tools.
 allowBuilds:
+  # Nest watch использует нативный файловый watcher в локальной разработке.
+  '@parcel/watcher': true
   "@prisma/engines": true
   '@scarf/scarf': false
   bcrypt: false

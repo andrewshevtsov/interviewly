@@ -19,6 +19,9 @@ export interface SessionCollaboration {
 
   /** Общий текст кода. */
   sharedText: Y.Text;
+
+  /** Общее состояние последнего запуска кода. */
+  sharedOutput: Y.Map<unknown>;
 }
 
 /** Результат подключения текущего пользователя к совместному документу. */
@@ -62,6 +65,7 @@ export function useSessionCollaboration(
       onAuthenticationFailed: () => setStatus("error"),
     });
     const sharedText = document.getText("code");
+    const sharedOutput = document.getMap("execution-output");
     const color = USER_COLORS[currentUserId.charCodeAt(0) % USER_COLORS.length];
     const awareness = provider.awareness;
     if (!awareness) {
@@ -78,7 +82,7 @@ export function useSessionCollaboration(
       colorLight: `${color}33`,
     });
 
-    setCollaboration({ awareness, sharedText });
+    setCollaboration({ awareness, sharedText, sharedOutput });
 
     return () => {
       setCollaboration(null);
