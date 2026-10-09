@@ -9,36 +9,12 @@ export const MAX_SESSION_SCORE = 10;
  */
 export const PROFILE_FIELDS = [
     {
-        id: "profile-name",
-        name: "name",
-        lang: "fullName",
-        group: "profile",
-        type: "text",
-        required: true,
-    },
-    {
         id: "profile-role",
         name: "role",
         lang: "role",
         group: "profile",
         type: "text",
         required: true,
-    },
-    {
-        id: "profile-email",
-        name: "email",
-        lang: "email",
-        group: "common",
-        type: "email",
-        required: true,
-    },
-    {
-        id: "profile-telegram",
-        name: "telegram",
-        lang: "telegram",
-        group: "common",
-        type: "text",
-        required: false,
     },
     {
         id: "profile-bio",

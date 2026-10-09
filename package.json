@@ -14,7 +14,7 @@
     "coderunner-dev": "pnpm --filter @app/coderunner run start:dev",
     "front-dev": "pnpm --filter @app/frontend run dev",
     "prisma-generate": "pnpm --filter @app/backend prisma-generate",
-    "db-dev": "docker compose up -d --wait postgres livekit",
+    "db-dev": "docker compose up -d --wait postgres livekit redis mailpit",
     "db-prepare": "pnpm --filter @app/backend exec prisma migrate deploy && pnpm --filter @app/backend exec prisma db seed",
     "dev": "pnpm db-dev && pnpm db-prepare && pnpm back-dev",
     "format": "prettier --write .",

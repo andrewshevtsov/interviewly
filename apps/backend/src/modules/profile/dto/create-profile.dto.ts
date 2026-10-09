@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsOptional, IsArray, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsArray, IsEnum, IsBoolean } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum ProfessionLevel {
@@ -9,34 +9,11 @@ export enum ProfessionLevel {
 
 export class CreateProfileDto {
   @ApiProperty({
-    description: 'Полное имя пользователя',
-    example: 'Иван Иванов',
-  })
-  @IsString()
-  name!: string;
-
-  @ApiProperty({
     description: 'Профессиональная должность или название роли',
     example: 'Разработчик программного обеспечения',
   })
   @IsString()
   role!: string;
-
-  @ApiProperty({
-    description: 'Адрес электронной почты',
-    example: 'ivan@example.com',
-  })
-  @IsEmail()
-  email!: string;
-
-  @ApiProperty({
-    description: 'Имя пользователя в Telegram (необязательно)',
-    example: '@username',
-    required: false,
-  })
-  @IsOptional()
-  @IsString()
-  telegram?: string;
 
   @ApiProperty({
     description: 'Уровень профессионализма',
@@ -63,4 +40,13 @@ export class CreateProfileDto {
   @IsOptional()
   @IsString()
   bio?: string;
+
+  @ApiProperty({
+    description:
+      'Показывать профиль на витрине участников. Включить можно, только если заполнены роль и стек. Если не передан, значение не меняется (для нового профиля - false)',
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  showcaseVisible?: boolean;
 }

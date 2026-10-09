@@ -11,24 +11,9 @@ export type ProfileLevel = "junior" | "middle" | "senior";
  */
 export interface Profile {
   /**
-   * Full name.
-   */
-  name: string;
-
-  /**
    * Role/title, e.g. "Senior Frontend Engineer".
    */
   role: string;
-
-  /**
-   * Contact email.
-   */
-  email: string;
-
-  /**
-   * Telegram handle, e.g. "@artem_dev".
-   */
-  telegram: string;
 
   /**
    * Experience level.
@@ -50,10 +35,7 @@ export interface Profile {
  * Blank profile shown while a signed-in user hasn't filled in their profile yet.
  */
 export const EMPTY_PROFILE: Profile = {
-  name: "",
   role: "",
-  email: "",
-  telegram: "",
   level: "middle",
   stack: [],
   bio: "",
