@@ -2,19 +2,30 @@
 
 ## Docker (локальная разработка)
 
-`docker-compose.yml` в корне репозитория поднимает `apps/frontend`, `apps/backend` и
-`postgres`:
+`docker-compose.yml` в корне репозитория поднимает frontend, backend, collaboration,
+coderunner, Piston, PostgreSQL и LiveKit:
 
 ```bash
 cp .env.example .env
-docker compose up --build
+docker compose up -d --build
 # frontend: http://localhost:3000
 # backend:  http://localhost:4000
+# coderunner: http://localhost:3003
 ```
 
 Исходники пробрасываются в контейнеры bind-mount'ом (`.:/app`) для hot-reload; `node_modules`
 защищены от перезаписи именованными volume'ами (`frontend_node_modules`,
-`backend_node_modules`).
+`backend_node_modules`, `collaboration_node_modules`, `coderunner_node_modules`).
+
+### Coderunner и Piston
+
+`coderunner` принимает код напрямую от frontend, передаёт JWT основному backend для
+проверки участия пользователя в сессии и только после успешной проверки вызывает Piston
+по внутреннему адресу `http://piston:2000`.
+
+При первом старте одноразовый `piston-init` устанавливает зафиксированные runtime Python,
+JavaScript и TypeScript. Они сохраняются в `piston_data`, поэтому повторно не скачиваются.
+Статус `Exited (0)` у `piston-init` после запуска — ожидаемое успешное состояние.
 
 ### Postgres
 

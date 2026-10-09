@@ -1,9 +1,11 @@
-# Docker Compose для ЛОКАЛЬНОЙ РАЗРАБОТКИ. Поднимает frontend, backend, postgres
-# и LiveKit (SFU для видео/аудио сессий).
+# Docker Compose для ЛОКАЛЬНОЙ РАЗРАБОТКИ. Поднимает frontend, backend, collaboration,
+# coderunner, Piston, PostgreSQL и LiveKit (SFU для видео/аудио сессий).
 #
 # Быстрый старт всех Docker-сервисов:
 #   cp .env.example .env
-#   docker compose up --build
+#   docker compose up -d --build
+# Первый запуск дольше обычного: piston-init скачивает runtime Python/JS/TypeScript,
+# сохраняет их в piston_data и штатно завершается с кодом 0.
 #
 # Запуск только PostgreSQL в фоне (например, для локального запуска backend вне Docker):
 #   docker compose up -d postgres
@@ -15,13 +17,18 @@
 # Дальше:
 #   frontend: http://localhost:3000
 #   backend:  http://localhost:4000
+#   coderunner: http://localhost:3003
 #   postgres: localhost:5432 (при запуске в Docker backend подключается к postgres
 #             по имени сервиса "postgres" в сети interviewly-network; при локальном
 #             запуске backend вне Docker — через localhost, см. DATABASE_URL в .env)
 #   livekit:  ws://localhost:7880 (signaling); RTC TCP 7881, UDP 7882
+<<<<<<< HEAD
+#   piston:   http://127.0.0.1:2000 (только для локальной диагностики)
+=======
 #   redis:    localhost:6379 (очередь уведомлений BullMQ)
 #   mailpit:  SMTP localhost:1025, веб-интерфейс http://localhost:8025 - сюда в разработке
 #             приходят письма backend'а, наружу ничего не уходит
+>>>>>>> origin/dev
 #
 # Сервис backend сам применяет миграции и сиды при каждом старте контейнера:
 # prisma generate && prisma migrate deploy && prisma db seed.
@@ -155,6 +162,82 @@ services:
       - .:/app
       - backend_node_modules:/app/node_modules
 
+  piston:
+    # Piston публикует API только на loopback хоста; контейнеры используют внутреннюю сеть.
+    image: ghcr.io/engineer-man/piston
+    # Официальный образ собран для amd64; на ARM Docker Desktop использует эмуляцию.
+    platform: linux/amd64
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - "127.0.0.1:2000:2000"
+    volumes:
+      - piston_data:/piston
+    environment:
+      # Пользовательский код не должен иметь сетевого доступа.
+      PISTON_DISABLE_NETWORKING: "true"
+      # Небольшой сервер обрабатывает только один тяжёлый запуск одновременно.
+      PISTON_MAX_CONCURRENT_JOBS: "1"
+      PISTON_RUN_TIMEOUT: "3000"
+      PISTON_RUN_CPU_TIME: "3000"
+      PISTON_RUN_MEMORY_LIMIT: "134217728"
+      PISTON_OUTPUT_MAX_SIZE: "65536"
+      PISTON_MAX_FILE_SIZE: "100000"
+      PISTON_MAX_PROCESS_COUNT: "32"
+    networks:
+      - interviewly-network
+    healthcheck:
+      # В образе старый Node без fetch, поэтому проверка использует встроенный http-модуль.
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:2000/api/v2/runtimes',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  piston-init:
+    # Одноразово устанавливает недостающие runtime после готовности API Piston.
+    image: curlimages/curl:8.10.1
+    restart: "no"
+    environment:
+      PISTON_URL: http://piston:2000
+    depends_on:
+      piston:
+        condition: service_healthy
+    volumes:
+      - ./infra/piston/install-runtimes.sh:/scripts/install-runtimes.sh:ro
+    entrypoint: ["/bin/sh", "/scripts/install-runtimes.sh"]
+    networks:
+      - interviewly-network
+
+  coderunner:
+    # Отдельный HTTP-сервис: проверяет участника через backend и только затем вызывает Piston.
+    build:
+      context: .
+      dockerfile: apps/coderunner/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      PORT: 3003
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      # Имена сервисов Compose работают как DNS-имена внутри interviewly-network.
+      BACKEND_INTERNAL_URL: http://backend:4000
+      PISTON_URL: http://piston:2000
+    ports:
+      - "${CODERUNNER_PORT:-3003}:3003"
+    depends_on:
+      # Запуск разрешён только после готовности всех runtime Piston.
+      backend:
+        condition: service_started
+      piston-init:
+        condition: service_completed_successfully
+    networks:
+      - interviewly-network
+    volumes:
+      # Dev-режим видит изменения исходников, а Linux-зависимости остаются внутри volume.
+      - .:/app
+      - coderunner_node_modules:/app/node_modules
+
 networks:
   interviewly-network:
     driver: bridge
@@ -163,4 +246,7 @@ volumes:
   frontend_node_modules:
   backend_node_modules:
   collaboration_node_modules:
+  # Не смешиваем Linux node_modules разных сервисов и node_modules хоста.
+  coderunner_node_modules:
   postgres_data:
+  piston_data:

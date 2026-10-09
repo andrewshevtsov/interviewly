@@ -63,6 +63,15 @@ Seed предназначен только для локальной разра�
 ```bash
 pnpm --filter @app/frontend run dev   # http://localhost:3000
 pnpm --filter @app/backend run dev    # http://localhost:4000
+pnpm --filter @app/collaboration run dev # ws://localhost:1234
+pnpm --filter @app/coderunner run start:dev # http://localhost:3003
+```
+
+Для локального coderunner Piston всё равно работает в Docker. Перед первым запуском
+установите его runtime'ы одной командой (после успеха `piston-init` завершится с кодом 0):
+
+```bash
+docker compose up -d piston-init
 ```
 
 Подробности про каждое приложение (текущее состояние, переменные окружения, что именно
@@ -70,21 +79,34 @@ pnpm --filter @app/backend run dev    # http://localhost:4000
 
 ## Запуск через Docker
 
-`docker-compose.yml` поднимает `frontend`, `backend` и `postgres` (подробности — в
-[docs/deployment.md](deployment.md)):
+`docker-compose.yml` поднимает frontend, backend, collaboration, coderunner, Piston,
+PostgreSQL и LiveKit (подробности — в [docs/deployment.md](deployment.md)):
 
 ```bash
 cp .env.example .env
-docker compose up --build
+docker compose up -d --build
 ```
 
-Больше ничего готовить руками не нужно: сервис `backend` сам генерирует Prisma Client,
+Больше ничего готовить руками не нужно. Сервис `backend` сам генерирует Prisma Client,
 применяет закоммиченные миграции (`prisma migrate deploy`) и заполняет базу сидами при
 каждом старте контейнера. `backend` подключается к `postgres` по имени сервиса в сети
 `interviewly-network` (см. `DATABASE_URL` в `.env.example`), а не через `localhost`.
 
+Одноразовый сервис `piston-init` ждёт готовности Piston, устанавливает Python, JavaScript
+и TypeScript в volume `piston_data`, после чего штатно переходит в `Exited (0)`. Coderunner
+стартует только после успешного завершения этой установки.
+
 - frontend: http://localhost:3000
 - backend: http://localhost:4000
+- collaboration: ws://localhost:1234
+- coderunner: http://localhost:3003
+
+Проверить состояние и посмотреть логи coderunner:
+
+```bash
+docker compose ps
+docker compose logs -f coderunner
+```
 
 ## Переменные окружения
 

@@ -281,13 +281,17 @@ export const messages = {
     sessionEnded: { ru: "интервью завершено", en: "The interview has ended" },
     redirectingToFeedback: { ru: "переходим к отзыву…", en: "taking you to the feedback…" },
     participantsSuffix: { ru: "участника", en: "participants" },
+    // Подписи локальной консоли запуска кода в совместном редакторе.
     outputLabel: { ru: "вывод", en: "output" },
+    resizeOutput: { ru: "Изменить высоту области вывода", en: "Resize output area" },
+    emptyOutput: { ru: "Программа ничего не вывела", en: "The program produced no output" },
     syntaxHint: {
       ru: "Подсветка синтаксиса и автокомплит включены.",
       en: "Syntax highlighting and autocomplete are enabled.",
     },
     running: { ru: "Выполняется…", en: "Running…" },
     runCode: { ru: "запустить код", en: "run code" },
+    runCodeError: { ru: "Не удалось запустить код", en: "Couldn't run the code" },
     copyInviteLink: { ru: "скопировать ссылку", en: "copy invite link" },
     inviteLinkCopied: { ru: "ссылка скопирована", en: "link copied" },
     connecting: { ru: "Подключаемся к комнате…", en: "Connecting to the room…" },
