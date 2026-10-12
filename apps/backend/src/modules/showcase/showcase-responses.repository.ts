@@ -24,13 +24,17 @@ const cardOwnerSelect = {
   user: { select: { firstName: true, lastName: true } },
 } satisfies Prisma.ProfileSelect;
 
+const sessionStatusSelect = { select: { status: true } } satisfies Prisma.ShowcaseResponseInclude['session'];
+
 export type IncomingRow = Prisma.ShowcaseResponseGetPayload<{
-  include: { responder: { select: typeof responderSelect } };
+  include: { responder: { select: typeof responderSelect }; session: typeof sessionStatusSelect };
 }>;
 
 export type OutgoingRow = Prisma.ShowcaseResponseGetPayload<{
-  include: { card: { select: typeof cardOwnerSelect } };
+  include: { card: { select: typeof cardOwnerSelect }; session: typeof sessionStatusSelect };
 }>;
+
+export type LatestResponseRow = Prisma.ShowcaseResponseGetPayload<{ include: { session: typeof sessionStatusSelect } }>;
 
 export interface CardForResponse {
   id: string;
@@ -95,10 +99,11 @@ export class ShowcaseResponsesRepository {
   }
 
   /** Последний отклик этого человека на эту карточку: по нему считаем ожидание и паузу после отказа */
-  findLatest(cardId: string, responderId: string, db: Db = this.prisma): Promise<ShowcaseResponse | null> {
+  findLatest(cardId: string, responderId: string, db: Db = this.prisma): Promise<LatestResponseRow | null> {
     return db.showcaseResponse.findFirst({
       where: { cardId, responderId },
       orderBy: { createdAt: 'desc' },
+      include: { session: { select: { status: true } } },
     });
   }
 
@@ -163,10 +168,54 @@ export class ShowcaseResponsesRepository {
     return db.showcaseResponse.update({ where: { id }, data: { sessionId } });
   }
 
+  /**
+   * Сколько событий по откликам.
+   * Новый отклик, отзыв отклика автором, отмена встречи автором;
+   * Решение владельца и отмена встречи владельцем. Свои действия событием не считаются.
+   */
+  async countNewEvents(userId: string): Promise<{ incoming: number; outgoing: number }> {
+    const [incoming] = await this.prisma.$queryRaw<{ count: number }[]>`
+      SELECT count(*)::int AS count
+      FROM "ShowcaseResponse" r
+      JOIN "Profile" p ON p.id = r."cardId"
+      LEFT JOIN "Session" s ON s.id = r."sessionId"
+      WHERE p."userId" = ${userId}::uuid
+        AND (
+          (r.status = 'PENDING' AND r."scheduledAt" > now() AND r."ownerSeenAt" IS NULL)
+          OR (r.status = 'CANCELLED' AND r."ownerSeenAt" IS NOT NULL AND r."reviewedAt" > r."ownerSeenAt")
+          OR (s.status = 'CANCELLED' AND s."cancelledById" = r."responderId"
+              AND (r."ownerSeenAt" IS NULL OR s."statusUpdatedAt" > r."ownerSeenAt"))
+        )
+    `;
+    const [outgoing] = await this.prisma.$queryRaw<{ count: number }[]>`
+      SELECT count(*)::int AS count
+      FROM "ShowcaseResponse" r
+      JOIN "Profile" p ON p.id = r."cardId"
+      LEFT JOIN "Session" s ON s.id = r."sessionId"
+      WHERE r."responderId" = ${userId}::uuid
+        AND (
+          (r.status IN ('ACCEPTED', 'REJECTED') AND (r."responderSeenAt" IS NULL OR r."reviewedAt" > r."responderSeenAt"))
+          OR (s.status = 'CANCELLED' AND s."cancelledById" = p."userId"
+              AND (r."responderSeenAt" IS NULL OR s."statusUpdatedAt" > r."responderSeenAt"))
+        )
+    `;
+    return { incoming: incoming?.count ?? 0, outgoing: outgoing?.count ?? 0 };
+  }
+
+  async markSeen(side: 'owner' | 'responder', ids: string[], seenAt: Date): Promise<void> {
+    if (ids.length === 0) {
+      return;
+    }
+    await this.prisma.showcaseResponse.updateMany({
+      where: { id: { in: ids } },
+      data: side === 'owner' ? { ownerSeenAt: seenAt } : { responderSeenAt: seenAt },
+    });
+  }
+
   findIncoming(ownerId: string, status?: ShowcaseResponseStatus): Promise<IncomingRow[]> {
     return this.prisma.showcaseResponse.findMany({
       where: { card: { userId: ownerId }, status },
-      include: { responder: { select: responderSelect } },
+      include: { responder: { select: responderSelect }, session: sessionStatusSelect },
       orderBy: { createdAt: 'desc' },
       take: SHOWCASE_RESPONSES_LIST_LIMIT,
     });
@@ -175,7 +224,7 @@ export class ShowcaseResponsesRepository {
   findOutgoing(responderId: string): Promise<OutgoingRow[]> {
     return this.prisma.showcaseResponse.findMany({
       where: { responderId },
-      include: { card: { select: cardOwnerSelect } },
+      include: { card: { select: cardOwnerSelect }, session: sessionStatusSelect },
       orderBy: { createdAt: 'desc' },
       take: SHOWCASE_RESPONSES_LIST_LIMIT,
     });

@@ -1,6 +1,7 @@
 import {
   ProfessionLevel,
   SessionParticipantRole,
+  SessionStatus,
   ShowcaseResponseStatus,
 } from '../../../prisma/generated/enums.ts';
 
@@ -47,6 +48,8 @@ export class ShowcaseIncomingResponse {
   scheduledAt!: Date;
   responder!: ShowcaseResponderSummary;
   sessionId!: string | null;
+  /** Статус созданной сессии */
+  sessionStatus!: SessionStatus | null;
   createdAt!: Date;
   reviewedAt!: Date | null;
   rejectionReason!: string | null;
@@ -71,6 +74,7 @@ export class ShowcaseOutgoingResponse {
   scheduledAt!: Date;
   card!: ShowcaseOutgoingCardSummary;
   sessionId!: string | null;
+  sessionStatus!: SessionStatus | null;
   createdAt!: Date;
   reviewedAt!: Date | null;
   /** Причина отказа от владельца карточки */

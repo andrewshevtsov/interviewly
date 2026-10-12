@@ -23,11 +23,8 @@ import {
   type IncomingRow,
   type OutgoingRow,
 } from './showcase-responses.repository.ts';
-import {
-  MAX_LEAD_DAYS,
-  MIN_LEAD_HOURS,
-  SHOWCASE_RESPONSE_COOLDOWN_HOURS,
-} from './showcase.constants.ts';
+import { MAX_LEAD_DAYS, MIN_LEAD_HOURS } from './showcase.constants.ts';
+import { hasActiveMeeting, retryAfterRejection } from './showcase-rules.ts';
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -38,11 +35,6 @@ const oppositeRole = (role: SessionParticipantRole) =>
   role === SessionParticipantRole.INTERVIEWER
     ? SessionParticipantRole.CANDIDATE
     : SessionParticipantRole.INTERVIEWER;
-
-const retryAfterRejection = (response: { reviewedAt: Date | null; timeMismatch: boolean }) =>
-  response.reviewedAt && !response.timeMismatch
-    ? new Date(response.reviewedAt.getTime() + SHOWCASE_RESPONSE_COOLDOWN_HOURS * HOUR_MS)
-    : null;
 
 @Injectable()
 export class ShowcaseResponsesService {
@@ -180,14 +172,25 @@ export class ShowcaseResponsesService {
     ownerId: string,
     status?: ShowcaseResponseStatus,
   ): Promise<ShowcaseIncomingResponse[]> {
+    const seenAt = new Date();
     await this.repository.expireOverdue({ card: { userId: ownerId } });
+
     const rows = await this.repository.findIncoming(ownerId, status);
+    await this.repository.markSeen('owner', rows.map((row) => row.id), seenAt);
+
     return rows.map((row) => this.toIncoming(row));
   }
 
+  /** Сколько событий по откликам: счётчик на кнопке «Мои отклики» и вкладках */
+  countNewEvents(userId: string): Promise<{ incoming: number; outgoing: number }> {
+    return this.repository.countNewEvents(userId);
+  }
+
   async findOutgoing(responderId: string): Promise<ShowcaseOutgoingResponse[]> {
+    const seenAt = new Date();
     await this.repository.expireOverdue({ responderId });
     const rows = await this.repository.findOutgoing(responderId);
+    await this.repository.markSeen('responder', rows.map((row) => row.id), seenAt);
     return rows.map((row) => this.toOutgoing(row));
   }
 
@@ -214,6 +217,11 @@ export class ShowcaseResponsesService {
     }
     if (latest.status === ShowcaseResponseStatus.PENDING) {
       throw new ConflictException('You already have a pending response to this card');
+    }
+    if (hasActiveMeeting(latest)) {
+      throw new ConflictException(
+        'You already have a meeting scheduled with this person. Cancel it first to respond to this card again',
+      );
     }
     if (latest.status === ShowcaseResponseStatus.REJECTED) {
       const retryAt = retryAfterRejection(latest);
@@ -306,6 +314,7 @@ export class ShowcaseResponsesService {
         bio: responder.profile?.bio ?? null,
       },
       sessionId: row.sessionId,
+      sessionStatus: row.session?.status ?? null,
       createdAt: row.createdAt,
       reviewedAt: row.reviewedAt,
       rejectionReason: row.rejectionReason,
@@ -321,6 +330,7 @@ export class ShowcaseResponsesService {
       scheduledAt: row.scheduledAt,
       card: { id: row.card.id, name: fullName(row.card.user), title: row.card.role },
       sessionId: row.sessionId,
+      sessionStatus: row.session?.status ?? null,
       createdAt: row.createdAt,
       reviewedAt: row.reviewedAt,
       rejectionReason: row.rejectionReason,

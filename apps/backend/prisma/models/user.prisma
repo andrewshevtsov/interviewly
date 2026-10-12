@@ -43,6 +43,21 @@ model User {
   profile                Profile?
   showcaseResponses      ShowcaseResponse[]
   cancelledSessions      Session[]              @relation("SessionCancelledBy")
+  emailChangeRequest     EmailChangeRequest?
+  showcaseMessages       ShowcaseMessage[]      @relation("ShowcaseMessageSender")
+  showcaseChatReads      ShowcaseChatRead[]     @relation("ShowcaseChatReader")
 
   @@id([id])
+}
+
+// Ожидающая подтверждения смена email. Новый запрос заменяет предыдущий.
+// В базе только sha256 токена из письма.
+model EmailChangeRequest {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @unique @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  newEmail  String
+  tokenHash String   @unique
+  expiresAt DateTime @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
 }

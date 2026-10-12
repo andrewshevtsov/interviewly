@@ -27,6 +27,7 @@ export default tseslint.config(
       "next.config.ts",
       "tailwind.config.ts",
       "postcss.config.mjs",
+      "vitest.config.ts",
       "node_modules",
       ".next",
       "storybook-static",
@@ -456,6 +457,14 @@ export default tseslint.config(
       "react/jsx-no-literals": "off",
       "no-restricted-syntax": "off",
       "jsdoc/require-jsdoc": "off",
+    },
+  },
+  {
+    files: ["**/*.test.ts"],
+    rules: {
+      "no-magic-numbers": "off",
+      "jsdoc/require-jsdoc": "off",
+      "max-len": "off",
     },
   },
   storybook.configs["flat/recommended"],

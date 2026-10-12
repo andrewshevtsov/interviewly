@@ -121,3 +121,28 @@ httpClient.interceptors.response.use(
 export function getHttpStatus(error: unknown): number | undefined {
   return axios.isAxiosError(error) ? error.response?.status : undefined;
 }
+
+/**
+ * Тело ошибочного ответа
+ */
+interface ErrorBody {
+  /**
+   * Текст ошибки; при провале валидации - список сообщений по полям.
+   */
+  message?: string | string[];
+}
+
+/**
+ * Сообщение об ошибке из тела ответа backend (поле `message`, строка или список строк).
+ * @param {unknown} error - Ошибка из вызова `httpClient`.
+ * @returns {string} Текст сообщения или пустая строка, если у ошибки нет тела с `message`.
+ */
+export function getHttpMessage(error: unknown): string {
+  if (!axios.isAxiosError<ErrorBody>(error)) {
+    return "";
+  }
+
+  const message = error.response?.data?.message;
+
+  return Array.isArray(message) ? message.join(" ") : (message ?? "");
+}
