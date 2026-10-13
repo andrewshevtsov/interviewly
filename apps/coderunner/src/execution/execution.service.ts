@@ -2,6 +2,7 @@ import {
   BadGatewayException,
   GatewayTimeoutException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
   ForbiddenException,
   ServiceUnavailableException,
@@ -30,7 +31,11 @@ interface PistonExecuteResponse {
 /** Часть ответа backend, достаточная для допуска пользователя к запуску. */
 interface SessionState {
   role: unknown;
+  sessionStatus: unknown;
 }
+
+/** Статусы сессии, после которых запуск кода больше недоступен. */
+const CLOSED_SESSION_STATUSES = new Set(['COMPLETED', 'CANCELLED', 'EXPIRED']);
 
 /** Стабильный внешний контракт coderunner, не зависящий от имён полей Piston. */
 export interface ExecutionResult {
@@ -167,6 +172,16 @@ export class ExecutionService {
       throw new UnauthorizedException('Invalid or expired access token');
     }
 
+    if (response.status === 404) {
+      throw new NotFoundException('Session not found');
+    }
+
+    if (response.status >= 500) {
+      throw new ServiceUnavailableException(
+        'Session authorization service is unavailable',
+      );
+    }
+
     if (!response.ok) {
       throw new ForbiddenException('Session access denied');
     }
@@ -181,7 +196,13 @@ export class ExecutionService {
       );
     }
 
-    if (state.role !== 'INTERVIEWER' && state.role !== 'CANDIDATE') {
+    const isParticipant =
+      state.role === 'INTERVIEWER' || state.role === 'CANDIDATE';
+    const isSessionClosed = CLOSED_SESSION_STATUSES.has(
+      String(state.sessionStatus),
+    );
+
+    if (!isParticipant || isSessionClosed) {
       throw new ForbiddenException('Session access denied');
     }
   }
