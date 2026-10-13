@@ -434,6 +434,9 @@ export const messages = {
       ru: "Вы вошли через Telegram. Добавьте почту, чтобы получать уведомления и на неё.",
       en: "You signed in through Telegram. Add an email to get notifications there too.",
     },
+    changeEmail: { ru: "сменить email", en: "change email" },
+    addEmail: { ru: "добавить email", en: "add email" },
+    closeForm: { ru: "отмена", en: "cancel" },
     newEmail: { ru: "новый email", en: "new email" },
     newEmailPlaceholder: { ru: "you@company.dev", en: "you@company.dev" },
     currentPassword: { ru: "текущий пароль", en: "current password" },
@@ -443,8 +446,8 @@ export const messages = {
     pendingPrefix: { ru: "Письмо со ссылкой отправлено на", en: "We sent a confirmation link to" },
     pendingUntil: { ru: "Ссылка действует до", en: "The link is valid until" },
     pendingHint: {
-      ru: "Чтобы отправить письмо ещё раз или на другой адрес, заполните форму ниже.",
-      en: "To resend the email or use another address, fill in the form below.",
+      ru: "Чтобы отправить письмо ещё раз или на другой адрес, нажмите «сменить email».",
+      en: "To resend the email or use another address, press \"change email\".",
     },
     cancelChange: { ru: "отменить смену", en: "cancel change" },
     errWrongPassword: { ru: "неверный пароль", en: "wrong password" },
@@ -487,6 +490,17 @@ export const messages = {
       ru: "Бот пришлёт сообщение, когда сессия будет запущена или на вашу карточку откликнутся.",
       en: "The bot will message you when a session starts or someone responds to your profile.",
     },
+    linked: { ru: "Telegram привязан", en: "Telegram linked" },
+    unlink: { ru: "отвязать", en: "unlink" },
+    errTaken: {
+      ru: "Этот Telegram уже привязан к другому аккаунту.",
+      en: "This Telegram account is already linked to another user.",
+    },
+    errNeedEmail: {
+      ru: "Сначала добавьте почту: иначе вы потеряете вход в аккаунт.",
+      en: "Add an email first, otherwise you would lose access to your account.",
+    },
+    errGeneric: { ru: "Не получилось. Попробуйте ещё раз.", en: "Something went wrong. Try again." },
   },
   session: {
     title: { ru: "сессия интервью", en: "interview session" },

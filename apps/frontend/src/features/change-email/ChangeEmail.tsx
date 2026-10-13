@@ -3,7 +3,7 @@
 // Слой features: блок «Email» личного кабинета - текущий адрес, смена с подтверждением по письму.
 // Пароль запрашивается только у кого он есть.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { SubmitEvent } from "react";
+import { useState, type SubmitEvent } from "react";
 
 import { formatDateTime } from "@/shared/lib/format-date-time";
 import { useLocale, useTranslations } from "@/shared/i18n-context";
@@ -32,6 +32,7 @@ export function ChangeEmail() {
   const locale = useLocale();
   const queryClient = useQueryClient();
   const currentUser = useCurrentUser();
+  const [isEditing, setIsEditing] = useState(false);
 
   const pending = useQuery({ queryKey: EMAIL_CHANGE_QUERY_KEY, queryFn: userApi.getPendingEmailChange });
 
@@ -44,6 +45,7 @@ export function ChangeEmail() {
      */
     onSuccess: (saved) => {
       queryClient.setQueryData(EMAIL_CHANGE_QUERY_KEY, saved);
+      setIsEditing(false);
     },
   });
 
@@ -72,25 +74,22 @@ export function ChangeEmail() {
    */
   function handleSubmit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
-    const form = event.currentTarget;
-    const formData = new FormData(form);
+    const formData = new FormData(event.currentTarget);
     const password = formData.get("password");
 
-    requestMutation.mutate(
-      {
-        email: String(formData.get("email")).trim(),
-        password: user.hasPassword && typeof password === "string" ? password : undefined,
-      },
-      {
-        /**
-         * Очищает форму.
-         * @returns {void}
-         */
-        onSuccess: () => {
-          form.reset();
-        },
-      },
-    );
+    requestMutation.mutate({
+      email: String(formData.get("email")).trim(),
+      password: user.hasPassword && typeof password === "string" ? password : undefined,
+    });
+  }
+
+  /**
+   * Прячет форму и сбрасывает ошибку прошлой попытки.
+   * @returns {void}
+   */
+  function closeForm(): void {
+    requestMutation.reset();
+    setIsEditing(false);
   }
 
   return (
@@ -126,42 +125,55 @@ export function ChangeEmail() {
         </div>
       )}
 
-      <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
-        <div className="space-y-2">
-          <Label htmlFor="account-new-email">{t("newEmail")}</Label>
-          <Input
-            id="account-new-email"
-            name="email"
-            type="email"
-            placeholder={t.raw("newEmailPlaceholder")}
-            maxLength={EMAIL_MAX_LENGTH}
-            autoComplete="off"
-            required
-          />
-        </div>
+      {isEditing
+        ? (
+          <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
+            <div className="space-y-2">
+              <Label htmlFor="account-new-email">{t("newEmail")}</Label>
+              <Input
+                id="account-new-email"
+                name="email"
+                type="email"
+                placeholder={t.raw("newEmailPlaceholder")}
+                maxLength={EMAIL_MAX_LENGTH}
+                autoComplete="off"
+                required
+              />
+            </div>
 
-        {user.hasPassword && (
-          <div className="space-y-2">
-            <Label htmlFor="account-password">{t("currentPassword")}</Label>
-            <Input
-              id="account-password"
-              name="password"
-              type="password"
-              maxLength={PASSWORD_MAX_LENGTH}
-              autoComplete="current-password"
-              required
-            />
-          </div>
+            {user.hasPassword && (
+              <div className="space-y-2">
+                <Label htmlFor="account-password">{t("currentPassword")}</Label>
+                <Input
+                  id="account-password"
+                  name="password"
+                  type="password"
+                  maxLength={PASSWORD_MAX_LENGTH}
+                  autoComplete="current-password"
+                  required
+                />
+              </div>
+            )}
+
+            {requestMutation.isError && (
+              <p className="text-sm text-destructive">{t(classifyEmailChangeError(requestMutation.error))}</p>
+            )}
+
+            <div className="flex gap-3">
+              <Button type="submit" isLoading={requestMutation.isPending}>
+                {requestMutation.isPending ? t("sendingConfirmation") : t("sendConfirmation")}
+              </Button>
+              <Button type="button" variant="outline" onClick={closeForm}>
+                {t("closeForm")}
+              </Button>
+            </div>
+          </form>
+        )
+        : (
+          <Button type="button" variant="outline" className="mt-6" onClick={() => setIsEditing(true)}>
+            {hasRealEmail ? t("changeEmail") : t("addEmail")}
+          </Button>
         )}
-
-        {requestMutation.isError && (
-          <p className="text-sm text-destructive">{t(classifyEmailChangeError(requestMutation.error))}</p>
-        )}
-
-        <Button type="submit" isLoading={requestMutation.isPending}>
-          {requestMutation.isPending ? t("sendingConfirmation") : t("sendConfirmation")}
-        </Button>
-      </form>
     </Card>
   );
 }

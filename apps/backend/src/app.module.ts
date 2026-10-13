@@ -8,6 +8,7 @@ import { SessionsModule } from './modules/sessions/sessions.module.ts';
 import { FeedbackModule } from './modules/feedback/feedback.module.ts';
 import { SessionHintsModule } from './modules/session-hints/session-hints.module.ts';
 import { ShowcaseModule } from './modules/showcase/showcase.module.ts';
+import { TelegramBotModule } from './modules/telegram-bot/telegram-bot.module.ts';
 import { LeaderboardModule } from './modules/leaderboard/leaderboard.module.ts';
 
 @Module({
@@ -25,6 +26,7 @@ import { LeaderboardModule } from './modules/leaderboard/leaderboard.module.ts';
     SessionHintsModule,
     LeaderboardModule,
     ShowcaseModule,
+    TelegramBotModule,
   ],
   controllers: [],
   providers: [],

@@ -99,6 +99,7 @@ export function AccountForm() {
         <div className="space-y-2">
           <Label htmlFor="account-telegram">{t("telegramUsername")}</Label>
           <Input
+            key={user.telegramUsername ?? ""}
             id="account-telegram"
             name="telegramUsername"
             defaultValue={user.telegramUsername ?? ""}

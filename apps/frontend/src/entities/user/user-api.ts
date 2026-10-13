@@ -34,6 +34,23 @@ export const userApi = {
   },
 
   /**
+   * Сохраняет часовой пояс пользователя (`PATCH /users/me`).
+   * @param {string} timeZone - Название пояса IANA, например `Asia/Dubai`.
+   * @returns {Promise<CurrentUser>} Пользователь после сохранения.
+   */
+  setTimeZone(timeZone: string): Promise<CurrentUser> {
+    return httpClient.patch<CurrentUser>("/users/me", { timeZone }).then((res) => res.data);
+  },
+
+  /**
+   * Отвязывает Telegram от аккаунта (`DELETE /users/me/telegram`).
+   * @returns {Promise<CurrentUser>} Пользователь после отвязки.
+   */
+  unlinkTelegram(): Promise<CurrentUser> {
+    return httpClient.delete<CurrentUser>("/users/me/telegram").then((res) => res.data);
+  },
+
+  /**
    * Отправляет письмо со ссылкой подтверждения на новый адрес (`POST /users/me/email-change`).
    * @param {RequestEmailChangeInput} input - Новый адрес и если есть - текущий пароль.
    * @returns {Promise<PendingEmailChange>} Запрос, который теперь ждёт подтверждения.
