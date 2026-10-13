@@ -1,0 +1,30 @@
+# Production override: образ как источник правды (без bind-mount и без
+# именованных node_modules). На сервере:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Локальная разработка по-прежнему: docker compose up (только docker-compose.yml).
+
+services:
+  frontend:
+    command: ["pnpm", "--filter", "@app/frontend", "run", "start"]
+    environment:
+      NODE_ENV: production
+    volumes: !reset []
+
+  backend:
+    command:
+      [
+        "sh",
+        "-c",
+        "pnpm --filter @app/backend exec prisma migrate deploy && pnpm --filter @app/backend exec prisma db seed && pnpm --filter @app/backend run start:prod",
+      ]
+    environment:
+      NODE_ENV: production
+    volumes: !reset []
+
+  collaboration:
+    image: ${COLLABORATION_IMAGE:-interviewly-collaboration}
+    command: ["pnpm", "--filter", "@app/collaboration", "run", "start"]
+    environment:
+      NODE_ENV: production
+    volumes: !reset []

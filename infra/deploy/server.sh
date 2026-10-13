@@ -12,8 +12,14 @@ set -euo pipefail
 SERVICE="${SERVICE:-}"
 IMAGE="${IMAGE:-}"
 GHCR_USER="${GHCR_USER:-}"
+# Каталог с Caddyfile и Origin CA (вне клона приложения).
+CADDY_DIR="${CADDY_DIR:-$(dirname "${DEPLOY_PATH}")/interviewly-caddy}"
 
 export DEBIAN_FRONTEND=noninteractive
+
+compose() {
+  docker_cmd compose -f docker-compose.yml -f docker-compose.prod.yml "$@"
+}
 
 require_sudo() {
   if sudo -n true 2>/dev/null; then
@@ -22,6 +28,52 @@ require_sudo() {
   echo "Пользователю ${USER} нужен passwordless sudo, чтобы доустановить пакеты."
   echo "На сервере от root: echo '${USER} ALL=(ALL) NOPASSWD:ALL' | tee /etc/sudoers.d/${USER} && chmod 440 /etc/sudoers.d/${USER}"
   exit 1
+}
+
+is_domain_host() {
+  [[ "${PUBLIC_HOST}" == *.* && "${PUBLIC_HOST}" != *:* ]]
+}
+
+# wss:// через TLS-прокси (Caddy), без :7880/:1234 — иначе mixed content на https.
+set_env_key() {
+  local file="$1" key="$2" value="$3"
+  if grep -q "^${key}=" "${file}" 2>/dev/null; then
+    sed -i "s|^${key}=.*|${key}=${value}|" "${file}"
+  else
+    printf '%s=%s\n' "${key}" "${value}" >> "${file}"
+  fi
+}
+
+ensure_prod_public_urls() {
+  local env_file="$1"
+  if ! is_domain_host; then
+    return 0
+  fi
+  set_env_key "${env_file}" FRONTEND_URL "https://${PUBLIC_HOST}"
+  set_env_key "${env_file}" NEXT_PUBLIC_API_URL "https://${PUBLIC_HOST}/api"
+  set_env_key "${env_file}" LIVEKIT_URL "wss://livekit.${PUBLIC_HOST}"
+  set_env_key "${env_file}" NEXT_PUBLIC_COLLABORATION_URL "wss://collaboration.${PUBLIC_HOST}"
+  set_env_key "${env_file}" FRONTEND_SCRIPT start
+  if grep -q '^DEV_TUNNEL_ORIGIN=' "${env_file}"; then
+    sed -i "s|^DEV_TUNNEL_ORIGIN=.*|DEV_TUNNEL_ORIGIN=${PUBLIC_HOST},www.${PUBLIC_HOST}|" "${env_file}"
+  else
+    printf 'DEV_TUNNEL_ORIGIN=%s,www.%s\n' "${PUBLIC_HOST}" "${PUBLIC_HOST}" >> "${env_file}"
+  fi
+}
+
+sync_caddyfile() {
+  local template="${DEPLOY_PATH}/infra/caddy/Caddyfile"
+  if [ ! -f "${template}" ]; then
+    return 0
+  fi
+  mkdir -p "${CADDY_DIR}"
+  # Подставляем домен деплоя вместо шаблонного interviewly.top.
+  sed "s/interviewly\\.top/${PUBLIC_HOST}/g" "${template}" > "${CADDY_DIR}/Caddyfile"
+  if docker_cmd ps -a --format '{{.Names}}' | grep -qx caddy; then
+    docker_cmd cp "${CADDY_DIR}/Caddyfile" caddy:/etc/caddy/Caddyfile
+    docker_cmd exec caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null \
+      || docker_cmd restart caddy
+  fi
 }
 
 if ! command -v git >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1; then
@@ -81,29 +133,16 @@ fi
 
 if [ ! -f "${DEPLOY_PATH}/.env" ]; then
   cp "${DEPLOY_PATH}/.env.example" "${DEPLOY_PATH}/.env"
-  # Домен (без схемы) → https/wss URL; иначе оставляем http://HOST:port для сырого IP.
-  if [[ "${PUBLIC_HOST}" == *.* && "${PUBLIC_HOST}" != *:* ]]; then
-    sed -i "s#http://localhost:3000#https://${PUBLIC_HOST}#g" "${DEPLOY_PATH}/.env"
-    sed -i "s#http://localhost:4000#https://${PUBLIC_HOST}/api#g" "${DEPLOY_PATH}/.env"
-    sed -i "s#ws://localhost:7880#ws://livekit.${PUBLIC_HOST}:7880#g" "${DEPLOY_PATH}/.env"
-    if grep -q '^NEXT_PUBLIC_COLLABORATION_URL=' "${DEPLOY_PATH}/.env"; then
-      sed -i "s|^NEXT_PUBLIC_COLLABORATION_URL=.*|NEXT_PUBLIC_COLLABORATION_URL=ws://${PUBLIC_HOST}:1234|" "${DEPLOY_PATH}/.env"
-    fi
-    if grep -q '^DEV_TUNNEL_ORIGIN=' "${DEPLOY_PATH}/.env"; then
-      sed -i "s|^DEV_TUNNEL_ORIGIN=.*|DEV_TUNNEL_ORIGIN=${PUBLIC_HOST},www.${PUBLIC_HOST}|" "${DEPLOY_PATH}/.env"
-    else
-      printf 'DEV_TUNNEL_ORIGIN=%s,www.%s\n' "${PUBLIC_HOST}" "${PUBLIC_HOST}" >> "${DEPLOY_PATH}/.env"
-    fi
-    if grep -q '^FRONTEND_SCRIPT=' "${DEPLOY_PATH}/.env"; then
-      sed -i 's|^FRONTEND_SCRIPT=.*|FRONTEND_SCRIPT=start|' "${DEPLOY_PATH}/.env"
-    else
-      printf 'FRONTEND_SCRIPT=start\n' >> "${DEPLOY_PATH}/.env"
-    fi
+  if is_domain_host; then
+    ensure_prod_public_urls "${DEPLOY_PATH}/.env"
   else
     sed -i "s#http://localhost:3000#http://${PUBLIC_HOST}:3000#g" "${DEPLOY_PATH}/.env"
     sed -i "s#http://localhost:4000#http://${PUBLIC_HOST}:4000#g" "${DEPLOY_PATH}/.env"
     sed -i "s#ws://localhost:7880#ws://${PUBLIC_HOST}:7880#g" "${DEPLOY_PATH}/.env"
   fi
+elif is_domain_host; then
+  # Уже существующий .env: всё равно выровнять публичные URL под wss/https.
+  ensure_prod_public_urls "${DEPLOY_PATH}/.env"
 fi
 
 livekit_config="${DEPLOY_PATH}/infra/livekit/livekit.yaml"
@@ -114,7 +153,14 @@ if [ -f "${livekit_config}" ]; then
 fi
 
 cd "${DEPLOY_PATH}"
-docker_cmd compose up -d postgres livekit
+
+if is_domain_host; then
+  sync_caddyfile
+fi
+
+compose up -d postgres livekit
+# Collaboration без GHCR-образа: собираем из клона (без bind-mount в prod).
+compose up -d --build collaboration
 
 if [ -n "${SERVICE}" ]; then
   if [ -z "${IMAGE}" ] || [ -z "${GHCR_USER}" ]; then
@@ -124,18 +170,12 @@ if [ -n "${SERVICE}" ]; then
   printf '%s\n' "${GIT_TOKEN}" | docker_cmd login ghcr.io -u "${GHCR_USER}" --password-stdin
   case "${SERVICE}" in
     frontend)
-      FRONTEND_IMAGE="${IMAGE}" docker_cmd compose pull frontend
-      FRONTEND_IMAGE="${IMAGE}" docker_cmd compose up -d --no-build frontend
-      # Bind-mount `.:/app` перекрывает .next из образа — собираем на сервере.
-      if grep -q '^FRONTEND_SCRIPT=start$' "${DEPLOY_PATH}/.env" 2>/dev/null; then
-        FRONTEND_IMAGE="${IMAGE}" docker_cmd compose exec -T frontend \
-          pnpm --filter @app/frontend run build
-        FRONTEND_IMAGE="${IMAGE}" docker_cmd compose up -d --no-build --force-recreate frontend
-      fi
+      FRONTEND_IMAGE="${IMAGE}" compose pull frontend
+      FRONTEND_IMAGE="${IMAGE}" compose up -d --no-build --force-recreate frontend
       ;;
     backend)
-      BACKEND_IMAGE="${IMAGE}" docker_cmd compose pull backend
-      BACKEND_IMAGE="${IMAGE}" docker_cmd compose up -d --no-build backend
+      BACKEND_IMAGE="${IMAGE}" compose pull backend
+      BACKEND_IMAGE="${IMAGE}" compose up -d --no-build --force-recreate backend
       ;;
     *)
       echo "Неизвестный сервис: ${SERVICE}"

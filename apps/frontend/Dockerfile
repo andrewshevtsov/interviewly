@@ -20,9 +20,13 @@ COPY . .
 
 # NEXT_PUBLIC_* вшивается в клиентский бандл на этапе build.
 ARG NEXT_PUBLIC_API_URL=http://localhost:4000
+ARG NEXT_PUBLIC_COLLABORATION_URL=ws://localhost:1234
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_COLLABORATION_URL=$NEXT_PUBLIC_COLLABORATION_URL
 
 RUN pnpm --filter @app/frontend run build
+
+ENV NODE_ENV=production
 
 EXPOSE 3000
 

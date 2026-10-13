@@ -17,12 +17,22 @@ import { TelegramAuthDto } from './dto/telegram-auth.dto.ts';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.ts';
 import { CurrentUser } from './decorators/current-user.decorator.ts';
 import { AuthTokens } from './auth.types.ts';
-import { REFRESH_TOKEN_COOKIE, refreshTokenCookieOptions } from './auth.constants.ts';
+import {
+  REFRESH_TOKEN_COOKIE,
+  legacyRefreshTokenCookieOptions,
+  refreshTokenCookieOptions,
+} from './auth.constants.ts';
 import { ApiBearerAuth, ApiProperty } from '@nestjs/swagger';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  /** Чистит Path=/ и legacy Path=/auth — иначе старая кука переживает logout. */
+  private clearRefreshTokenCookies(res: Response): void {
+    res.clearCookie(REFRESH_TOKEN_COOKIE, refreshTokenCookieOptions());
+    res.clearCookie(REFRESH_TOKEN_COOKIE, legacyRefreshTokenCookieOptions());
+  }
 
   @Post('register')
   @ApiProperty()
@@ -91,7 +101,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
   logout(@Res({ passthrough: true }) res: Response): { success: true } {
-    res.clearCookie(REFRESH_TOKEN_COOKIE, refreshTokenCookieOptions());
+    this.clearRefreshTokenCookies(res);
     return this.authService.logout();
   }
 
@@ -102,6 +112,8 @@ export class AuthController {
    * живёт свой обычный срок
    */
   private respondWithTokens(res: Response, tokens: AuthTokens): { accessToken: string } {
+    // Снести legacy Path=/auth, чтобы cookie-parser не читал старую куку первой.
+    res.clearCookie(REFRESH_TOKEN_COOKIE, legacyRefreshTokenCookieOptions());
     res.cookie(REFRESH_TOKEN_COOKIE, tokens.refreshToken, {
       ...refreshTokenCookieOptions(),
       ...(tokens.rememberMe && { expires: tokens.refreshTokenExpiresAt }),

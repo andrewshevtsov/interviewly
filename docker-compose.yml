@@ -21,8 +21,6 @@
 #             запуске backend вне Docker — через localhost, см. DATABASE_URL в .env)
 #   livekit:  ws://localhost:7880 (signaling); RTC TCP 7881, UDP 7882
 #
-# Сервис backend сам применяет миграции и сиды при каждом старте контейнера:
-# prisma generate && prisma migrate deploy && prisma db seed.
 
 services:
   postgres:
@@ -41,7 +39,11 @@ services:
       - interviewly-network
     healthcheck:
       # Контейнер считается готовым только после ответа выбранной базы.
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-interviewly} -d ${POSTGRES_DB:-interviewly}" ]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-interviewly} -d ${POSTGRES_DB:-interviewly}",
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -72,14 +74,15 @@ services:
       dockerfile: apps/frontend/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+        NEXT_PUBLIC_COLLABORATION_URL: ${NEXT_PUBLIC_COLLABORATION_URL:-ws://localhost:1234}
     restart: unless-stopped
     env_file:
       - ./.env
     environment:
       # Серверные компоненты Next.js ходят к backend внутри Docker-сети, а не через localhost
       BACKEND_INTERNAL_URL: http://backend:4000
-    # На сервере FRONTEND_SCRIPT=start (production). Локально по умолчанию - next dev.
-    command: ["pnpm", "--filter", "@app/frontend", "run", "${FRONTEND_SCRIPT:-dev}"]
+    command:
+      ["pnpm", "--filter", "@app/frontend", "run", "${FRONTEND_SCRIPT:-dev}"]
     ports:
       - 3000:3000
     networks:
@@ -90,6 +93,7 @@ services:
       - frontend_app_node_modules:/app/apps/frontend/node_modules
 
   collaboration:
+    image: ${COLLABORATION_IMAGE:-interviewly-collaboration}
     build:
       context: .
       dockerfile: apps/collaboration/Dockerfile
@@ -99,6 +103,7 @@ services:
     environment:
       BACKEND_INTERNAL_URL: http://backend:4000
       DATABASE_URL: postgresql://${POSTGRES_USER:-interviewly}:${POSTGRES_PASSWORD:-interviewly}@postgres:5432/${POSTGRES_DB:-interviewly}?schema=public
+    command: ["pnpm", "--filter", "@app/collaboration", "run", "dev"]
     ports:
       - "${COLLABORATION_PORT:-1234}:1234"
     depends_on:
@@ -118,6 +123,12 @@ services:
     env_file: ./.env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-interviewly}:${POSTGRES_PASSWORD:-interviewly}@postgres:5432/${POSTGRES_DB:-interviewly}?schema=public
+    command:
+      [
+        "sh",
+        "-c",
+        "pnpm --filter @app/backend exec prisma generate && pnpm --filter @app/backend exec prisma migrate deploy && pnpm --filter @app/backend exec prisma db seed && pnpm run back-dev",
+      ]
     ports:
       - 4000:4000
     depends_on:

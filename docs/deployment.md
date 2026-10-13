@@ -16,6 +16,18 @@ docker compose up --build
 защищены от перезаписи именованными volume'ами (`frontend_node_modules`,
 `backend_node_modules`).
 
+### Production override
+
+На сервере скрипт деплоя поднимает стек так:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+`docker-compose.prod.yml` снимает bind-mount и именованные `node_modules`, запускает
+`next start` / `nest start:prod` / collaboration `start`. Код и зависимости — из образа
+(GHCR), а не с диска хоста.
+
 ### Postgres
 
 Сервис `postgres` (`postgres:17-alpine`) поднимается вместе с остальными:
@@ -32,10 +44,10 @@ docker compose up --build
 
 ### Backend
 
-Сервис `backend` при каждом старте контейнера выполняет
-`prisma generate && prisma migrate deploy && prisma db seed`, затем запускает
-`nest start --watch`. Ручные шаги (`prisma migrate dev`/`generate`/`db seed`) нужны только
-при запуске backend локально вне Docker — см. [docs/onboarding.md](onboarding.md).
+Локально (этот compose): `prisma generate && migrate deploy && db seed`, затем
+`nest start --watch`. В production-образе и prod-override: `migrate deploy && db seed &&
+start:prod` (собранный `dist/`). Ручные шаги (`prisma migrate dev`/`generate`/`db seed`)
+нужны только при запуске backend локально вне Docker — см. [docs/onboarding.md](onboarding.md).
 
 ### Prisma migrations
 
@@ -45,6 +57,23 @@ docker compose up --build
 
 Применённые `migration.sql` не редактируются. Дополнительные изменения базы, включая
 PostgreSQL `CHECK`, индексы и триггеры, оформляются следующей миграцией.
+
+### HTTPS / WSS (Caddy)
+
+Шаблон: [`infra/caddy/Caddyfile`](../infra/caddy/Caddyfile). На https-сайте браузер
+блокирует `ws://` (mixed content), поэтому в проде:
+
+| Назначение | URL |
+| --- | --- |
+| API | `https://<домен>/api` |
+| LiveKit signaling | `wss://livekit.<домен>` → `:7880` |
+| Collaboration | `wss://collaboration.<домен>` → `:1234` |
+
+RTC (UDP/TCP 7881/7882) идёт на публичный IP хоста (`node_ip` в livekit.yaml), не через
+прокси. DNS для `livekit` обычно **DNS only**; `collaboration` может быть proxied.
+
+`server.sh` копирует Caddyfile в `~/interviewly-caddy` (рядом с клоном) и делает reload
+контейнера `caddy`, если он есть. Нужны Origin CA (или LE) и A-записи для поддоменов.
 
 ## CI/CD
 
@@ -69,16 +98,20 @@ CD после успешных проверок собирает только з
 - `ghcr.io/<owner>/interviewly-frontend:<sha>` и тег `dev`
 - `ghcr.io/<owner>/interviewly-backend:<sha>` и тег `dev`
 
+Frontend build-args: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_COLLABORATION_URL`
+(переменные репозитория `vars.*` или дефолты для `interviewly.top`).
+
 Затем по SSH скрипт [`infra/deploy/server.sh`](../infra/deploy/server.sh) готовит сервер и
 поднимает образ. Пустой сервер он приводит в рабочее состояние сам:
 
 - ставит `git`, `curl` и `ca-certificates`, если их нет (`apt`, `dnf` или `yum`);
 - ставит Docker Engine и плагин Compose скриптом `get.docker.com`, если `docker compose` ещё не отвечает;
 - клонирует репозиторий в `DEPLOY_PATH` (по умолчанию `/home/<SSH_USER>/interviewly`) или обновляет уже существующий клон;
-- если `.env` нет, копирует `.env.example` и подставляет публичный хост вместо `localhost` в URL фронтенда, API и LiveKit;
-- в `infra/livekit/livekit.yaml` на сервере заменяет `node_ip: 127.0.0.1` на этот хост, чтобы WebRTC был доступен снаружи;
-- поднимает `postgres` и `livekit`;
-- для собранного приложения делает `docker login` в GHCR, `docker compose pull` и `up -d --no-build`.
+- пишет/обновляет публичные URL в `.env` (`https` / `wss://livekit.` / `wss://collaboration.`);
+- синхронизирует Caddyfile;
+- в `infra/livekit/livekit.yaml` на сервере заменяет `node_ip: 127.0.0.1` на публичный IP origin;
+- поднимает `postgres`, `livekit`, `collaboration` (prod-compose, без bind-mount);
+- для frontend/backend: `docker login` в GHCR, `pull` и `up -d --no-build --force-recreate`.
 
 Если Docker, git и curl уже есть и пользователь входит в группу `docker`, sudo не нужен.
 Passwordless sudo требуется только когда этих пакетов нет и их надо доустановить.

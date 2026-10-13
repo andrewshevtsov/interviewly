@@ -145,6 +145,7 @@ jobs:
           push: true
           build-args: |
             NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL || 'https://interviewly.top/api' }}
+            NEXT_PUBLIC_COLLABORATION_URL=${{ vars.NEXT_PUBLIC_COLLABORATION_URL || 'wss://collaboration.interviewly.top' }}
           tags: |
             ${{ steps.image.outputs.name }}:${{ github.sha }}
             ${{ steps.image.outputs.name }}:dev
