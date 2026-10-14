@@ -20,6 +20,8 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
+ENV NODE_ENV=production
+
 EXPOSE 1234
 
-CMD ["pnpm", "--filter", "@app/collaboration", "run", "dev"]
+CMD ["pnpm", "--filter", "@app/collaboration", "run", "start"]

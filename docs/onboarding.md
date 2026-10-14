@@ -22,6 +22,30 @@ pnpm install
 
 `pnpm install` ставит зависимости для всех пакетов workspace (`apps/*`) одной командой.
 
+Пакет для одного приложения добавляется через `--filter`. Имя берётся из его `package.json`.
+
+```bash
+pnpm --filter @app/frontend add axios
+pnpm --filter @app/backend add @nestjs/config
+pnpm --filter @app/frontend add -D eslint-plugin-react
+```
+
+`-D` кладёт пакет в `devDependencies` этого приложения. Запись появляется только в его `package.json` и в `pnpm-lock.yaml`.
+
+Общий пакет, которым пользуются оба приложения (`typescript`, `eslint`, `prettier` и остальные из корневого `package.json`), ставится в корень флагом `-w`:
+
+```bash
+pnpm add -Dw typescript
+```
+
+Уже описанные зависимости одного приложения ставятся так:
+
+```bash
+pnpm install --filter @app/frontend
+```
+
+Без `--filter` `pnpm install` по-прежнему ставит весь workspace: корень, frontend и backend.
+
 ## Подготовка PostgreSQL и Prisma
 
 Нужно только для запуска backend **локально, вне Docker** (раздел ниже). Если вы просто

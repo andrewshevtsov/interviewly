@@ -8,7 +8,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useQuery, type Query } from "@tanstack/react-query";
 
 import { RequestAccessForm } from "@/features/join-session";
-import { isSessionClosed, sessionApi, type MySessionState } from "@/entities/session";
+import { formatUserName, isSessionClosed, sessionApi, type MySessionState } from "@/entities/session";
 import { getHttpStatus } from "@/shared/api/http-client";
 import { getLocalizedHref } from "@/shared/i18n";
 import { useLocale, useTranslations } from "@/shared/i18n-context";
@@ -58,8 +58,8 @@ interface CenteredMessageProps {
 
 /**
  * Сообщение по центру экрана для состояний вне комнаты
- * @param {CenteredMessageProps} props
- * @returns {ReactNode}
+ * @param {CenteredMessageProps} props - Текст или узел для отображения по центру.
+ * @returns {ReactNode} Центрированный layout с сообщением.
  */
 function CenteredMessage(props: CenteredMessageProps) {
   return (
@@ -72,7 +72,7 @@ function CenteredMessage(props: CenteredMessageProps) {
 /**
  * Загружает состояние пользователя в сессии и рендерит подходящий экран; если пользователь
  * не авторизован - редирект на "/auth" с возвратом в эту сессию после входа
- * @param {LiveSessionGateProps} props
+ * @param {LiveSessionGateProps} props - ID сессии для загрузки состояния пользователя.
  * @returns {import('react').ReactNode} Комната, экран заявки или сообщение.
  */
 export function LiveSessionGate(props: LiveSessionGateProps) {
@@ -149,6 +149,7 @@ export function LiveSessionGate(props: LiveSessionGateProps) {
       sessionId={sessionId}
       isOwner={state.isOwner}
       currentUserId={state.userId}
+      currentUserName={formatUserName(state.user)}
       isCandidate={state.role === "CANDIDATE"}
       isActive={state.sessionStatus === "ACTIVE"}
       editorOpen={state.editorOpen}

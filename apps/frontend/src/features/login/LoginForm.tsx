@@ -65,7 +65,7 @@ export function LoginForm(props: LoginFormProps) {
   }
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit}>
+    <form className="space-y-5" method="post" onSubmit={handleSubmit}>
       <div className="space-y-2">
         <Label htmlFor="login-email">{common("email")}</Label>
         <Input

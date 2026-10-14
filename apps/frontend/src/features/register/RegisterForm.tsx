@@ -78,7 +78,7 @@ export function RegisterForm(props: RegisterFormProps) {
   }
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit}>
+    <form className="space-y-5" method="post" onSubmit={handleSubmit}>
       <div className="space-y-2">
         <Label htmlFor="register-first-name">{auth("firstName")}</Label>
         <Input
