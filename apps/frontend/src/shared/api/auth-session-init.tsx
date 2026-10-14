@@ -12,6 +12,9 @@ import { getHttpStatus, refreshAccessToken } from "./http-client";
 const ACCESS_TOKEN_REFRESH_MARGIN_MS = 60_000;
 const REFRESH_RETRY_MS = 10_000;
 const HTTP_UNAUTHORIZED = 401;
+const MS_IN_SECOND = 1000;
+const JWT_PAYLOAD_INDEX = 1;
+const BASE64_BLOCK_LENGTH = 4;
 
 /** Если первый refresh не ответил за это время, считаем пользователя гостем. */
 const SESSION_RESTORE_TIMEOUT_MS = 5_000;
@@ -24,18 +27,19 @@ const SESSION_RESTORE_TIMEOUT_MS = 5_000;
  */
 function getAccessTokenExpiration(accessToken: string): number | null {
   try {
-    const payloadSegment = accessToken.split(".")[1];
+    const payloadSegment = accessToken.split(".")[JWT_PAYLOAD_INDEX];
     if (!payloadSegment) {
       return null;
     }
 
     const base64 = payloadSegment.replaceAll("-", "+").replaceAll("_", "/");
-    const paddedBase64 = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const paddedBase64 = base64.padEnd(Math.ceil(base64.length / BASE64_BLOCK_LENGTH) * BASE64_BLOCK_LENGTH, "=");
     const payload = JSON.parse(atob(paddedBase64)) as {
+      /** Время истечения токена в секундах (Unix time) */
       exp?: number;
     };
 
-    return typeof payload.exp === "number" ? payload.exp * 1000 : null;
+    return typeof payload.exp === "number" ? payload.exp * MS_IN_SECOND : null;
   } catch {
     return null;
   }
@@ -60,6 +64,28 @@ export function AuthSessionInit(): null {
     }, SESSION_RESTORE_TIMEOUT_MS);
 
     /**
+     * Обновляет браузерную сессию; все потребители получают новый токен через Zustand.
+     * @returns {void}
+     */
+    function refreshSession(): void {
+      void refreshAccessToken().catch((error: unknown) => {
+        if (cancelled) {
+          return;
+        }
+
+        if (getHttpStatus(error) === HTTP_UNAUTHORIZED) {
+          // Refresh-cookie отсутствует или истёк: нужна повторная авторизация.
+          setAnonymous();
+
+          return;
+        }
+
+        // Кратковременный сетевой сбой не должен завершать браузерную сессию.
+        refreshTimer = setTimeout(refreshSession, REFRESH_RETRY_MS);
+      });
+    }
+
+    /**
      * Планирует обновление немного раньше истечения текущего токена доступа.
      * @param {string | null} accessToken - Текущий токен из общего состояния авторизации.
      * @returns {void}
@@ -77,27 +103,6 @@ export function AuthSessionInit(): null {
 
       const delay = Math.max(0, expiresAt - Date.now() - ACCESS_TOKEN_REFRESH_MARGIN_MS);
       refreshTimer = setTimeout(refreshSession, delay);
-    }
-
-    /**
-     * Обновляет браузерную сессию; все потребители получают новый токен через Zustand.
-     * @returns {void}
-     */
-    function refreshSession(): void {
-      void refreshAccessToken().catch((error: unknown) => {
-        if (cancelled) {
-          return;
-        }
-
-        if (getHttpStatus(error) === HTTP_UNAUTHORIZED) {
-          // Refresh-cookie отсутствует или истёк: нужна повторная авторизация.
-          setAnonymous();
-          return;
-        }
-
-        // Кратковременный сетевой сбой не должен завершать браузерную сессию.
-        refreshTimer = setTimeout(refreshSession, REFRESH_RETRY_MS);
-      });
     }
 
     /**

@@ -78,6 +78,10 @@ function RoomWorkspace(props: RoomWorkspaceProps) {
   useEditorOpenSync(sessionId);
   const sessionQuery = useQuery({
     queryKey: ["sessions", sessionId],
+    /**
+     * Загружает сессию
+     * @returns {Promise<unknown>} Данные сессии
+     */
     queryFn: () => sessionApi.get(sessionId),
   });
   const editorLanguage = sessionQuery.data

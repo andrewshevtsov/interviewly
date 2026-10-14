@@ -58,7 +58,16 @@ export function useSessionCollaboration(
       name: sessionId,
       document,
       token: accessToken,
+      /**
+       * Отражает статус соединения с сервером совместной работы
+       * @param {{ status: Parameters<typeof setStatus>[0] }} event - Событие смены статуса
+       * @returns {void}
+       */
       onStatus: (event) => setStatus(event.status),
+      /**
+       * Помечает соединение ошибочным при отказе в авторизации
+       * @returns {void}
+       */
       onAuthenticationFailed: () => setStatus("error"),
     });
     const sharedText = document.getText("code");
