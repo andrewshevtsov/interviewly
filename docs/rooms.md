@@ -33,7 +33,9 @@ Runtime-матрица: `GET /sessions/permissions`.
 
 `DRAFT` → `SCHEDULED` → `READY` → `ACTIVE` → `COMPLETED` / `CANCELLED` / `EXPIRED`
 
-Закрытые (`COMPLETED` / `CANCELLED` / `EXPIRED`) — join и заявки запрещены.  
+Закрытые (`COMPLETED` / `CANCELLED` / `EXPIRED`) — join и заявки запрещены.
+Сессии из витрины ([showcase.md](showcase.md)) создаются сразу в `SCHEDULED` на договорённое время.
+Отмена (`POST /sessions/:id/cancel`) возможна до начала интервью: начавшееся завершают через `end`.  
 LiveKit-token — только для `SCHEDULED` / `READY` / `ACTIVE`.
 
 Начало: когда в комнате одновременно двое (второй получил `livekit-token`), сессия становится `ACTIVE` и получает `startedAt`
@@ -65,6 +67,7 @@ LiveKit-token — только для `SCHEDULED` / `READY` / `ACTIVE`.
 | Смотреть / approve / reject заявки | ✅ | ❌ | ❌ | ❌ | ✅ |
 | Передать владение (только другому INTERVIEWER) | ✅ | ❌ | ❌ | ❌ | ✅ |
 | Завершить сессию для всех (`end`) | ✅ | ❌ | ❌ | ❌ | ✅ |
+| Отменить интервью до начала (`cancel`) | ✅ | ✅ | ✅ | ❌ | ✅ |
 | `join` / `livekit-token` | ✅ | ✅ | ✅ | ❌ пока не approved | ❌* |
 | `GET /sessions/:id/hints`, WebSocket `session:join` | ✅ | ✅ | ✅ | ❌ | ✅ |
 | `POST /sessions/:id/hints` (AI-подсказка) | ❌ | ❌ | ✅ | ❌ | ❌ |
@@ -175,6 +178,7 @@ INVITE: шаг с заявкой пропускается, если пользо
 | POST | `/sessions/:id/access-requests/:requestId/approve` | Владелец |
 | POST | `/sessions/:id/access-requests/:requestId/reject` | Владелец |
 | POST | `/sessions/:id/transfer-ownership` | Владелец/admin; `{ userId }` другого INTERVIEWER, роли не меняются |
+| POST | `/sessions/:id/cancel` | Владелец / участник / admin; `{ reason? }`; только `SCHEDULED` / `READY` до начала, `CANCELLED` + `cancelledById` / `cancelReason`; повтор идемпотентен |
 | POST | `/sessions/:id/end` | Владелец/admin; `COMPLETED` + закрытие LiveKit-комнаты |
 | PUT | `/sessions/:id/editor` | Интервьюер; `{ open }` - режим знакомства / лайв-кодинга, `editor:toggled` по WebSocket |
 | POST | `/sessions/:id/join` | Уже участник |

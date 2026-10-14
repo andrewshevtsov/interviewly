@@ -14,10 +14,6 @@ export class UsersRepository {
     return this.prisma.user.create({ data });
   }
 
-  findMany(): Promise<User[]> {
-    return this.prisma.user.findMany({ orderBy: { createdAt: 'desc' } });
-  }
-
   findById(id: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { id } });
   }
@@ -32,9 +28,5 @@ export class UsersRepository {
 
   update(id: string, data: Prisma.UserUpdateInput): Promise<User> {
     return this.prisma.user.update({ where: { id }, data });
-  }
-
-  delete(id: string): Promise<User> {
-    return this.prisma.user.delete({ where: { id } });
   }
 }

@@ -11,6 +11,8 @@ allowBuilds:
   bcrypt: false
   core-js-pure: false
   esbuild: true
+  # Необязательный нативный ускоритель msgpackr (зависимость BullMQ): без него работает на чистом JS
+  msgpackr-extract: false
   prisma: true
   unrs-resolver: true
 

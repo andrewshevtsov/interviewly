@@ -1,36 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.ts';
-import { UpdateProfileDto } from './dto/update-profile.dto.ts';
-import type { Prisma } from '../../prisma/generated/client.ts';
+import type { CreateProfileDto } from './dto/create-profile.dto.ts';
+
 @Injectable()
 export class ProfileRepository {
   constructor(private readonly prisma: PrismaService) { }
 
-  create(data: Prisma.ProfileCreateInput) {
-    return this.prisma.profile.create({ data });
-  }
-
-  findAll() {
-    return this.prisma.profile.findMany({ orderBy: { createdAt: 'desc' } });
-  }
-
-  findOne(id: string) {
-    return this.prisma.profile.findUnique({ where: { id } });
-  }
-
-  findByEmail(email: string) {
-    return this.prisma.profile.findUnique({ where: { email } });
-  }
-
   findByUserId(userId: string) {
-    return this.prisma.profile.findFirst({ where: { userId } });
+    return this.prisma.profile.findUnique({ where: { userId } });
   }
 
-  update(id: string, data: UpdateProfileDto) {
-    return this.prisma.profile.update({ where: { id }, data });
-  }
-
-  delete(id: string) {
-    return this.prisma.profile.delete({ where: { id } });
+  // userId уникален, поэтому upsert атомарен: два параллельных PUT не создают дубль.
+  upsertByUserId(userId: string, data: CreateProfileDto) {
+    return this.prisma.profile.upsert({
+      where: { userId },
+      create: { ...data, userId },
+      update: data,
+    });
   }
 }

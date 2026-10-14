@@ -47,10 +47,7 @@ export const DEMO_SESSION_HISTORY: SessionHistoryEntry[] = [
 ];
 
 export const DEMO_PROFILE: Profile = {
-  name: "Артём Соколов",
   role: "Senior Frontend Engineer",
-  email: "artem@syntax.dev",
-  telegram: "@artem_dev",
   level: "middle",
   stack: ["React", "TypeScript"],
   bio: "Гоняю по архитектуре фронта и алгоритмам. Люблю разбирать реальные кейсы.",

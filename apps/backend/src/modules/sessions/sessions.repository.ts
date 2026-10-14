@@ -30,8 +30,11 @@ const USER_SUMMARY_SELECT = {
 export class SessionsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(data: Prisma.SessionCreateInput): Promise<Session> {
-    return this.prisma.session.create({ data });
+  create(
+    data: Prisma.SessionCreateInput,
+    db: Prisma.TransactionClient = this.prisma,
+  ): Promise<Session> {
+    return db.session.create({ data });
   }
 
   findManyForUser(params: {
@@ -114,6 +117,40 @@ export class SessionsRepository {
           endedAt,
         },
       });
+    });
+  }
+
+  /**
+   * Отменяет сессию, которая ещё не началась, и отмечает выход тех, кто уже ждал в ней.
+   * Условие в UPDATE не даёт отменить интервью, начавшееся между проверкой и записью: тогда возвращается `null`.
+   */
+  cancel(
+    sessionId: string,
+    params: { cancelledById: string; reason: string | null; at: Date },
+  ): Promise<Session | null> {
+    return this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.session.updateMany({
+        where: {
+          id: sessionId,
+          startedAt: null,
+          status: { in: [SessionStatus.SCHEDULED, SessionStatus.READY] },
+        },
+        data: {
+          status: SessionStatus.CANCELLED,
+          statusUpdatedAt: params.at,
+          cancelledById: params.cancelledById,
+          cancelReason: params.reason,
+        },
+      });
+      if (count === 0) {
+        return null;
+      }
+
+      await tx.sessionParticipant.updateMany({
+        where: { sessionId, leftAt: null, joinedAt: { not: null } },
+        data: { leftAt: params.at },
+      });
+      return tx.session.findUnique({ where: { id: sessionId } });
     });
   }
 

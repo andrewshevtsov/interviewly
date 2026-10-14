@@ -4,18 +4,24 @@ enum ProfessionLevel {
   senior
 }
 
+// Профиль пользователя (роль, уровень, стек, био). Связь 1:1 с User
 model Profile {
-  id        String            @id @default(uuid()) @db.Uuid
-  name      String
-  role      String
-  email     String            @unique
-  telegram  String?
-  level     ProfessionLevel
-  stack     String[]
-  bio       String?
-  userId    String?           @db.Uuid
-  createdAt DateTime          @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime          @updatedAt @db.Timestamptz(3)
+  id              String          @id @default(uuid()) @db.Uuid
+  userId          String          @unique @db.Uuid
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  responses       ShowcaseResponse[]
+  role            String
+  level           ProfessionLevel
+  stack           String[]
+  // Теги стека в нижнем регистре для поиска без учёта регистра. Заполняет триггер
+  // Profile_stackSearch_trigger при любой записи в stack: руками не писать.
+  stackSearch     String[]
+  bio             String?
+  // Пользователь сам включает показ профиля на витрине; по умолчанию скрыт.
+  showcaseVisible Boolean         @default(false)
+  createdAt       DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime        @updatedAt @db.Timestamptz(3)
 
-  @@index([email])
+  @@index([showcaseVisible])
+  @@index([stackSearch], type: Gin)
 }

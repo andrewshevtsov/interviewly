@@ -67,6 +67,10 @@ model Session {
   startedAt       DateTime?     @db.Timestamptz(3)
   endedAt         DateTime?     @db.Timestamptz(3)
   livekitRoomName String        @unique
+  // Отмена до начала: кто отменил и почему видит второй участник.
+  cancelledById   String?       @db.Uuid
+  cancelledBy     User?         @relation("SessionCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+  cancelReason    String?
   createdAt       DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
 
@@ -75,6 +79,8 @@ model Session {
   accessRequests SessionAccessRequest[]
   document       SessionDocument?
   hints          SessionHint[]
+  // Отклик витрины, из которого создана сессия.
+  showcaseResponse ShowcaseResponse?
 
   @@id([id])
 }

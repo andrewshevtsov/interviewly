@@ -49,6 +49,8 @@ export class SessionEntity implements Session {
   startedAt!: Date | null;
   endedAt!: Date | null;
   livekitRoomName!: string;
+  cancelledById!: string | null;
+  cancelReason!: string | null;
   createdAt!: Date;
   updatedAt!: Date;
 

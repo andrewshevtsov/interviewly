@@ -33,13 +33,16 @@ model User {
 
   // Обратные стороны связей: сессии, созданные пользователем, и его участия.
   // Отдельных столбцов для этих массивов в таблице User не создаётся.
-  ownedSessions         Session[]
-  sessionParticipations SessionParticipant[]
-  feedbackAuthored      Feedback[]           @relation("FeedbackAuthored")
-  feedbackReceived      Feedback[]           @relation("FeedbackReceived")
-  sessionAccessRequests SessionAccessRequest[] @relation("SessionAccessRequester")
+  ownedSessions          Session[]
+  sessionParticipations  SessionParticipant[]
+  feedbackAuthored       Feedback[]             @relation("FeedbackAuthored")
+  feedbackReceived       Feedback[]             @relation("FeedbackReceived")
+  sessionAccessRequests  SessionAccessRequest[] @relation("SessionAccessRequester")
   reviewedAccessRequests SessionAccessRequest[] @relation("SessionAccessReviewer")
-  requestedHints        SessionHint[]
+  requestedHints         SessionHint[]
+  profile                Profile?
+  showcaseResponses      ShowcaseResponse[]
+  cancelledSessions      Session[]              @relation("SessionCancelledBy")
 
   @@id([id])
 }

@@ -2,61 +2,35 @@ import {
   Body,
   ClassSerializerInterceptor,
   Controller,
-  Delete,
   Get,
-  HttpCode,
-  HttpStatus,
-  Param,
-  ParseUUIDPipe,
   Patch,
-  Post,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service.ts';
-import { CreateUserDto } from './dto/create-user.dto.ts';
-import { UpdateUserDto } from './dto/update-user.dto.ts';
+import { UpdateMeDto } from './dto/update-me.dto.ts';
 import { UserEntity } from './entities/user-entity.ts';
-import { ApiBearerAuth, ApiProperty } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.ts';
+import { CurrentUser } from '../auth/decorators/current-user.decorator.ts';
 
 @Controller('users')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 @UseInterceptors(ClassSerializerInterceptor)
 export class UsersController {
   constructor(private readonly usersService: UsersService) { }
 
-  @Post()
-  @ApiProperty()
-  create(@Body() dto: CreateUserDto): Promise<UserEntity> {
-    return this.usersService.create(dto);
+  @Get('me')
+  findMe(@CurrentUser('sub') userId: string): Promise<UserEntity> {
+    return this.usersService.findOne(userId);
   }
 
-  @Get()
-  @ApiProperty()
-  findAll(): Promise<UserEntity[]> {
-    return this.usersService.findAll();
-  }
-
-  @Get(':id')
-  @ApiProperty()
-  @ApiBearerAuth()
-  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<UserEntity> {
-    return this.usersService.findOne(id);
-  }
-
-  @Patch(':id')
-  @ApiBearerAuth()
-  @ApiProperty()
-  update(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdateUserDto,
+  @Patch('me')
+  updateMe(
+    @CurrentUser('sub') userId: string,
+    @Body() dto: UpdateMeDto,
   ): Promise<UserEntity> {
-    return this.usersService.update(id, dto);
-  }
-
-  @Delete(':id')
-  @ApiProperty()
-  @ApiBearerAuth()
-  @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    return this.usersService.remove(id);
+    return this.usersService.updateMe(userId, dto);
   }
 }

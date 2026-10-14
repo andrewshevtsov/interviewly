@@ -14,9 +14,11 @@ import {
   SessionAccessRequestStatus,
   SessionParticipantRole,
   SessionStatus,
+  SessionType,
 } from '../../prisma/generated/enums.ts';
-import type { Session } from '../../prisma/generated/client.ts';
+import type { Prisma, Session } from '../../prisma/generated/client.ts';
 import type { JwtPayload } from '../auth/auth.types.ts';
+import { CancelSessionDto } from './dto/cancel-session.dto.ts';
 import { CreateAccessRequestDto } from './dto/create-access-request.dto.ts';
 import { CreateSessionDto } from './dto/create-session.dto.ts';
 import { JoinSessionDto } from './dto/join-session.dto.ts';
@@ -30,6 +32,7 @@ import {
   SessionParticipantEntity,
   SessionParticipantsResponse,
 } from './entities/session.entity.ts';
+import { NotificationsService } from '../notifications/notifications.service.ts';
 import { SESSION_PERMISSIONS } from './sessions.permissions.ts';
 import { SessionsRepository } from './sessions.repository.ts';
 
@@ -55,6 +58,7 @@ export class SessionsService {
   constructor(
     private readonly sessionsRepository: SessionsRepository,
     private readonly livekitService: LivekitService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async create(
@@ -107,6 +111,38 @@ export class SessionsService {
     });
 
     return new SessionEntity(session);
+  }
+
+  /**
+   * Сессия под мэтч из витрины: на договорённое время, доступ по приглашению. Владелец -
+   * интервьюер (по модели комнат владелец всегда INTERVIEWER, кандидату владение не
+   * передаётся), поэтому автором сессии становится тот, кто интервьюирует.
+   * `db` - клиент транзакции, чтобы принятие отклика и создание сессии были атомарны.
+   */
+  createMatchSession(
+    params: { interviewerId: string; candidateId: string; scheduledAt: Date },
+    db?: Prisma.TransactionClient,
+  ): Promise<Session> {
+    const id = randomUUID();
+
+    return this.sessionsRepository.create(
+      {
+        id,
+        livekitRoomName: id,
+        type: SessionType.MOCK,
+        access: SessionAccess.INVITE,
+        status: SessionStatus.SCHEDULED,
+        scheduledAt: params.scheduledAt,
+        owner: { connect: { id: params.interviewerId } },
+        participants: {
+          create: [
+            { userId: params.interviewerId, role: SessionParticipantRole.INTERVIEWER, joinedAt: null },
+            { userId: params.candidateId, role: SessionParticipantRole.CANDIDATE, joinedAt: null },
+          ],
+        },
+      },
+      db,
+    );
   }
 
   async findAll(actor: JwtPayload): Promise<SessionEntity[]> {
@@ -454,6 +490,54 @@ export class SessionsService {
     });
 
     return new SessionEntity(session);
+  }
+
+  /**
+   * Отмена до начала интервью: владелец, любой участник или admin. Повторная отмена ничего не
+   * меняет. Начавшееся интервью отменить нельзя - его завершают через `end`.
+   */
+  async cancel(
+    sessionId: string,
+    actor: JwtPayload,
+    dto: CancelSessionDto,
+  ): Promise<SessionEntity> {
+    const session = await this.requireSession(sessionId);
+    const rule = SESSION_PERMISSIONS.cancelSession;
+    const participant = await this.sessionsRepository.findParticipant(sessionId, actor.sub);
+
+    const isAllowed =
+      (rule.allowAdmin && actor.isAdmin) ||
+      (rule.allowOwner && session.ownerId === actor.sub) ||
+      (rule.allowParticipant && participant !== null);
+
+    if (!isAllowed) {
+      throw new ForbiddenException('Only a participant of the session can cancel it');
+    }
+
+    if (session.status === SessionStatus.CANCELLED) {
+      return new SessionEntity(session);
+    }
+    if (session.status !== SessionStatus.SCHEDULED && session.status !== SessionStatus.READY) {
+      throw new ConflictException(
+        `Session "${sessionId}" is ${session.status.toLowerCase()} and cannot be cancelled`,
+      );
+    }
+
+    const cancelled = await this.sessionsRepository.cancel(sessionId, {
+      cancelledById: actor.sub,
+      reason: dto.reason ?? null,
+      at: new Date(),
+    });
+
+    if (!cancelled) {
+      throw new ConflictException(`Session "${sessionId}" has already started and cannot be cancelled`);
+    }
+
+    await this.livekitService.deleteRoom(session.livekitRoomName);
+    await this.notifications.cancelSessionReminder(sessionId);
+    await this.notifications.notifySessionCancelled(sessionId, actor.sub);
+
+    return new SessionEntity(cancelled);
   }
 
   async createLivekitToken(

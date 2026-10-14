@@ -5,8 +5,9 @@ import {
 } from '@nestjs/common';
 import { UsersRepository } from './users.repository.ts';
 import { CreateUserDto } from './dto/create-user.dto.ts';
-import { UpdateUserDto } from './dto/update-user.dto.ts';
+import { UpdateMeDto } from './dto/update-me.dto.ts';
 import { UserEntity } from './entities/user-entity.ts';
+import { TELEGRAM_PLACEHOLDER_EMAIL_DOMAIN } from './users.constants.ts';
 
 @Injectable()
 export class UsersService {
@@ -22,11 +23,6 @@ export class UsersService {
 
     const user = await this.usersRepository.create(dto);
     return new UserEntity(user);
-  }
-
-  async findAll(): Promise<UserEntity[]> {
-    const users = await this.usersRepository.findMany();
-    return users.map((user) => new UserEntity(user));
   }
 
   async findOne(id: string): Promise<UserEntity> {
@@ -72,7 +68,7 @@ export class UsersService {
     lastName?: string;
   }): Promise<UserEntity> {
     const user = await this.usersRepository.create({
-      email: `tg-${profile.telegramId}@telegram.interviewly.local`,
+      email: `tg-${profile.telegramId}@${TELEGRAM_PLACEHOLDER_EMAIL_DOMAIN}`,
       firstName: profile.firstName,
       lastName: profile.lastName,
       telegramId: profile.telegramId,
@@ -106,24 +102,9 @@ export class UsersService {
     return new UserEntity(user);
   }
 
-  async update(id: string, dto: UpdateUserDto): Promise<UserEntity> {
+  async updateMe(id: string, dto: UpdateMeDto): Promise<UserEntity> {
     await this.findOne(id);
-
-    if (dto.email) {
-      const owner = await this.usersRepository.findByEmail(dto.email);
-      if (owner && owner.id !== id) {
-        throw new ConflictException(
-          `User with email "${dto.email}" already exists`,
-        );
-      }
-    }
-
     const user = await this.usersRepository.update(id, dto);
     return new UserEntity(user);
-  }
-
-  async remove(id: string): Promise<void> {
-    await this.findOne(id);
-    await this.usersRepository.delete(id);
   }
 }

@@ -14,7 +14,7 @@ interface ProfileDto extends Profile {
 }
 
 /**
- * Fills in array/string fields the DB allows as `null` (`stack`, `telegram`, `bio`) with the
+ * Fills in array/string fields the DB allows as `null` (`stack`, `bio`) with the
  * `Profile` type's non-nullable defaults, so consumers like `ProfileForm` never see `null`.
  * @param {ProfileDto | null} dto - Raw API response.
  * @returns {ProfileDto | null} The normalized profile, or `null` if none exists.
@@ -26,7 +26,6 @@ function normalizeProfile(dto: ProfileDto | null): ProfileDto | null {
 
   return {
     ...dto,
-    telegram: dto.telegram ?? "",
     stack: dto.stack ?? [],
     bio: dto.bio ?? "",
   };
