@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  type PointerEvent as ReactPointerEvent,
-} from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 import { RunCodeButton, type ExecutionResult } from "@/features/run-code";
 import { useTranslations } from "@/shared/i18n-context";
@@ -28,6 +23,10 @@ const LANGUAGE_LABELS: Record<EditorLanguage, string> = {
 const DEFAULT_OUTPUT_HEIGHT = 160;
 const MIN_OUTPUT_HEIGHT = 96;
 const MAX_OUTPUT_HEIGHT_RATIO = 0.65;
+const DATE_PART_LENGTH = 2;
+const MONTH_NUMBER_OFFSET = 1;
+const SINGLE_LOG_ENTRY = 1;
+const OUTPUT_SEPARATOR = "=============================";
 
 /** Выполнение ещё не завершилось. */
 interface RunningOutput {
@@ -53,17 +52,81 @@ interface FailedOutput {
 /** Состояние отображаемой консоли. */
 type OutputState = RunningOutput | SuccessfulOutput | FailedOutput;
 
-const OUTPUT_STATE_KEY = "state";
+/** Одна запись общего журнала запусков. */
+type OutputLogEntry = OutputState & {
+  /** Уникальный идентификатор запуска для обновления его результата. */
+  id: string;
 
-/** Проверяет состояние консоли, полученное из совместного документа. */
-function isOutputState(value: unknown): value is OutputState {
-  if (typeof value !== "object" || value === null || !("status" in value)) {
+  /** Отображаемое имя запустившего код участника. */
+  userName: string;
+
+  /** Время запуска в миллисекундах Unix. */
+  startedAt: number;
+};
+
+/**
+ * Проверяет запись консоли, полученную из совместного документа.
+ * @param {unknown} value Непроверенное значение Yjs.
+ * @returns {boolean} Признак корректной записи журнала.
+ */
+function isOutputLogEntry(value: unknown): value is OutputLogEntry {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    !("status" in value) ||
+    !("id" in value) ||
+    !("userName" in value) ||
+    !("startedAt" in value)
+  ) {
     return false;
   }
 
-  const status = value.status;
+  const hasValidBase =
+    typeof value.id === "string" &&
+    typeof value.userName === "string" &&
+    typeof value.startedAt === "number";
 
-  return status === "running" || status === "success" || status === "error";
+  if (!hasValidBase) {
+    return false;
+  }
+
+  if (value.status === "success") {
+    return "result" in value && typeof value.result === "object" && value.result !== null;
+  }
+
+  return value.status === "running" || value.status === "error";
+}
+
+/** Отформатированные дата и время запуска. */
+interface FormattedStartedAt {
+  /** Дата в формате ДД.ММ.ГГГГ. */
+  date: string;
+
+  /** Время в формате ЧЧ:ММ:СС. */
+  time: string;
+}
+
+/**
+ * Дополняет числовую часть даты ведущим нулём.
+ * @param {number} part Числовая часть даты или времени.
+ * @returns {string} Двузначное представление части.
+ */
+function padDatePart(part: number): string {
+  return String(part).padStart(DATE_PART_LENGTH, "0");
+}
+
+/**
+ * Форматирует время запуска как требуемые дату и время.
+ * @param {number} startedAt Время запуска в миллисекундах Unix.
+ * @returns {FormattedStartedAt} Дата и время для заголовка записи.
+ */
+function formatStartedAt(startedAt: number): FormattedStartedAt {
+  const value = new Date(startedAt);
+
+  return {
+    date: `${padDatePart(value.getDate())}.${padDatePart(value.getMonth() + MONTH_NUMBER_OFFSET)}.${value.getFullYear()}`,
+    time: `${padDatePart(value.getHours())}:${padDatePart(value.getMinutes())}:${padDatePart(value.getSeconds())}`,
+  };
 }
 
 /** Координаты и размеры в момент начала перетаскивания. */
@@ -86,6 +149,9 @@ export interface SessionCodeEditorProps {
   /** UUID текущего пользователя для отображения его удалённого курсора. */
   currentUserId: string;
 
+  /** Отображаемое имя текущего пользователя для журнала запусков. */
+  currentUserName: string;
+
   /** Зафиксированный для этой сессии язык программирования. */
   language: EditorLanguage;
 }
@@ -96,37 +162,81 @@ export interface SessionCodeEditorProps {
  * @returns {import("react").ReactNode} Редактор кода с панелью инструментов.
  */
 export function SessionCodeEditor(props: SessionCodeEditorProps) {
-  const { sessionId, currentUserId, language } = props;
+  const { sessionId, currentUserId, currentUserName, language } = props;
   const { collaboration, status } = useSessionCollaboration(sessionId, currentUserId);
   const t = useTranslations("session");
-  const [output, setOutput] = useState<OutputState | null>(null);
+  const [outputLog, setOutputLog] = useState<OutputLogEntry[]>([]);
   const [outputHeight, setOutputHeight] = useState(DEFAULT_OUTPUT_HEIGHT);
   const outputPanelRef = useRef<HTMLDivElement | null>(null);
   const resizeStartRef = useRef<ResizeStart | null>(null);
+  const activeExecutionIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!collaboration) {
-      setOutput(null);
+      setOutputLog([]);
 
       return;
     }
-    const { sharedOutput } = collaboration;
+    const { sharedOutputLog } = collaboration;
 
-    /** Переносит общее состояние запуска в локальное состояние интерфейса. */
-    function updateOutput(): void {
-      const sharedState = sharedOutput.get(OUTPUT_STATE_KEY);
-      setOutput(isOutputState(sharedState) ? sharedState : null);
+    /** Переносит общий журнал запусков в локальное состояние интерфейса. */
+    function updateOutputLog(): void {
+      setOutputLog(sharedOutputLog.toArray().filter(isOutputLogEntry));
     }
 
-    updateOutput();
-    sharedOutput.observe(updateOutput);
+    updateOutputLog();
+    sharedOutputLog.observe(updateOutputLog);
 
-    return () => sharedOutput.unobserve(updateOutput);
+    return () => sharedOutputLog.unobserve(updateOutputLog);
   }, [collaboration]);
 
-  /** Публикует состояние консоли всем участникам сессии. */
-  function publishOutput(nextOutput: OutputState): void {
-    collaboration?.sharedOutput.set(OUTPUT_STATE_KEY, nextOutput);
+  useEffect(() => {
+    const panel = outputPanelRef.current;
+    if (panel) {
+      panel.scrollTop = 0;
+    }
+  }, [outputLog]);
+
+  /** Добавляет новый запуск в общий журнал. */
+  function startExecution(): void {
+    if (!collaboration) {
+      return;
+    }
+
+    const id = crypto.randomUUID();
+    const entry: OutputLogEntry = {
+      id,
+      userName: currentUserName,
+      startedAt: Date.now(),
+      status: "running",
+    };
+    activeExecutionIdRef.current = id;
+    collaboration.sharedOutputLog.insert(0, [entry]);
+  }
+
+  /**
+   * Обновляет результат текущего запуска в общем журнале.
+   * @param {OutputState} nextOutput Итог выполнения или ошибка запроса.
+   */
+  function finishExecution(nextOutput: OutputState): void {
+    const id = activeExecutionIdRef.current;
+    const sharedLog = collaboration?.sharedOutputLog;
+    if (!id || !sharedLog) {
+      return;
+    }
+
+    const entries = sharedLog.toArray();
+    const index = entries.findIndex((entry) => isOutputLogEntry(entry) && entry.id === id);
+    const currentEntry = entries[index];
+    if (index < 0 || !isOutputLogEntry(currentEntry)) {
+      return;
+    }
+
+    sharedLog.doc?.transact(() => {
+      sharedLog.delete(index, SINGLE_LOG_ENTRY);
+      sharedLog.insert(index, [{ ...currentEntry, ...nextOutput }]);
+    });
+    activeExecutionIdRef.current = null;
   }
 
   /**
@@ -185,7 +295,7 @@ export function SessionCodeEditor(props: SessionCodeEditorProps) {
         )}
       </div>
 
-      {output && (
+      {outputLog.length > 0 && (
         <div
           ref={outputPanelRef}
           className="relative shrink-0 overflow-auto border-t border-border bg-muted/30"
@@ -210,25 +320,46 @@ export function SessionCodeEditor(props: SessionCodeEditorProps) {
           </div>
 
           <div className="p-4">
-            {output.status === "running" && (
-              <span className="font-sans text-muted-foreground">{t("running")}</span>
-            )}
-            {output.status === "error" && (
-              <span className="font-sans text-destructive">{t("runCodeError")}</span>
-            )}
-            {output.status === "success" && (
-              <>
-                {output.result.stdout && <pre className="whitespace-pre-wrap">{output.result.stdout}</pre>}
-                {output.result.stderr && (
-                  <pre className="whitespace-pre-wrap text-destructive">{output.result.stderr}</pre>
-                )}
-                {!output.result.stdout && !output.result.stderr && (
-                  <span className="font-sans text-muted-foreground">
-                    {output.result.message ?? t("emptyOutput")}
-                  </span>
-                )}
-              </>
-            )}
+            {outputLog.map((entry, index) => {
+              const startedAt = formatStartedAt(entry.startedAt);
+
+              return (
+                <div key={entry.id}>
+                  {index > 0 && (
+                    <div className="my-3 overflow-hidden whitespace-nowrap text-muted-foreground">
+                      {OUTPUT_SEPARATOR}
+                    </div>
+                  )}
+                  <div className="mb-2 font-sans text-xs text-muted-foreground">
+                    {t("codeRunBy")} {entry.userName} {t("dateLabel")} {startedAt.date}{" "}
+                    {t("timeLabel")} {startedAt.time}
+                  </div>
+                  {entry.status === "running" && (
+                    <span className="font-sans text-muted-foreground">{t("running")}</span>
+                  )}
+                  {entry.status === "error" && (
+                    <span className="font-sans text-destructive">{t("runCodeError")}</span>
+                  )}
+                  {entry.status === "success" && (
+                    <>
+                      {entry.result.stdout && (
+                        <pre className="whitespace-pre-wrap">{entry.result.stdout}</pre>
+                      )}
+                      {entry.result.stderr && (
+                        <pre className="whitespace-pre-wrap text-destructive">
+                          {entry.result.stderr}
+                        </pre>
+                      )}
+                      {!entry.result.stdout && !entry.result.stderr && (
+                        <span className="font-sans text-muted-foreground">
+                          {entry.result.message ?? t("emptyOutput")}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -239,9 +370,9 @@ export function SessionCodeEditor(props: SessionCodeEditorProps) {
           language={language}
           getCode={() => collaboration?.sharedText.toString() ?? ""}
           disabled={!collaboration}
-          onRunStart={() => publishOutput({ status: "running" })}
-          onRunSuccess={(result) => publishOutput({ status: "success", result })}
-          onRunError={() => publishOutput({ status: "error" })}
+          onRunStart={startExecution}
+          onRunSuccess={(result) => finishExecution({ status: "success", result })}
+          onRunError={() => finishExecution({ status: "error" })}
         />
       </div>
     </Card>

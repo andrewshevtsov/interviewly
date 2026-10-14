@@ -12,6 +12,12 @@ const USER_LABEL_LENGTH = 8;
 
 export type CollaborationStatus = "connecting" | "connected" | "disconnected" | "error";
 
+/** Событие изменения состояния Hocuspocus-подключения. */
+interface ProviderStatusEvent {
+  /** Новое состояние подключения. */
+  status: CollaborationStatus;
+}
+
 /** Совместные объекты одной сессии с редактором кода. */
 export interface SessionCollaboration {
   /** Данные присутствия Yjs для курсоров и подключённых участников. */
@@ -20,8 +26,8 @@ export interface SessionCollaboration {
   /** Общий текст кода. */
   sharedText: Y.Text;
 
-  /** Общее состояние последнего запуска кода. */
-  sharedOutput: Y.Map<unknown>;
+  /** Общий журнал запусков кода. */
+  sharedOutputLog: Y.Array<unknown>;
 }
 
 /** Результат подключения текущего пользователя к совместному документу. */
@@ -56,16 +62,30 @@ export function useSessionCollaboration(
     }
 
     const document = new Y.Doc();
+
+    /**
+     * Обновляет отображаемое состояние подключения.
+     * @param {ProviderStatusEvent} event Новое состояние провайдера.
+     */
+    function handleStatus(event: ProviderStatusEvent): void {
+      setStatus(event.status);
+    }
+
+    /** Отмечает отклонённую сервером авторизацию подключения. */
+    function handleAuthenticationFailed(): void {
+      setStatus("error");
+    }
+
     const provider = new HocuspocusProvider({
       url: COLLABORATION_URL,
       name: sessionId,
       document,
       token: accessToken,
-      onStatus: (event) => setStatus(event.status),
-      onAuthenticationFailed: () => setStatus("error"),
+      onStatus: handleStatus,
+      onAuthenticationFailed: handleAuthenticationFailed,
     });
     const sharedText = document.getText("code");
-    const sharedOutput = document.getMap("execution-output");
+    const sharedOutputLog = document.getArray("execution-log");
     const color = USER_COLORS[currentUserId.charCodeAt(0) % USER_COLORS.length];
     const awareness = provider.awareness;
     if (!awareness) {
@@ -82,7 +102,7 @@ export function useSessionCollaboration(
       colorLight: `${color}33`,
     });
 
-    setCollaboration({ awareness, sharedText, sharedOutput });
+    setCollaboration({ awareness, sharedText, sharedOutputLog });
 
     return () => {
       setCollaboration(null);

@@ -22,13 +22,10 @@
 #             по имени сервиса "postgres" в сети interviewly-network; при локальном
 #             запуске backend вне Docker — через localhost, см. DATABASE_URL в .env)
 #   livekit:  ws://localhost:7880 (signaling); RTC TCP 7881, UDP 7882
-<<<<<<< HEAD
 #   piston:   http://127.0.0.1:2000 (только для локальной диагностики)
-=======
 #   redis:    localhost:6379 (очередь уведомлений BullMQ)
 #   mailpit:  SMTP localhost:1025, веб-интерфейс http://localhost:8025 - сюда в разработке
 #             приходят письма backend'а, наружу ничего не уходит
->>>>>>> origin/dev
 #
 # Сервис backend сам применяет миграции и сиды при каждом старте контейнера:
 # prisma generate && prisma migrate deploy && prisma db seed.

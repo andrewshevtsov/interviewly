@@ -265,8 +265,14 @@ export const messages = {
       ru: "Ваши сессии, оценки и личные заметки.",
       en: "Your sessions, scores and personal notes.",
     },
-    historyEmpty: { ru: "У вас пока нет прошедших интервью.", en: "You have no past interviews yet." },
-    historyLoadError: { ru: "Не удалось загрузить историю интервью", en: "Couldn't load your interview history" },
+    historyEmpty: {
+      ru: "У вас пока нет прошедших интервью.",
+      en: "You have no past interviews yet.",
+    },
+    historyLoadError: {
+      ru: "Не удалось загрузить историю интервью",
+      en: "Couldn't load your interview history",
+    },
     typeBusiness: { ru: "Бизнес-интервью", en: "Business interview" },
     typeMock: { ru: "Мок-интервью", en: "Mock interview" },
     minutesShort: { ru: "мин", en: "min" },
@@ -283,6 +289,9 @@ export const messages = {
     participantsSuffix: { ru: "участника", en: "participants" },
     // Подписи локальной консоли запуска кода в совместном редакторе.
     outputLabel: { ru: "вывод", en: "output" },
+    codeRunBy: { ru: "Код запущен пользователем", en: "Code run by" },
+    dateLabel: { ru: "дата", en: "date" },
+    timeLabel: { ru: "время", en: "time" },
     resizeOutput: { ru: "Изменить высоту области вывода", en: "Resize output area" },
     emptyOutput: { ru: "Программа ничего не вывела", en: "The program produced no output" },
     syntaxHint: {

@@ -10,7 +10,7 @@ import { ConnectionError, DisconnectReason } from "livekit-client";
 import { SessionCodeEditor } from "@/widgets/session-code-editor";
 import { SessionHeader } from "@/widgets/session-header";
 import { SessionVideoPanels } from "@/widgets/session-video-panels";
-import { sessionApi, useEditorOpenSync } from "@/entities/session";
+import { formatUserName, sessionApi, useEditorOpenSync } from "@/entities/session";
 import { useTranslations } from "@/shared/i18n-context";
 import { cn } from "@/shared/lib/cn";
 import { FLIP_DURATION_MS } from "@/shared/lib/use-flip";
@@ -21,6 +21,7 @@ const EDITOR_LANGUAGES = {
   JAVASCRIPT: "javascript",
   TYPESCRIPT: "typescript",
 } as const;
+const USER_ID_FALLBACK_LENGTH = 8;
 
 /**
  * Пропсы {@link LiveSessionRoom}.
@@ -73,13 +74,41 @@ interface RoomWorkspaceProps extends LiveSessionRoomProps {
  * @returns {import('react').ReactNode} Шапка, видео и редактор кода
  */
 function RoomWorkspace(props: RoomWorkspaceProps) {
-  const { sessionId, isOwner, currentUserId, isCandidate, isActive, editorOpen, mediaUnavailable } = props;
+  const { sessionId, isOwner, currentUserId, isCandidate, isActive, editorOpen, mediaUnavailable } =
+    props;
   const t = useTranslations("session");
   useEditorOpenSync(sessionId);
+
+  /**
+   * Загружает настройки текущей сессии.
+   * @returns {ReturnType<typeof sessionApi.get>} Сессия без списка участников.
+   */
+  function getSession() {
+    return sessionApi.get(sessionId);
+  }
+
+  /**
+   * Загружает участников для определения имени текущего пользователя.
+   * @returns {ReturnType<typeof sessionApi.listParticipants>} Участники сессии.
+   */
+  function listParticipants() {
+    return sessionApi.listParticipants(sessionId);
+  }
+
   const sessionQuery = useQuery({
     queryKey: ["sessions", sessionId],
-    queryFn: () => sessionApi.get(sessionId),
+    queryFn: getSession,
   });
+  const participantsQuery = useQuery({
+    queryKey: ["sessions", sessionId, "participants"],
+    queryFn: listParticipants,
+  });
+  const currentUser = participantsQuery.data?.find(
+    (participant) => participant.userId === currentUserId,
+  )?.user;
+  const currentUserName = currentUser
+    ? formatUserName(currentUser)
+    : currentUserId.slice(0, USER_ID_FALLBACK_LENGTH);
   const editorLanguage = sessionQuery.data
     ? EDITOR_LANGUAGES[sessionQuery.data.editorLanguage]
     : "typescript";
@@ -119,6 +148,7 @@ function RoomWorkspace(props: RoomWorkspaceProps) {
           <SessionCodeEditor
             sessionId={sessionId}
             currentUserId={currentUserId}
+            currentUserName={currentUserName}
             language={editorLanguage}
           />
         </div>
