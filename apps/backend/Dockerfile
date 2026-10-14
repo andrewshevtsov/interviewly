@@ -18,7 +18,10 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-RUN pnpm --filter @app/backend exec prisma generate && \
+# prisma.config.ts требует DATABASE_URL, а .env в образ не попадает (.dockerignore).
+# Для generate подключение не открывается, поэтому достаточно заглушки; реальный адрес приходит в runtime.
+RUN DATABASE_URL=postgresql://build:build@localhost:5432/build \
+    pnpm --filter @app/backend exec prisma generate && \
     pnpm --filter @app/backend run build
 
 ENV NODE_ENV=production
