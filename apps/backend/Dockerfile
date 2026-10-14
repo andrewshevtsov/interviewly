@@ -11,7 +11,6 @@ COPY apps/frontend/package.json ./apps/frontend/package.json
 COPY apps/collaboration/package.json ./apps/collaboration/package.json
 COPY patches ./patches
 
-
 RUN pnpm config set fetch-timeout 500000 && \
     pnpm config set fetch-retry-mintimeout 100000 && \
     pnpm config set fetch-retry-maxtimeout 500000
@@ -19,6 +18,11 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
+RUN pnpm --filter @app/backend exec prisma generate && \
+    pnpm --filter @app/backend run build
+
+ENV NODE_ENV=production
+
 EXPOSE 4000
 
-CMD ["sh", "-c", "pnpm run prisma-generate && pnpm run back-dev"]
+CMD ["sh", "-c", "pnpm --filter @app/backend exec prisma migrate deploy && pnpm --filter @app/backend exec prisma db seed && pnpm --filter @app/backend run start:prod"]
