@@ -70,7 +70,10 @@ sync_caddyfile() {
   # Подставляем домен деплоя вместо шаблонного interviewly.top.
   sed "s/interviewly\\.top/${PUBLIC_HOST}/g" "${template}" > "${CADDY_DIR}/Caddyfile"
   if docker_cmd ps -a --format '{{.Names}}' | grep -qx caddy; then
-    docker_cmd cp "${CADDY_DIR}/Caddyfile" caddy:/etc/caddy/Caddyfile
+    # Не docker cp: он пересоздаёт файл и падает с "device or resource busy",
+    # если Caddyfile примонтирован в контейнер. Запись через cat меняет содержимое на месте.
+    docker_cmd exec -i caddy sh -c 'cat > /etc/caddy/Caddyfile' < "${CADDY_DIR}/Caddyfile"
+    # При `admin off` reload недоступен, тогда перезапускаем контейнер.
     docker_cmd exec caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null \
       || docker_cmd restart caddy
   fi
