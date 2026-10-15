@@ -42,6 +42,11 @@ export interface LiveSessionRoomProps {
   currentUserId: string;
 
   /**
+   * Имя текущего пользователя для журнала запусков кода
+   */
+  currentUserName: string;
+
+  /**
    * AI-подсказки запрашивает только кандидат
    */
   isCandidate: boolean;
@@ -73,16 +78,30 @@ interface RoomWorkspaceProps extends LiveSessionRoomProps {
  * @returns {import('react').ReactNode} Шапка, видео и редактор кода
  */
 function RoomWorkspace(props: RoomWorkspaceProps) {
-  const { sessionId, isOwner, currentUserId, isCandidate, isActive, editorOpen, mediaUnavailable } = props;
+  const {
+    sessionId,
+    isOwner,
+    currentUserId,
+    currentUserName,
+    isCandidate,
+    isActive,
+    editorOpen,
+    mediaUnavailable,
+  } = props;
   const t = useTranslations("session");
   useEditorOpenSync(sessionId);
+
+  /**
+   * Загружает настройки текущей сессии.
+   * @returns {ReturnType<typeof sessionApi.get>} Сессия без списка участников.
+   */
+  function getSession() {
+    return sessionApi.get(sessionId);
+  }
+
   const sessionQuery = useQuery({
     queryKey: ["sessions", sessionId],
-    /**
-     * Загружает сессию
-     * @returns {Promise<unknown>} Данные сессии
-     */
-    queryFn: () => sessionApi.get(sessionId),
+    queryFn: getSession,
   });
   const editorLanguage = sessionQuery.data
     ? EDITOR_LANGUAGES[sessionQuery.data.editorLanguage]
@@ -123,6 +142,7 @@ function RoomWorkspace(props: RoomWorkspaceProps) {
           <SessionCodeEditor
             sessionId={sessionId}
             currentUserId={currentUserId}
+            currentUserName={currentUserName}
             language={editorLanguage}
           />
         </div>

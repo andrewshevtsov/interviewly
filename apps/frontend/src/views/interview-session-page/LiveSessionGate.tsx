@@ -8,7 +8,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useQuery, type Query } from "@tanstack/react-query";
 
 import { RequestAccessForm } from "@/features/join-session";
-import { isSessionClosed, sessionApi, type MySessionState } from "@/entities/session";
+import { formatUserName, isSessionClosed, sessionApi, type MySessionState } from "@/entities/session";
 import { getHttpStatus } from "@/shared/api/http-client";
 import { getLocalizedHref } from "@/shared/i18n";
 import { useLocale, useTranslations } from "@/shared/i18n-context";
@@ -149,6 +149,7 @@ export function LiveSessionGate(props: LiveSessionGateProps) {
       sessionId={sessionId}
       isOwner={state.isOwner}
       currentUserId={state.userId}
+      currentUserName={formatUserName(state.user)}
       isCandidate={state.role === "CANDIDATE"}
       isActive={state.sessionStatus === "ACTIVE"}
       editorOpen={state.editorOpen}

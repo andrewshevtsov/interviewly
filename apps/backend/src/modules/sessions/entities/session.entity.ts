@@ -113,6 +113,7 @@ export class SessionAccessRequestEntity implements SessionAccessRequest {
  */
 export class MySessionStateResponse {
   userId!: string;
+  user!: SessionUserSummary;
   isOwner!: boolean;
   sessionStatus!: SessionStatus;
   access!: SessionAccess;
