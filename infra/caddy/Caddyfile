@@ -12,7 +12,8 @@
 }
 
 interviewly.top, www.interviewly.top {
-	handle /api* {
+	# Backend не знает префикса /api (маршруты /auth/..., /sessions/...), поэтому режем его.
+	handle_path /api/* {
 		reverse_proxy 172.17.0.1:4000
 	}
 
