@@ -30,8 +30,9 @@ require_sudo() {
   exit 1
 }
 
+# IPv4 доменом не считаем: иначе Caddyfile и .env перепишутся на IP вместо домена.
 is_domain_host() {
-  [[ "${PUBLIC_HOST}" == *.* && "${PUBLIC_HOST}" != *:* ]]
+  [[ "${PUBLIC_HOST}" == *.* && "${PUBLIC_HOST}" != *:* && ! "${PUBLIC_HOST}" =~ ^[0-9.]+$ ]]
 }
 
 # wss:// через TLS-прокси (Caddy), без :7880/:1234 — иначе mixed content на https.
