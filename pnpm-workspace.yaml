@@ -9,9 +9,9 @@ packages:
 # для generate/migrate; esbuild и unrs-resolver нужны существующим frontend-tools.
 allowBuilds:
   # Nest watch использует нативный файловый watcher в локальной разработке.
-  '@parcel/watcher': true
+  "@parcel/watcher": true
   "@prisma/engines": true
-  '@scarf/scarf': false
+  "@scarf/scarf": false
   bcrypt: false
   core-js-pure: false
   esbuild: true
@@ -21,4 +21,4 @@ allowBuilds:
   unrs-resolver: true
 
 patchedDependencies:
-  '@nestjs/common@11.2.1': patches/@nestjs__common@11.2.1.patch
+  "@nestjs/common@11.2.1": patches/@nestjs__common@11.2.1.patch
