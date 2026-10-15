@@ -1,12 +1,15 @@
 import type { NextConfig } from "next";
 
-// DEV_TUNNEL_ORIGIN - опциональный, только для локальной разработки через туннель
-// (ngrok/cloudflared), например при тестировании Telegram Login Widget, которому
-// нужен настоящий домен - см. docs/dev/telegram-auth-manual-testing.md. Без него
-// Next.js в dev-режиме блокирует HMR-запросы с чужого origin, из-за чего клиентские
-// эффекты становятся нестабильными на самой странице (не только рвётся live-reload).
+// Без allowedDevOrigins Next.js в `next dev` режет /_next/* с чужого Host
+// (туннель, дев-домен). DEV_TUNNEL_ORIGIN — один хост или список через запятую
+// (ngrok, interviewly.top). См. docs/dev/telegram-auth-manual-testing.md.
+const allowedDevOrigins = (process.env.DEV_TUNNEL_ORIGIN ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 const nextConfig: NextConfig = {
-  allowedDevOrigins: process.env.DEV_TUNNEL_ORIGIN ? [process.env.DEV_TUNNEL_ORIGIN] : undefined,
+  allowedDevOrigins: allowedDevOrigins.length > 0 ? allowedDevOrigins : undefined,
 };
 
 export default nextConfig;

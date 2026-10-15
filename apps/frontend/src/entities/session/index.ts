@@ -438,6 +438,11 @@ export interface MySessionState {
   userId: string;
 
   /**
+   * Публичные данные текущего пользователя.
+   */
+  user: SessionUserSummary;
+
+  /**
    * Является ли пользователь владельцем сессии - владелец впускает участников.
    */
   isOwner: boolean;
@@ -788,4 +793,3 @@ export interface EditorState {
 export { appendSessionHint, sessionHintsQueryKey, useSessionHints } from "./use-session-hints";
 export { demoTaskQueryKey, showDemoTask, useDemoTask } from "./use-demo-task";
 export { applyEditorOpen, useEditorOpenSync } from "./use-editor-open";
-

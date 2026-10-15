@@ -31,6 +31,7 @@ export default tseslint.config(
       "node_modules",
       ".next",
       "storybook-static",
+      "next-env.d.ts",
     ],
   },
   js.configs.recommended,

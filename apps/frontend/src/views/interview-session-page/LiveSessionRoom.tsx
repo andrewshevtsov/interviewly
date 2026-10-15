@@ -42,6 +42,11 @@ export interface LiveSessionRoomProps {
   currentUserId: string;
 
   /**
+   * Имя текущего пользователя для журнала запусков кода
+   */
+  currentUserName: string;
+
+  /**
    * AI-подсказки запрашивает только кандидат
    */
   isCandidate: boolean;
@@ -73,12 +78,30 @@ interface RoomWorkspaceProps extends LiveSessionRoomProps {
  * @returns {import('react').ReactNode} Шапка, видео и редактор кода
  */
 function RoomWorkspace(props: RoomWorkspaceProps) {
-  const { sessionId, isOwner, currentUserId, isCandidate, isActive, editorOpen, mediaUnavailable } = props;
+  const {
+    sessionId,
+    isOwner,
+    currentUserId,
+    currentUserName,
+    isCandidate,
+    isActive,
+    editorOpen,
+    mediaUnavailable,
+  } = props;
   const t = useTranslations("session");
   useEditorOpenSync(sessionId);
+
+  /**
+   * Загружает настройки текущей сессии.
+   * @returns {ReturnType<typeof sessionApi.get>} Сессия без списка участников.
+   */
+  function getSession() {
+    return sessionApi.get(sessionId);
+  }
+
   const sessionQuery = useQuery({
     queryKey: ["sessions", sessionId],
-    queryFn: () => sessionApi.get(sessionId),
+    queryFn: getSession,
   });
   const editorLanguage = sessionQuery.data
     ? EDITOR_LANGUAGES[sessionQuery.data.editorLanguage]
@@ -119,6 +142,7 @@ function RoomWorkspace(props: RoomWorkspaceProps) {
           <SessionCodeEditor
             sessionId={sessionId}
             currentUserId={currentUserId}
+            currentUserName={currentUserName}
             language={editorLanguage}
           />
         </div>
@@ -146,7 +170,7 @@ export function LiveSessionRoom(props: LiveSessionRoomProps) {
   /**
    * LiveKitRoom сообщает сюда и об ошибках подключения, и об ошибках захвата камеры/микрофона;
    * сессию обрывают только первые - без камеры пользователь остаётся в комнате.
-   * @param {Error} error
+   * @param {Error} error - Ошибка LiveKit (подключение или захват медиа).
    * @returns {void}
    */
   function handleRoomError(error: Error): void {

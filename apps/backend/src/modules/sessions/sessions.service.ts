@@ -191,13 +191,19 @@ export class SessionsService {
     userId: string,
   ): Promise<MySessionStateResponse> {
     const session = await this.requireSession(sessionId);
-    const [participant, latestRequest] = await Promise.all([
+    const [participant, latestRequest, user] = await Promise.all([
       this.sessionsRepository.findParticipant(sessionId, userId),
       this.sessionsRepository.findLatestAccessRequest(sessionId, userId),
+      this.sessionsRepository.findUserById(userId),
     ]);
+
+    if (!user) {
+      throw new NotFoundException(`User "${userId}" not found`);
+    }
 
     return new MySessionStateResponse({
       userId,
+      user,
       isOwner: session.ownerId === userId,
       sessionStatus: session.status,
       access: session.access,

@@ -12,7 +12,7 @@ export const FLIP_DURATION_MS = 500;
 const FLIP_EASING = "cubic-bezier(0.4, 0, 0.2, 1)";
 const FLIP_SELECTOR = "[data-flip-id]";
 const COUNTER_SELECTOR = "[data-flip-counter]";
-// scale(1) - натуральный размер; обратный масштаб к scaleX - NATURAL_SCALE / scaleX
+// Натуральный размер (scale(1)); обратный масштаб к scaleX - NATURAL_SCALE / scaleX
 const NATURAL_SCALE = 1;
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
