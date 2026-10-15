@@ -162,7 +162,10 @@ fi
 
 compose up -d postgres livekit
 # Collaboration без GHCR-образа: собираем из клона (без bind-mount в prod).
-compose up -d --build collaboration
+# Только в provision: параллельные деплои frontend/backend иначе пересоздают его одновременно.
+if [ -z "${SERVICE}" ]; then
+  compose up -d --build collaboration
+fi
 
 if [ -n "${SERVICE}" ]; then
   if [ -z "${IMAGE}" ] || [ -z "${GHCR_USER}" ]; then
