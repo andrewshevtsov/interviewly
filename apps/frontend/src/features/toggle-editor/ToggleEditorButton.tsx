@@ -12,7 +12,7 @@ import { applyEditorOpen, sessionApi } from "@/entities/session";
  */
 export interface ToggleEditorButtonProps {
   /**
-   * id сессии
+   * Идентификатор сессии
    */
   sessionId: string;
 

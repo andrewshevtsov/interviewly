@@ -1,0 +1,31 @@
+# TLS-прокси для прода. WebSocket (LiveKit signaling, collaboration) идут по
+# wss:// через 443 — иначе браузер на https-сайте блокирует ws:// (mixed content).
+#
+# Сертификаты: Caddy сам получает Let's Encrypt (нужны открытые 80/443, DNS на сервер
+# и постоянный том на /data, иначе сертификаты выписываются заново).
+# Подстановка домена: server.sh пишет PUBLIC_HOST вместо interviewly.top при деплое.
+#
+# RTC (UDP/TCP 7881/7882) остаётся на хост напрямую — LiveKit node_ip = публичный IP.
+
+{
+	admin off
+}
+
+interviewly.top, www.interviewly.top {
+	# Backend не знает префикса /api (маршруты /auth/..., /sessions/...), поэтому режем его.
+	handle_path /api/* {
+		reverse_proxy 172.17.0.1:4000
+	}
+
+	handle {
+		reverse_proxy 172.17.0.1:3000
+	}
+}
+
+livekit.interviewly.top {
+	reverse_proxy 172.17.0.1:7880
+}
+
+collaboration.interviewly.top {
+	reverse_proxy 172.17.0.1:1234
+}

@@ -9,8 +9,9 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/backend/package.json ./apps/backend/package.json
 COPY apps/frontend/package.json ./apps/frontend/package.json
 COPY apps/collaboration/package.json ./apps/collaboration/package.json
+# Новый workspace manifest нужен pnpm даже при сборке только backend.
+COPY apps/coderunner/package.json ./apps/coderunner/package.json
 COPY patches ./patches
-
 
 RUN pnpm config set fetch-timeout 500000 && \
     pnpm config set fetch-retry-mintimeout 100000 && \
@@ -19,6 +20,14 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
+# prisma.config.ts требует DATABASE_URL, а .env в образ не попадает (.dockerignore).
+# Для generate подключение не открывается, поэтому достаточно заглушки; реальный адрес приходит в runtime.
+RUN DATABASE_URL=postgresql://build:build@localhost:5432/build \
+    pnpm --filter @app/backend exec prisma generate && \
+    pnpm --filter @app/backend run build
+
+ENV NODE_ENV=production
+
 EXPOSE 4000
 
-CMD ["sh", "-c", "pnpm run prisma-generate && pnpm run back-dev"]
+CMD ["sh", "-c", "pnpm --filter @app/backend exec prisma migrate deploy && pnpm --filter @app/backend exec prisma db seed && pnpm --filter @app/backend run start:prod"]

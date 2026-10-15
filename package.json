@@ -11,6 +11,7 @@
   "scripts": {
     "back-dev": "pnpm --filter @app/backend run start:dev",
     "collaboration-dev": "pnpm --filter @app/collaboration run dev",
+    "coderunner-dev": "pnpm --filter @app/coderunner run start:dev",
     "front-dev": "pnpm --filter @app/frontend run dev",
     "prisma-generate": "pnpm --filter @app/backend prisma-generate",
     "db-dev": "docker compose up -d --wait postgres livekit redis mailpit",
@@ -22,6 +23,14 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "husky": "^9.1.7"
+    "@eslint/eslintrc": "^3.3.6",
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^24.13.3",
+    "eslint": "10.1.0",
+    "globals": "^17.0.0",
+    "husky": "^9.1.7",
+    "prettier": "^3.9.6",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.67.0"
   }
 }
