@@ -1,7 +1,8 @@
 # TLS-прокси для прода. WebSocket (LiveKit signaling, collaboration) идут по
 # wss:// через 443 — иначе браузер на https-сайте блокирует ws:// (mixed content).
 #
-# Сертификаты: Cloudflare Origin CA (или свои) в /etc/caddy/certs/.
+# Сертификаты: Caddy сам получает Let's Encrypt (нужны открытые 80/443, DNS на сервер
+# и постоянный том на /data, иначе сертификаты выписываются заново).
 # Подстановка домена: server.sh пишет PUBLIC_HOST вместо interviewly.top при деплое.
 #
 # RTC (UDP/TCP 7881/7882) остаётся на хост напрямую — LiveKit node_ip = публичный IP.
@@ -11,8 +12,6 @@
 }
 
 interviewly.top, www.interviewly.top {
-	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
-
 	handle /api* {
 		reverse_proxy 172.17.0.1:4000
 	}
@@ -23,11 +22,9 @@ interviewly.top, www.interviewly.top {
 }
 
 livekit.interviewly.top {
-	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
 	reverse_proxy 172.17.0.1:7880
 }
 
 collaboration.interviewly.top {
-	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
 	reverse_proxy 172.17.0.1:1234
 }
