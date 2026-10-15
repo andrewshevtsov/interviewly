@@ -107,6 +107,7 @@ jobs:
       - name: Install tools and sync the repository
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
+          PUBLIC_HOST: ${{ vars.PUBLIC_HOST || 'interviewly.top' }}
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_KEY: ${{ secrets.SSH_KEY }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
@@ -152,6 +153,7 @@ jobs:
       - name: Load image on the server
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
+          PUBLIC_HOST: ${{ vars.PUBLIC_HOST || 'interviewly.top' }}
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_KEY: ${{ secrets.SSH_KEY }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
@@ -197,6 +199,7 @@ jobs:
       - name: Load image on the server
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
+          PUBLIC_HOST: ${{ vars.PUBLIC_HOST || 'interviewly.top' }}
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_KEY: ${{ secrets.SSH_KEY }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
