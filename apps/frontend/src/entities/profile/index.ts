@@ -29,6 +29,11 @@ export interface Profile {
    * Free-form bio text shown on the user's public card.
    */
   bio: string;
+
+  /**
+   * Whether the card is shown on the participant showcase.
+   */
+  showcaseVisible: boolean;
 }
 
 /**
@@ -39,6 +44,7 @@ export const EMPTY_PROFILE: Profile = {
   level: "middle",
   stack: [],
   bio: "",
+  showcaseVisible: false,
 };
 
 /**

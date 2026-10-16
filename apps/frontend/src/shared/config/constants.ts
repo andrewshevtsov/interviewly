@@ -34,3 +34,19 @@ export const TOGGLE_UNCHECKED_CLASSES =
     "border-border text-muted-foreground hover:text-foreground transition-colors";
 export const TOGGLE_CHECKED_CLASSES =
     "peer-checked:border-primary peer-checked:bg-primary peer-checked:text-primary-foreground";
+
+/**
+ * Технологии профиля и фильтра витрины
+ */
+export const STACK_OPTIONS = [
+    "React",
+    "TypeScript",
+    "Next.js",
+    "Node.js",
+    "Python",
+    "Go",
+    "PostgreSQL",
+    "Docker",
+    "Rust",
+    "Kubernetes",
+];

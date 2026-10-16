@@ -13,6 +13,7 @@ const row = (overrides: Partial<ShowcaseRow> = {}): ShowcaseRow => ({
   bio: null,
   user: { firstName: 'Ivan', lastName: 'Petrov', _count: { sessionParticipations: 3 } },
   inSession: false,
+  latestResponse: null,
   ...overrides,
 });
 
@@ -72,7 +73,72 @@ describe('ShowcaseService', () => {
     expect(items[0]?.name).toBe('Ivan Petrov');
     expect(items[1]?.name).toBe('Clara');
     expect(Object.keys(items[0] ?? {}).sort()).toEqual(
-      ['bio', 'id', 'inSession', 'interviewsCount', 'level', 'name', 'role', 'stack'],
+      ['bio', 'id', 'inSession', 'interviewsCount', 'level', 'myResponse', 'name', 'role', 'stack'],
+    );
+  });
+
+  describe('myResponse: что мешает откликнуться снова', () => {
+    const HOUR = 60 * 60 * 1000;
+    const latest = (overrides: Partial<NonNullable<ShowcaseRow['latestResponse']>>) => ({
+      status: 'PENDING' as const,
+      scheduledAt: new Date(Date.now() + 24 * HOUR),
+      reviewedAt: null,
+      timeMismatch: false,
+      sessionStatus: null,
+      ...overrides,
+    });
+    const myResponseOf = async (latestResponse: ShowcaseRow['latestResponse']) => {
+      repository.findPage.mockResolvedValue([row({ latestResponse })]);
+      return (await service.findPage('viewer', query())).items[0]?.myResponse;
+    };
+
+    it('без откликов блокировки нет', async () => {
+      await expect(myResponseOf(null)).resolves.toBeNull();
+    });
+
+    it('отклик в ожидании: ждём ответа', async () => {
+      await expect(myResponseOf(latest({}))).resolves.toEqual({ status: 'PENDING', canRetryAt: null });
+    });
+
+    it('просроченный отклик в ожидании не мешает', async () => {
+      await expect(myResponseOf(latest({ scheduledAt: new Date(Date.now() - HOUR) }))).resolves.toBeNull();
+    });
+
+    it('после отказа действует пауза 48 часов и отдаётся дата её конца', async () => {
+      const reviewedAt = new Date(Date.now() - HOUR);
+      const mine = await myResponseOf(latest({ status: 'REJECTED', reviewedAt }));
+
+      expect(mine).toEqual({ status: 'REJECTED', canRetryAt: new Date(reviewedAt.getTime() + 48 * HOUR) });
+    });
+
+    it('пауза кончилась или отказ из-за времени: блокировки нет', async () => {
+      await expect(
+        myResponseOf(latest({ status: 'REJECTED', reviewedAt: new Date(Date.now() - 49 * HOUR) })),
+      ).resolves.toBeNull();
+      await expect(
+        myResponseOf(latest({ status: 'REJECTED', reviewedAt: new Date(Date.now() - HOUR), timeMismatch: true })),
+      ).resolves.toBeNull();
+    });
+
+    it.each(['CANCELLED', 'EXPIRED'] as const)('статус %s не блокирует повтор', async (status) => {
+      await expect(myResponseOf(latest({ status }))).resolves.toBeNull();
+    });
+
+    it.each(['SCHEDULED', 'READY', 'ACTIVE'] as const)(
+      'принятый отклик с действующей встречей (сессия %s) блокирует повтор',
+      async (sessionStatus) => {
+        await expect(myResponseOf(latest({ status: 'ACCEPTED', sessionStatus }))).resolves.toEqual({
+          status: 'ACCEPTED',
+          canRetryAt: null,
+        });
+      },
+    );
+
+    it.each(['CANCELLED', 'COMPLETED'] as const)(
+      'принятый отклик, чья встреча %s, не блокирует повтор',
+      async (sessionStatus) => {
+        await expect(myResponseOf(latest({ status: 'ACCEPTED', sessionStatus }))).resolves.toBeNull();
+      },
     );
   });
 });

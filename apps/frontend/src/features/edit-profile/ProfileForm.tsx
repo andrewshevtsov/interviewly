@@ -7,7 +7,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { SubmitEvent } from "react";
 
-import { PROFILE_FIELDS, TOGGLE_CHECKED_CLASSES, TOGGLE_UNCHECKED_CLASSES } from "@/shared/config/constants";
+import { getHttpMessage, getHttpStatus } from "@/shared/api/http-client";
+import {
+  PROFILE_FIELDS,
+  STACK_OPTIONS,
+  TOGGLE_CHECKED_CLASSES,
+  TOGGLE_UNCHECKED_CLASSES,
+} from "@/shared/config/constants";
 import { cn } from "@/shared/lib/cn";
 import type { MessageKey } from "@/shared/i18n";
 import { useTranslations } from "@/shared/i18n-context";
@@ -34,24 +40,22 @@ interface LevelOption {
   labelKey: ProfileLevel;
 }
 
+const HTTP_BAD_REQUEST = 400;
+
 const LEVELS: LevelOption[] = [
   { id: "junior", labelKey: "junior" },
   { id: "middle", labelKey: "middle" },
   { id: "senior", labelKey: "senior" },
 ];
 
-const STACK_OPTIONS = [
-  "React",
-  "TypeScript",
-  "Next.js",
-  "Node.js",
-  "Python",
-  "Go",
-  "PostgreSQL",
-  "Docker",
-  "Rust",
-  "Kubernetes",
-];
+/**
+ * Ошибка включения витрины: не заполнены роль или стек.
+ * @param {unknown} error - Ошибка сохранения профиля.
+ * @returns {boolean} `true`, если обязательные поля витрины не заполнены.
+ */
+function isShowcaseRequirementError(error: unknown): boolean {
+  return getHttpStatus(error) === HTTP_BAD_REQUEST && getHttpMessage(error).includes("required to appear in the showcase");
+}
 
 /**
  * Props for {@link ProfileForm}.
@@ -110,7 +114,13 @@ export function ProfileForm(props: ProfileFormProps) {
     >;
     const stack = formData.getAll("stack") as string[];
 
-    saveMutation.mutate({ role, level: level as ProfileLevel, stack, bio });
+    saveMutation.mutate({
+      role,
+      level: level as ProfileLevel,
+      stack,
+      bio,
+      showcaseVisible: formData.has("showcaseVisible"),
+    });
   }
 
   return (
@@ -187,7 +197,24 @@ export function ProfileForm(props: ProfileFormProps) {
           </div>
         </div>
 
-        {saveMutation.isError && <p className="text-sm text-destructive">{t("saveError")}</p>}
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            name="showcaseVisible"
+            defaultChecked={profile.showcaseVisible}
+            className="mt-1 h-4 w-4 accent-primary"
+          />
+          <span>
+            <span className="block text-sm font-medium">{t("showcaseVisible")}</span>
+            <span className="block text-xs text-muted-foreground">{t("showcaseVisibleHint")}</span>
+          </span>
+        </label>
+
+        {saveMutation.isError && (
+          <p className="text-sm text-destructive">
+            {isShowcaseRequirementError(saveMutation.error) ? t("saveErrorShowcase") : t("saveError")}
+          </p>
+        )}
         {saveMutation.isSuccess && <p className="text-sm text-muted-foreground">{t("saveSuccess")}</p>}
 
         <Button type="submit" isLoading={saveMutation.isPending}>

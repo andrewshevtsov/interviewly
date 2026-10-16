@@ -8,11 +8,13 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '../../prisma/generated/client.ts';
 import type { ShowcaseResponse } from '../../prisma/generated/client.ts';
+import type { SessionStatus } from '../../prisma/generated/enums.ts';
 import type { NotificationsService } from '../notifications/notifications.service.ts';
 import type { SessionsService } from '../sessions/sessions.service.ts';
 import type {
   ShowcaseResponsesRepository,
   CardForResponse,
+  LatestResponseRow,
   ReviewTarget,
 } from './showcase-responses.repository.ts';
 import { ShowcaseResponsesService } from './showcase-responses.service.ts';
@@ -42,10 +44,21 @@ const response = (overrides: Partial<ShowcaseResponse> = {}): ShowcaseResponse =
   rejectionReason: null,
   reviewedAt: null,
   timeMismatch: false,
+  ownerSeenAt: null,
+  responderSeenAt: null,
   sessionId: null,
   createdAt: NOW,
   updatedAt: NOW,
   ...overrides,
+});
+
+/** Последний отклик с сессией, как его отдаёт `findLatest` */
+const latestOf = (
+  overrides: Partial<ShowcaseResponse> = {},
+  sessionStatus: SessionStatus | null = null,
+): LatestResponseRow => ({
+  ...response(overrides),
+  session: sessionStatus && { status: sessionStatus },
 });
 
 const target = (overrides: Partial<ReviewTarget> = {}): ReviewTarget => ({
@@ -79,6 +92,8 @@ describe('ShowcaseResponsesService', () => {
       attachSession: vi.fn(),
       findIncoming: vi.fn(),
       findOutgoing: vi.fn(),
+      countNewEvents: vi.fn(),
+      markSeen: vi.fn(),
     } as unknown as Mocked<ShowcaseResponsesRepository>;
     sessions = { createMatchSession: vi.fn() } as unknown as Mocked<SessionsService>;
     notifications = {
@@ -170,7 +185,7 @@ describe('ShowcaseResponsesService', () => {
     });
 
     it('не даёт откликнуться второй раз, пока прошлый в ожидании', async () => {
-      repository.findLatest.mockResolvedValue(response({ status: 'PENDING' }));
+      repository.findLatest.mockResolvedValue(latestOf({ status: 'PENDING' }));
 
       await expect(service.respond('me', 'card', dto)).rejects.toBeInstanceOf(ConflictException);
     });
@@ -183,7 +198,7 @@ describe('ShowcaseResponsesService', () => {
 
     it('не даёт повторить отклик раньше чем через 48 часов после отказа', async () => {
       repository.findLatest.mockResolvedValue(
-        response({ status: 'REJECTED', reviewedAt: hoursFromNow(-47), rejectionReason: 'x' }),
+        latestOf({ status: 'REJECTED', reviewedAt: hoursFromNow(-47), rejectionReason: 'x' }),
       );
 
       await expect(service.respond('me', 'card', dto)).rejects.toThrow(/after 2026-10-10T13:00:00.000Z/);
@@ -191,7 +206,7 @@ describe('ShowcaseResponsesService', () => {
 
     it('разрешает повтор через 48 часов после отказа', async () => {
       repository.findLatest.mockResolvedValue(
-        response({ status: 'REJECTED', reviewedAt: hoursFromNow(-48), rejectionReason: 'x' }),
+        latestOf({ status: 'REJECTED', reviewedAt: hoursFromNow(-48), rejectionReason: 'x' }),
       );
 
       await expect(service.respond('me', 'card', dto)).resolves.toBeDefined();
@@ -199,17 +214,40 @@ describe('ShowcaseResponsesService', () => {
 
     it('разрешает сразу предложить другое время, если отказ был из-за времени', async () => {
       repository.findLatest.mockResolvedValue(
-        response({ status: 'REJECTED', reviewedAt: hoursFromNow(-1), rejectionReason: 'x', timeMismatch: true }),
+        latestOf({ status: 'REJECTED', reviewedAt: hoursFromNow(-1), rejectionReason: 'x', timeMismatch: true }),
       );
 
       await expect(service.respond('me', 'card', dto)).resolves.toBeDefined();
     });
 
-    it.each(['ACCEPTED', 'CANCELLED', 'EXPIRED'] as const)('разрешает новый отклик после статуса %s', async (status) => {
-      repository.findLatest.mockResolvedValue(response({ status, reviewedAt: hoursFromNow(-1) }));
+    it.each(['CANCELLED', 'EXPIRED'] as const)('разрешает новый отклик после статуса %s', async (status) => {
+      repository.findLatest.mockResolvedValue(latestOf({ status, reviewedAt: hoursFromNow(-1) }));
 
       await expect(service.respond('me', 'card', dto)).resolves.toBeDefined();
     });
+
+    it.each(['SCHEDULED', 'READY', 'ACTIVE'] as const)(
+      'не даёт откликнуться снова, пока встреча по принятому отклику действует (сессия %s)',
+      async (sessionStatus) => {
+        repository.findLatest.mockResolvedValue(
+          latestOf({ status: 'ACCEPTED', reviewedAt: hoursFromNow(-1) }, sessionStatus),
+        );
+
+        await expect(service.respond('me', 'card', dto)).rejects.toThrow(/meeting scheduled/);
+        expect(repository.create).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(['CANCELLED', 'COMPLETED'] as const)(
+      'разрешает новый отклик, когда встреча по принятому отклику %s',
+      async (sessionStatus) => {
+        repository.findLatest.mockResolvedValue(
+          latestOf({ status: 'ACCEPTED', reviewedAt: hoursFromNow(-1) }, sessionStatus),
+        );
+
+        await expect(service.respond('me', 'card', dto)).resolves.toBeDefined();
+      },
+    );
 
     it('не даёт откликнуться, если у откликающегося уже есть интервью в это время', async () => {
       repository.findBusyUserIds.mockResolvedValue(new Set(['me']));
@@ -434,11 +472,48 @@ describe('ShowcaseResponsesService', () => {
     });
   });
 
+  describe('новые события', () => {
+    it('отдаёт число непросмотренных событий по входящим и исходящим', async () => {
+      repository.countNewEvents.mockResolvedValue({ incoming: 3, outgoing: 1 });
+
+      await expect(service.countNewEvents('me')).resolves.toEqual({ incoming: 3, outgoing: 1 });
+      expect(repository.countNewEvents).toHaveBeenCalledWith('me');
+    });
+
+    it('входящие: все полученные в списке отклики помечаются увиденными на момент до запроса', async () => {
+      const row = (id: string) => ({
+        ...response({ id }),
+        session: null,
+        responder: { firstName: 'A', lastName: null, profile: null },
+      });
+      repository.findIncoming.mockResolvedValue([row('a'), row('b')]);
+
+      await service.findIncoming('owner');
+
+      expect(repository.markSeen).toHaveBeenCalledWith('owner', ['a', 'b'], NOW);
+    });
+
+    it('исходящие: полученные отклики помечаются увиденными автором', async () => {
+      repository.findOutgoing.mockResolvedValue([
+        {
+          ...response({ id: 'o' }),
+          session: null,
+          card: { id: 'card', role: 'Backend', user: { firstName: 'Ivan', lastName: null } },
+        },
+      ]);
+
+      await service.findOutgoing('me');
+
+      expect(repository.markSeen).toHaveBeenCalledWith('responder', ['o'], NOW);
+    });
+  });
+
   describe('списки', () => {
     it('входящие: показывают время, роль откликнувшегося и противоположную роль владельца без контактов', async () => {
       repository.findIncoming.mockResolvedValue([
         {
           ...response({ role: 'INTERVIEWER' }),
+          session: { status: 'SCHEDULED' },
           responder: {
             firstName: 'Ivan',
             lastName: 'Petrov',
@@ -456,13 +531,14 @@ describe('ShowcaseResponsesService', () => {
         ownerRole: 'CANDIDATE',
         scheduledAt: SLOT,
         responder: { name: 'Ivan Petrov', title: 'Backend', level: 'senior', stack: ['NestJS'] },
+        sessionStatus: 'SCHEDULED',
       });
       expect(JSON.stringify(item)).not.toMatch(/email|telegram/i);
     });
 
     it('входящие: у откликнувшегося без профиля поля профиля пустые', async () => {
       repository.findIncoming.mockResolvedValue([
-        { ...response(), responder: { firstName: 'Clara', lastName: null, profile: null } },
+        { ...response(), session: null, responder: { firstName: 'Clara', lastName: null, profile: null } },
       ]);
 
       const [item] = await service.findIncoming('owner');
@@ -476,12 +552,14 @@ describe('ShowcaseResponsesService', () => {
         {
           ...response({ status: 'REJECTED', reviewedAt: hoursFromNow(-1), rejectionReason: 'Не сейчас' }),
           card: cardSummary,
+          session: null,
         },
         {
           ...response({ id: 't', status: 'REJECTED', reviewedAt: hoursFromNow(-1), rejectionReason: 'Время', timeMismatch: true }),
           card: cardSummary,
+          session: null,
         },
-        { ...response({ id: 'p', status: 'PENDING' }), card: cardSummary },
+        { ...response({ id: 'p', status: 'PENDING' }), card: cardSummary, session: null },
       ]);
 
       const [rejected, timeMismatch, pending] = await service.findOutgoing('me');
@@ -503,24 +581,24 @@ describe('RejectShowcaseResponseDto', () => {
   const parse = (body: object) =>
     pipe.transform(body, { type: 'body', metatype: RejectShowcaseResponseDto });
 
-  it('принимает причину из 100 и 500 символов', async () => {
-    await expect(parse({ reason: 'а'.repeat(100) })).resolves.toBeInstanceOf(RejectShowcaseResponseDto);
+  it('принимает причину из 30 и 500 символов', async () => {
+    await expect(parse({ reason: 'а'.repeat(30) })).resolves.toBeInstanceOf(RejectShowcaseResponseDto);
     await expect(parse({ reason: 'а'.repeat(500) })).resolves.toBeInstanceOf(RejectShowcaseResponseDto);
   });
 
   it('отклоняет слишком короткую, слишком длинную и пустую причину', async () => {
-    await expect(parse({ reason: 'а'.repeat(99) })).rejects.toThrow();
+    await expect(parse({ reason: 'а'.repeat(29) })).rejects.toThrow();
     await expect(parse({ reason: 'а'.repeat(501) })).rejects.toThrow();
     await expect(parse({})).rejects.toThrow();
   });
 
-  it('считает длину после trim: пробелы не набирают нужные 100 символов', async () => {
-    await expect(parse({ reason: `${' '.repeat(50)}${'а'.repeat(60)}${' '.repeat(50)}` })).rejects.toThrow();
+  it('считает длину после trim: пробелы не набирают нужные 30 символов', async () => {
+    await expect(parse({ reason: `${' '.repeat(50)}${'а'.repeat(20)}${' '.repeat(50)}` })).rejects.toThrow();
   });
 
   it('принимает флаг timeMismatch только булевым', async () => {
-    await expect(parse({ reason: 'а'.repeat(100), timeMismatch: true })).resolves.toBeDefined();
-    await expect(parse({ reason: 'а'.repeat(100), timeMismatch: 'yes' })).rejects.toThrow();
+    await expect(parse({ reason: 'а'.repeat(30), timeMismatch: true })).resolves.toBeDefined();
+    await expect(parse({ reason: 'а'.repeat(30), timeMismatch: 'yes' })).rejects.toThrow();
   });
 });
 

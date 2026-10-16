@@ -1,4 +1,4 @@
-import { Exclude } from 'class-transformer';
+import { Exclude, Expose } from 'class-transformer';
 import type { User } from '../../../prisma/generated/client.ts';
 import { UserStatus } from '../../../prisma/generated/enums.ts';
 
@@ -27,6 +27,12 @@ export class UserEntity implements User {
 
   @Exclude()
   passwordHash!: string | null;
+
+  /** Хэш наружу не уходит. Интерфейсу нужно знать, спрашивать ли пароль при смене email */
+  @Expose()
+  get hasPassword(): boolean {
+    return this.passwordHash !== null;
+  }
 
   constructor(partial: Partial<User>) {
     Object.assign(this, partial);

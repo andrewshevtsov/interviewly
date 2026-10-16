@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { authApi } from "@/shared/api/auth-api";
 import { getLocalizedHref } from "@/shared/i18n";
 import { useLocale, useTranslations } from "@/shared/i18n-context";
+import { DEFAULT_AFTER_AUTH_PATH } from "@/shared/lib/return-path";
 import { useAuthStore } from "@/shared/model/auth-store";
 import { Button } from "@/shared/ui/button";
 import { Checkbox } from "@/shared/ui/checkbox";
@@ -39,13 +40,13 @@ export function LoginForm(props: LoginFormProps) {
   const loginMutation = useMutation({
     mutationFn: authApi.login,
     /**
-     * Stores the new access token and redirects back to `returnPath` or to the profile page.
+     * Stores the new access token and redirects back to `returnPath` or to the showcase.
      * @param {{ accessToken: string }} tokens - The login response.
      * @returns {void}
      */
     onSuccess: (tokens) => {
       setAuthenticated(tokens.accessToken);
-      router.push(getLocalizedHref(returnPath ?? "/profile", locale));
+      router.push(getLocalizedHref(returnPath ?? DEFAULT_AFTER_AUTH_PATH, locale));
     },
   });
 

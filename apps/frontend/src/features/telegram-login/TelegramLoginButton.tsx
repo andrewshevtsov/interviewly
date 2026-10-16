@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { authApi, type TelegramAuthPayload } from "@/shared/api/auth-api";
 import { getLocalizedHref } from "@/shared/i18n";
 import { useLocale, useTranslations } from "@/shared/i18n-context";
+import { DEFAULT_AFTER_AUTH_PATH } from "@/shared/lib/return-path";
 import { useAuthStore } from "@/shared/model/auth-store";
 
 const TELEGRAM_WIDGET_SCRIPT_SRC = "https://telegram.org/js/telegram-widget.js?22";
@@ -61,13 +62,13 @@ export function TelegramLoginButton(props: TelegramLoginButtonProps) {
   const telegramLoginMutation = useMutation({
     mutationFn: authApi.telegramLogin,
     /**
-     * Stores the new access token and redirects back to `returnPath` or to the profile page.
+     * Stores the new access token and redirects back to `returnPath` or to the showcase.
      * @param {{ accessToken: string }} tokens - The login response.
      * @returns {void}
      */
     onSuccess: (tokens) => {
       setAuthenticated(tokens.accessToken);
-      router.push(getLocalizedHref(returnPath ?? "/profile", locale));
+      router.push(getLocalizedHref(returnPath ?? DEFAULT_AFTER_AUTH_PATH, locale));
     },
   });
 

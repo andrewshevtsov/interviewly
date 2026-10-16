@@ -46,9 +46,39 @@ describe('UpdateMeDto', () => {
     },
   );
 
+  it('очищает фамилию и ник пустой строкой', async () => {
+    const dto: unknown = await validate({ lastName: '  ', telegramUsername: '' });
+
+    expect(dto).toMatchObject({ lastName: null, telegramUsername: null });
+  });
+
+  it('приводит ник к виду без @ и пробелов', async () => {
+    await expect(validate({ telegramUsername: ' @Ivan_Petrov ' })).resolves.toMatchObject({
+      telegramUsername: 'Ivan_Petrov',
+    });
+  });
+
+  it.each(['abcd', 'has space', 'кириллица', 'a'.repeat(33)])('отклоняет некорректный ник %s', async (name) => {
+    await expect(validate({ telegramUsername: name })).rejects.toThrow();
+  });
+
   it('принимает имя, фамилию и часовой пояс', async () => {
     await expect(
       validate({ firstName: 'Ivan', lastName: 'Petrov', timeZone: 'Europe/Moscow' }),
     ).resolves.toBeInstanceOf(UpdateMeDto);
+  });
+});
+
+describe('UserEntity', () => {
+  it('отдаёт hasPassword, но не passwordHash', async () => {
+    const { instanceToPlain } = await import('class-transformer');
+    const { UserEntity } = await import('./entities/user-entity.ts');
+
+    const withPassword = instanceToPlain(new UserEntity({ id: 'u', passwordHash: 'secret' }));
+    const withoutPassword = instanceToPlain(new UserEntity({ id: 'u', passwordHash: null }));
+
+    expect(withPassword).toMatchObject({ hasPassword: true });
+    expect(withPassword).not.toHaveProperty('passwordHash');
+    expect(withoutPassword).toMatchObject({ hasPassword: false });
   });
 });
