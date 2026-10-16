@@ -22,7 +22,7 @@ validate_branch_name() {
     return 1
   fi
 
-  if echo "$branch" | grep -qE '^(feature|bugfix|hotfix|experiment)/[a-zA-Z0-9_-]+$'; then
+  if echo "$branch" | grep -qE '^(feature|bugfix|hotfix|experiment|chore|infra)/[a-zA-Z0-9_-]+$'; then
     return 0
   fi
 
@@ -41,6 +41,8 @@ validate_branch_name() {
   echo "  bugfix/<название>       — исправление ошибок"
   echo "  hotfix/<название>       — срочные правки продакшена"
   echo "  experiment/<название>   — прототипы и эксперименты"
+  echo "  chore/<название>        — рутинные задачи"
+  echo "  infra/<название>        — инфраструктура и CI/CD"
   echo "  <клиент>/dev            — клиентская ветка"
   echo "  <название>              — без префикса (не рекомендуется)"
   echo ""
