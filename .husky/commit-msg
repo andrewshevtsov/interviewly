@@ -9,11 +9,20 @@ if echo "$first_line" | grep -qE '^Merge (branch|remote-tracking branch|commit) 
   exit 0
 fi
 
-if ! echo "$first_line" | grep -qE '^[a-zA-Z]'; then
-  echo "❌ Ошибка: Первая строка коммита должна быть заголовком на английском"
-  echo "Формат: <ЗАГОЛОВОК>"
-  echo "Получено: $first_line"
-  exit 1
+branch=$(git symbolic-ref --short -q HEAD)
+
+# Detached HEAD (rebase, cherry-pick) — имени ветки нет, префикс не проверяем
+if [ -n "$branch" ]; then
+  prefix="$branch: "
+  case "$first_line" in
+    "$prefix"[a-zA-Z]*) ;;
+    *)
+      echo "❌ Ошибка: Первая строка должна начинаться с имени ветки и заголовка на английском"
+      echo "Формат: $prefix<Заголовок>"
+      echo "Получено: $first_line"
+      exit 1
+      ;;
+  esac
 fi
 
 second_line=$(echo "$commit_msg" | sed -n '2p')
