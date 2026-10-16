@@ -11,5 +11,8 @@ rtc:
 keys:
   devkey: interviewly_livekit_dev_secret_32chars
 
+# Метрики Prometheus: порт доступен только внутри Docker-сети
+prometheus_port: 6789
+
 logging:
   level: info

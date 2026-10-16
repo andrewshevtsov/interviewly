@@ -28,3 +28,14 @@ services:
     environment:
       NODE_ENV: production
     volumes: !reset []
+
+  # Prometheus наружу не публикуется; Grafana доступна Caddy на docker-мосту хоста.
+  prometheus:
+    ports: !reset []
+
+  grafana:
+    environment:
+      # В проде пароль обязателен, без него compose падает
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Задайте GRAFANA_ADMIN_PASSWORD в .env}
+    ports: !override
+      - "172.17.0.1:3001:3000"
