@@ -97,7 +97,7 @@ export function RegisterForm(props: RegisterFormProps) {
           id="register-last-name"
           type="text"
           placeholder={auth.raw("lastNamePlaceholder")}
-          name="LastName"
+          name="lastName"
         />
       </div>
 

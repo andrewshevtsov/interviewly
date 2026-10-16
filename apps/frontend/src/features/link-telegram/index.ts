@@ -1,0 +1,1 @@
+export { LinkTelegram } from "./LinkTelegram";

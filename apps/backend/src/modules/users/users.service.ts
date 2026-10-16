@@ -96,8 +96,26 @@ export class UsersService {
 
     const user = await this.usersRepository.update(userId, {
       telegramId: profile.telegramId,
-      telegramUsername: profile.telegramUsername,
+      // null, а не undefined: у нового Telegram-аккаунта ника может не быть, старый показывать нельзя
+      telegramUsername: profile.telegramUsername ?? null,
       telegramLinkedAt: new Date(),
+    });
+    return new UserEntity(user);
+  }
+
+  /**
+   * Отвязывает Telegram: уведомления дальше идут на почту. 409, если настоящего email нет.
+   */
+  async unlinkTelegram(userId: string): Promise<UserEntity> {
+    const current = await this.findOne(userId);
+    if (current.email.endsWith(`@${TELEGRAM_PLACEHOLDER_EMAIL_DOMAIN}`)) {
+      throw new ConflictException('Add an email before unlinking Telegram');
+    }
+
+    const user = await this.usersRepository.update(userId, {
+      telegramId: null,
+      telegramUsername: null,
+      telegramLinkedAt: null,
     });
     return new UserEntity(user);
   }
