@@ -141,23 +141,23 @@ export function ChangeEmail() {
               />
             </div>
 
-        {user.hasPassword && (
-          <div className="space-y-2">
-            <Label htmlFor="account-password">{t("currentPassword")}</Label>
-            <Input
-              id="account-password"
-              name="password"
-              type="password"
-              maxLength={PASSWORD_MAX_LENGTH}
-              autoComplete="current-password"
-              required
-            />
-          </div>
-        )}
+            {user.hasPassword && (
+              <div className="space-y-2">
+                <Label htmlFor="account-password">{t("currentPassword")}</Label>
+                <Input
+                  id="account-password"
+                  name="password"
+                  type="password"
+                  maxLength={PASSWORD_MAX_LENGTH}
+                  autoComplete="current-password"
+                  required
+                />
+              </div>
+            )}
 
-        {requestMutation.isError && (
-          <p className="text-sm text-destructive">{t(classifyEmailChangeError(requestMutation.error))}</p>
-        )}
+            {requestMutation.isError && (
+              <p className="text-sm text-destructive">{t(classifyEmailChangeError(requestMutation.error))}</p>
+            )}
 
             <div className="flex gap-3">
               <Button type="submit" isLoading={requestMutation.isPending}>
