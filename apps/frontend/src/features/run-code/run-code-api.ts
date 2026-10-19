@@ -44,9 +44,15 @@ export interface ExecutionResult {
   wallTime: number | null;
 }
 
+/** Подтверждение постановки запуска кода в серверную очередь. */
 export interface QueuedExecution {
+  /** Уникальный идентификатор запуска. */
   executionId: string;
+
+  /** Начальное состояние принятого запуска. */
   status: "QUEUED";
+
+  /** Время постановки в очередь в миллисекундах Unix. */
   queuedAt: number;
 }
 
@@ -57,6 +63,7 @@ export interface QueuedExecution {
  */
 export async function executeCode(request: ExecuteCodeRequest): Promise<QueuedExecution> {
   const { sessionId, ...body } = request;
+
   return httpClient
     .post<QueuedExecution>(`/sessions/${sessionId}/code-executions`, body)
     .then((response) => response.data);

@@ -2,6 +2,7 @@ import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { SessionStatus } from '../../prisma/generated/enums.ts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CodeExecutionsService } from './code-executions.service.ts';
+import type { CodeExecutionJob } from './code-executions.types.ts';
 
 describe('CodeExecutionsService', () => {
   const queue = {
@@ -29,7 +30,7 @@ describe('CodeExecutionsService', () => {
       email: 'ada@example.com',
     });
     collaboration.updateExecution.mockResolvedValue(undefined);
-    queue.add.mockImplementation((_name, data) =>
+    queue.add.mockImplementation((_name: string, data: CodeExecutionJob) =>
       Promise.resolve({ id: data.executionId }),
     );
     service = new CodeExecutionsService(

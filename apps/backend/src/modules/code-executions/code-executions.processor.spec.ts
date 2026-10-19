@@ -13,20 +13,22 @@ const DATA: CodeExecutionJob = {
   queuedAt: Date.now(),
 };
 
+const RESULT = {
+  stdout: '1\n',
+  stderr: '',
+  exitCode: 0,
+  signal: null,
+  status: null,
+  message: null,
+  memory: null,
+  cpuTime: null,
+  wallTime: null,
+};
+
 function setup() {
   const executions = { assertAllowed: vi.fn().mockResolvedValue(undefined) };
   const coderunner = {
-    execute: vi.fn().mockResolvedValue({
-      stdout: '1\n',
-      stderr: '',
-      exitCode: 0,
-      signal: null,
-      status: null,
-      message: null,
-      memory: null,
-      cpuTime: null,
-      wallTime: null,
-    }),
+    execute: vi.fn().mockResolvedValue(RESULT),
   };
   const collaboration = {
     updateExecution: vi.fn().mockResolvedValue(undefined),
@@ -42,8 +44,9 @@ function setup() {
 function createJob(data: CodeExecutionJob = DATA): Job<CodeExecutionJob> {
   return {
     data,
-    updateData: vi.fn().mockImplementation(async (updated) => {
+    updateData: vi.fn().mockImplementation((updated: CodeExecutionJob) => {
       Object.assign(data, updated);
+      return Promise.resolve();
     }),
   } as unknown as Job<CodeExecutionJob>;
 }
@@ -68,7 +71,7 @@ describe('CodeExecutionsProcessor', () => {
     );
     expect(job.updateData).toHaveBeenCalledWith({
       ...DATA,
-      outcome: expect.objectContaining({ status: 'success' }),
+      outcome: { status: 'success', result: RESULT },
     });
     expect(collaboration.updateExecution).toHaveBeenNthCalledWith(
       1,
@@ -129,11 +132,13 @@ describe('CodeExecutionsProcessor', () => {
     expect(coderunner.execute).toHaveBeenCalledTimes(1);
     expect(collaboration.updateExecution).toHaveBeenLastCalledWith(
       'session-id',
-      expect.objectContaining({
+      {
         id: 'execution-id',
+        userName: 'User',
+        startedAt: DATA.queuedAt,
         status: 'success',
-        result: expect.objectContaining({ stdout: '1\n' }),
-      }),
+        result: RESULT,
+      },
     );
   });
 
@@ -149,7 +154,7 @@ describe('CodeExecutionsProcessor', () => {
     expect(coderunner.execute).toHaveBeenCalledTimes(1);
     expect(job.updateData).toHaveBeenCalledWith({
       ...DATA,
-      outcome: expect.objectContaining({ status: 'success' }),
+      outcome: { status: 'success', result: RESULT },
     });
     expect(collaboration.updateExecution).toHaveBeenLastCalledWith(
       'session-id',
