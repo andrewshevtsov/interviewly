@@ -54,12 +54,37 @@ ensure_prod_public_urls() {
   set_env_key "${env_file}" NEXT_PUBLIC_API_URL "https://${PUBLIC_HOST}/api"
   set_env_key "${env_file}" LIVEKIT_URL "wss://livekit.${PUBLIC_HOST}"
   set_env_key "${env_file}" NEXT_PUBLIC_COLLABORATION_URL "wss://collaboration.${PUBLIC_HOST}"
+  set_env_key "${env_file}" GRAFANA_ROOT_URL "https://grafana.${PUBLIC_HOST}"
   set_env_key "${env_file}" FRONTEND_SCRIPT start
   if grep -q '^DEV_TUNNEL_ORIGIN=' "${env_file}"; then
     sed -i "s|^DEV_TUNNEL_ORIGIN=.*|DEV_TUNNEL_ORIGIN=${PUBLIC_HOST},www.${PUBLIC_HOST}|" "${env_file}"
   else
     printf 'DEV_TUNNEL_ORIGIN=%s,www.%s\n' "${PUBLIC_HOST}" "${PUBLIC_HOST}" >> "${env_file}"
   fi
+}
+
+# Пароль-заглушку из .env.example (или отсутствующий ключ) на сервере не оставляем.
+ensure_generated_secret() {
+  local env_file="$1" key="$2"
+  if ! grep -q "^${key}=" "${env_file}" || grep -qx "${key}=password_change_me" "${env_file}"; then
+    set_env_key "${env_file}" "${key}" "$(head -c 24 /dev/urandom | base64 | tr -dc 'A-Za-z0-9')"
+  fi
+}
+
+# Grafana публикуем только если задан Basic auth (файл "логин bcrypt-хеш", см. docs/monitoring.md).
+append_grafana_caddy() {
+  local snippet="${DEPLOY_PATH}/infra/caddy/grafana.caddy"
+  local auth_file="${CADDY_DIR}/grafana-basic-auth"
+  local user hash
+  if [ ! -f "${snippet}" ] || [ ! -f "${auth_file}" ]; then
+    echo "Нет ${auth_file}: Grafana не публикуется через Caddy."
+    return 0
+  fi
+  read -r user hash < "${auth_file}"
+  printf '\n' >> "${CADDY_DIR}/Caddyfile"
+  sed -e "s/interviewly\\.top/${PUBLIC_HOST}/g" \
+    -e "s|__GRAFANA_AUTH_USER__|${user}|" \
+    -e "s|__GRAFANA_AUTH_HASH__|${hash}|" "${snippet}" >> "${CADDY_DIR}/Caddyfile"
 }
 
 sync_caddyfile() {
@@ -70,6 +95,7 @@ sync_caddyfile() {
   mkdir -p "${CADDY_DIR}"
   # Подставляем домен деплоя вместо шаблонного interviewly.top.
   sed "s/interviewly\\.top/${PUBLIC_HOST}/g" "${template}" > "${CADDY_DIR}/Caddyfile"
+  append_grafana_caddy
   if docker_cmd ps -a --format '{{.Names}}' | grep -qx caddy; then
     # Caddyfile примонтирован в контейнер read-only из CADDY_DIR: docker cp и запись изнутри
     # невозможны. Файл выше перезаписан на месте (тот же inode), контейнеру остаётся его перечитать.
@@ -148,6 +174,9 @@ elif is_domain_host; then
   ensure_prod_public_urls "${DEPLOY_PATH}/.env"
 fi
 
+ensure_generated_secret "${DEPLOY_PATH}/.env" GRAFANA_ADMIN_PASSWORD
+ensure_generated_secret "${DEPLOY_PATH}/.env" GRAFANA_DB_PASSWORD
+
 livekit_config="${DEPLOY_PATH}/infra/livekit/livekit.yaml"
 if [ -f "${livekit_config}" ]; then
   # ICE/WebRTC нужен публичный IP origin, не Cloudflare anycast и не домен.
@@ -166,6 +195,7 @@ compose up -d postgres livekit
 # Только в provision: параллельные деплои frontend/backend иначе пересоздают его одновременно.
 if [ -z "${SERVICE}" ]; then
   compose up -d --build collaboration
+  compose up -d prometheus grafana postgres-exporter redis-exporter cadvisor
 fi
 
 if [ -n "${SERVICE}" ]; then
@@ -189,3 +219,7 @@ if [ -n "${SERVICE}" ]; then
       ;;
   esac
 fi
+
+# Включает вход роли grafana_reader (создаётся миграцией backend), пароль берётся из .env
+DOCKER="$(docker info >/dev/null 2>&1 && echo docker || echo 'sudo -n docker')" \
+  bash infra/postgres/grafana-reader.sh

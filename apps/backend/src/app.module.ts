@@ -9,11 +9,13 @@ import { FeedbackModule } from './modules/feedback/feedback.module.ts';
 import { SessionHintsModule } from './modules/session-hints/session-hints.module.ts';
 import { ShowcaseModule } from './modules/showcase/showcase.module.ts';
 import { TelegramBotModule } from './modules/telegram-bot/telegram-bot.module.ts';
+import { MetricsModule } from './infrastructure/metrics/metrics.module.ts';
 import { LeaderboardModule } from './modules/leaderboard/leaderboard.module.ts';
 
 @Module({
   imports: [
     PrismaModule,
+    MetricsModule,
     ConfigModule.forRoot({
       envFilePath: '../../.env',
       isGlobal: true,

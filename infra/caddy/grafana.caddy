@@ -1,0 +1,10 @@
+# Блок Grafana дописывается к Caddyfile в server.sh только если на сервере есть файл
+# с логином и bcrypt-хешем (см. docs/monitoring.md): без него Grafana не публикуется.
+# Плейсхолдеры __GRAFANA_AUTH_*__ подставляет server.sh.
+grafana.interviewly.top {
+	basic_auth {
+		__GRAFANA_AUTH_USER__ __GRAFANA_AUTH_HASH__
+	}
+
+	reverse_proxy 172.17.0.1:3001
+}

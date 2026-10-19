@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import * as bcrypt from 'bcrypt';
+import { MetricsService } from '../../infrastructure/metrics/metrics.service.ts';
 import { LivekitService } from '../../infrastructure/livekit/livekit.service.ts';
 import {
   SessionAccess,
@@ -59,6 +60,7 @@ export class SessionsService {
     private readonly sessionsRepository: SessionsRepository,
     private readonly livekitService: LivekitService,
     private readonly notifications: NotificationsService,
+    private readonly metrics: MetricsService,
   ) {}
 
   async create(
@@ -110,6 +112,7 @@ export class SessionsService {
       },
     });
 
+    this.metrics.countEvent('session_created');
     return new SessionEntity(session);
   }
 
@@ -297,6 +300,7 @@ export class SessionsService {
       requestedRole,
     });
 
+    this.metrics.countEvent('access_request_created');
     return new SessionAccessRequestEntity(created);
   }
 
@@ -344,6 +348,7 @@ export class SessionsService {
       joinedAt: null,
     });
 
+    this.metrics.countEvent('access_request_approved');
     return new SessionAccessRequestEntity(updated);
   }
 
@@ -371,6 +376,7 @@ export class SessionsService {
       },
     );
 
+    this.metrics.countEvent('access_request_rejected');
     return new SessionAccessRequestEntity(updated);
   }
 
@@ -495,6 +501,7 @@ export class SessionsService {
       role: participant.role,
     });
 
+    this.metrics.countEvent('session_joined');
     return new SessionEntity(session);
   }
 
