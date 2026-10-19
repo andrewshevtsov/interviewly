@@ -8,6 +8,8 @@ import { SessionsModule } from './modules/sessions/sessions.module.ts';
 import { FeedbackModule } from './modules/feedback/feedback.module.ts';
 import { SessionHintsModule } from './modules/session-hints/session-hints.module.ts';
 import { ShowcaseModule } from './modules/showcase/showcase.module.ts';
+import { TelegramBotModule } from './modules/telegram-bot/telegram-bot.module.ts';
+import { MetricsModule } from './infrastructure/metrics/metrics.module.ts';
 import { LeaderboardModule } from './modules/leaderboard/leaderboard.module.ts';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
@@ -17,6 +19,7 @@ import { CodeExecutionsModule } from './modules/code-executions/code-executions.
 @Module({
   imports: [
     PrismaModule,
+    MetricsModule,
     ConfigModule.forRoot({
       envFilePath: '../../.env',
       isGlobal: true,
@@ -37,6 +40,7 @@ import { CodeExecutionsModule } from './modules/code-executions/code-executions.
     SessionHintsModule,
     LeaderboardModule,
     ShowcaseModule,
+    TelegramBotModule,
     CodeExecutionsModule,
   ],
   controllers: [],

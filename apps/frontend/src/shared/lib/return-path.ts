@@ -7,6 +7,11 @@ import { getLocalizedHref, type Locale } from "@/shared/i18n";
 export const RETURN_PATH_PARAM = "next";
 
 /**
+ * Куда вести пользователя после регистрации/авторизации, если нет параметра `next`
+ */
+export const DEFAULT_AFTER_AUTH_PATH = "/showcase";
+
+/**
  * Ссылка на страницу входа, после которого пользователь вернётся на `returnPath`
  * @param {string} returnPath - Внутренний путь, например "/ru/sessions/<id>"
  * @param {Locale} locale - Язык страницы входа

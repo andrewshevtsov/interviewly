@@ -116,6 +116,15 @@ export const authApi = {
     return httpClient.post<AccessTokenResponse>("/auth/telegram", payload).then((res) => res.data);
   },
 
+  /**
+   * Привязывает Telegram к текущему аккаунту (`POST /auth/telegram/link`).
+   * @param {TelegramAuthPayload} payload - Подписанные данные Telegram Login Widget.
+   * @returns {Promise<void>} Завершается после привязки.
+   */
+  linkTelegram(payload: TelegramAuthPayload): Promise<void> {
+    return httpClient.post("/auth/telegram/link", payload).then(() => undefined);
+  },
+
   logout(): Promise<void> {
     return httpClient.post("/auth/logout").then(() => undefined);
   },

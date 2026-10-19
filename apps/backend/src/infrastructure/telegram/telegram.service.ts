@@ -30,12 +30,21 @@ export class TelegramService {
   }
 
   async sendMessage(chatId: string, text: string): Promise<void> {
+    await this.call('sendMessage', { chat_id: chatId, text, disable_web_page_preview: true });
+  }
+
+  /** Подписывает бота на webhook; */
+  async setWebhook(url: string, secret: string): Promise<void> {
+    await this.call('setWebhook', { url, secret_token: secret, allowed_updates: ['message'] });
+  }
+
+  private async call(method: string, payload: object): Promise<void> {
     let response: Response;
     try {
-      response = await fetch(`${this.apiUrl}/bot${this.botToken}/sendMessage`, {
+      response = await fetch(`${this.apiUrl}/bot${this.botToken}/${method}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+        body: JSON.stringify(payload),
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
     } catch (error: unknown) {
@@ -49,7 +58,7 @@ export class TelegramService {
 
     const description = await this.readDescription(response);
     const permanent = response.status >= 400 && response.status < 500 && response.status !== 429;
-    this.logger.warn(`Telegram sendMessage failed: ${response.status} ${description}`);
+    this.logger.warn(`Telegram ${method} failed: ${response.status} ${description}`);
     throw new TelegramDeliveryError(`Telegram responded ${response.status}: ${description}`, permanent);
   }
 

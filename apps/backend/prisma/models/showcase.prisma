@@ -28,19 +28,55 @@ model ShowcaseResponse {
   // Предложенное начало встречи. Длительность для проверки пересечений - INTERVIEW_DURATION_MINUTES.
   scheduledAt DateTime @db.Timestamptz(3)
 
-  // Обязательна при REJECTED, 100-500 символов: CHECK ShowcaseResponse_rejection_reason.
+  // Обязательна при REJECTED, 30-500 символов: CHECK ShowcaseResponse_rejection_reason.
   rejectionReason String?
   reviewedAt      DateTime? @db.Timestamptz(3)
   // Отказ только из-за времени: пауза перед повторным откликом не действует.
   timeMismatch Boolean @default(false)
 
+  // Когда владелец / автор отклика последний раз получал его в списке: события новее этого момента дают значок «Мои отклики».
+  ownerSeenAt     DateTime? @db.Timestamptz(3)
+  responderSeenAt DateTime? @db.Timestamptz(3)
+
   // Сессия, созданная при принятии.
   sessionId String?  @unique @db.Uuid
   session   Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  messages  ShowcaseMessage[]
+  chatReads ShowcaseChatRead[]
 
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
   @@index([cardId, status])
   @@index([responderId, createdAt])
+}
+
+// Сообщение в чате двух участников отклика; чат открывается после решения владельца, не realtime (клиент опрашивает).
+model ShowcaseMessage {
+  id String @id @default(uuid()) @db.Uuid
+
+  responseId String           @db.Uuid
+  response   ShowcaseResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+
+  senderId String @db.Uuid
+  sender   User   @relation("ShowcaseMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  text      String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([responseId, createdAt])
+}
+
+// Когда участник последний раз открывал чат: сообщения собеседника новее этого момента считаются непрочитанными.
+model ShowcaseChatRead {
+  responseId String           @db.Uuid
+  response   ShowcaseResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+
+  userId String @db.Uuid
+  user   User   @relation("ShowcaseChatReader", fields: [userId], references: [id], onDelete: Cascade)
+
+  lastReadAt DateTime @db.Timestamptz(3)
+
+  @@id([responseId, userId])
 }

@@ -1,29 +1,18 @@
 // Слой views: страница "Витрина участников" - поиск партнёра для пробного интервью.
 // Разрешено импортировать widgets, features, entities, shared.
 import { Footer } from "@/widgets/footer";
+import { UnreadResponsesBadge } from "@/features/unread-responses";
 import { Navbar } from "@/widgets/navbar";
-import { ParticipantBrowser } from "@/features/browse-participants";
+import { ParticipantShowcase } from "@/widgets/participant-showcase";
 import { getServerTranslations } from "@/shared/i18n-server";
 import { Button } from "@/shared/ui/button";
 import { LocalizedLink } from "@/shared/ui/localized-link";
-import type { Participant } from "@/entities/participant";
 
 /**
- * Props for {@link ShowcasePage}.
- */
-export interface ShowcasePageProps {
-  /**
-   * All participants to show and filter.
-   */
-  participants: Participant[];
-}
-
-/**
- * Renders the "Витрина участников" screen: navbar, the search/filter browser and the footer.
- * @param {ShowcasePageProps} props - Props for the page.
+ * Renders the "Витрина участников" screen: navbar, the live participant showcase and the footer.
  * @returns {import('react').ReactNode} The showcase page.
  */
-export async function ShowcasePage(props: ShowcasePageProps) {
+export async function ShowcasePage() {
   const t = await getServerTranslations("showcase");
 
   return (
@@ -37,13 +26,16 @@ export async function ShowcasePage(props: ShowcasePageProps) {
             <p className="mt-2 text-muted-foreground">{t("pageDescription")}</p>
           </div>
 
-          <Button asChild>
-            <LocalizedLink href="/profile">{t("myCard")}</LocalizedLink>
+          <Button asChild variant="outline">
+            <LocalizedLink href="/showcase/responses" className="gap-2">
+              {t("myResponses")}
+              <UnreadResponsesBadge />
+            </LocalizedLink>
           </Button>
         </div>
 
         <div className="mt-10">
-          <ParticipantBrowser participants={props.participants} />
+          <ParticipantShowcase />
         </div>
       </main>
 

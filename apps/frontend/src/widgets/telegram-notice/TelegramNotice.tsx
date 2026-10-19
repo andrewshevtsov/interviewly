@@ -1,4 +1,5 @@
 // Слой widgets: карточка с уведомлением о Telegram-боте.
+import { LinkTelegram } from "@/features/link-telegram";
 import { Card } from "@/shared/ui/card";
 import { getServerTranslations } from "@/shared/i18n-server";
 
@@ -15,6 +16,7 @@ export async function TelegramNotice() {
         {t("telegramTitle")}
       </p>
       <p className="mt-3 text-sm text-muted-foreground">{t("telegramDescription")}</p>
+      <LinkTelegram />
     </Card>
   );
 }

@@ -14,7 +14,7 @@ async function bootstrap() {
     origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
     credentials: true,
   });
-  // you can access Swager api at  localhost:4001/api
+  // Swagger UI: /api (локально http://localhost:4000/api), OpenAPI JSON: /api-json
   const config = new DocumentBuilder()
     .setTitle('Interviewly API')
     .setVersion('1.0')
@@ -22,8 +22,8 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  // 
   SwaggerModule.setup('api', app, document);
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -31,6 +31,11 @@ async function bootstrap() {
       transform: true,
     }),
   );
-  await app.listen(Number(process.env.BACKEND_PORT));
+  const port = Number(process.env.BACKEND_PORT);
+  if (!Number.isInteger(port) || port <= 0) {
+    throw new Error('BACKEND_PORT не задан или некорректен (см. .env.example)');
+  }
+  await app.listen(port);
 }
-bootstrap();
+
+void bootstrap();

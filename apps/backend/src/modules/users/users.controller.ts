@@ -2,6 +2,7 @@ import {
   Body,
   ClassSerializerInterceptor,
   Controller,
+  Delete,
   Get,
   Patch,
   UseGuards,
@@ -24,6 +25,11 @@ export class UsersController {
   @Get('me')
   findMe(@CurrentUser('sub') userId: string): Promise<UserEntity> {
     return this.usersService.findOne(userId);
+  }
+
+  @Delete('me/telegram')
+  unlinkTelegram(@CurrentUser('sub') userId: string): Promise<UserEntity> {
+    return this.usersService.unlinkTelegram(userId);
   }
 
   @Patch('me')

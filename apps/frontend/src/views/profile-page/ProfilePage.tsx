@@ -1,5 +1,7 @@
 // Слой views: страница личного кабинета - профиль и статистика пользователя.
 // Разрешено импортировать widgets, features, entities, shared.
+import { ChangeEmail } from "@/features/change-email";
+import { AccountForm } from "@/features/edit-account";
 import { Footer } from "@/widgets/footer";
 import { Navbar } from "@/widgets/navbar";
 import { ProfileStats } from "@/widgets/profile-stats";
@@ -38,7 +40,11 @@ export async function ProfilePage(props: ProfilePageProps) {
         <p className="mt-2 text-muted-foreground">{t("description")}</p>
 
         <div className="mt-10 grid gap-6 lg:grid-cols-[1fr_320px]">
-          <ProfileFormSection />
+          <div className="space-y-6">
+            <AccountForm />
+            <ChangeEmail />
+            <ProfileFormSection />
+          </div>
 
           <div className="space-y-6">
             <ProfileStats stats={stats} />

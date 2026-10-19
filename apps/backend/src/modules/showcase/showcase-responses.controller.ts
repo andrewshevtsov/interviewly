@@ -44,7 +44,7 @@ export class ShowcaseResponsesController {
   }
 
   @Get('responses/incoming')
-  @ApiOperation({ summary: 'Отклики на мою карточку: кто откликнулся и в какой роли' })
+  @ApiOperation({ summary: 'Отклики на мою карточку: кто откликнулся и в какой роли (полученные отклики перестают быть «новыми»)' })
   findIncoming(
     @CurrentUser('sub') userId: string,
     @Query() query: IncomingResponsesQueryDto,
@@ -52,8 +52,17 @@ export class ShowcaseResponsesController {
     return this.responsesService.findIncoming(userId, query.status);
   }
 
+  @Get('responses/new-events')
+  @ApiOperation({
+    summary:
+      'Сколько событий по откликам я ещё не видел: во входящих (новый отклик, отзыв, отмена встречи) и в исходящих (решение, отмена встречи)',
+  })
+  countNewEvents(@CurrentUser('sub') userId: string): Promise<{ incoming: number; outgoing: number }> {
+    return this.responsesService.countNewEvents(userId);
+  }
+
   @Get('responses/outgoing')
-  @ApiOperation({ summary: 'Мои отклики на чужие карточки: статус и причина отказа' })
+  @ApiOperation({ summary: 'Мои отклики на чужие карточки: статус и причина отказа (полученные отклики перестают быть «новыми»)' })
   findOutgoing(@CurrentUser('sub') userId: string): Promise<ShowcaseOutgoingResponse[]> {
     return this.responsesService.findOutgoing(userId);
   }
@@ -72,7 +81,7 @@ export class ShowcaseResponsesController {
 
   @Post('responses/:id/reject')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Отклонить отклик с обязательной причиной 100-500 символов' })
+  @ApiOperation({ summary: 'Отклонить отклик с обязательной причиной 30-500 символов' })
   reject(
     @CurrentUser('sub') userId: string,
     @Param('id', ParseUUIDPipe) id: string,

@@ -1,62 +1,110 @@
-// Слой entities: описывает бизнес-сущность "участник" - карточка на "Витрине участников".
-// Разрешено импортировать из shared.
+// Слой entities: бизнес-сущность "участник" - карточка на "Витрине участников" в том виде,
+// как её отдаёт backend (GET /showcase/cards). Разрешено импортировать из shared.
 
 /**
- * A participant's experience level.
+ * Уровень опыта участника.
  */
 export type ParticipantLevel = "junior" | "middle" | "senior";
 
 /**
- * A participant's current availability for a mock interview.
- */
-export type ParticipantStatus = "available" | "in-session" | "top-rated";
-
-/**
- * A participant card shown on the "Витрина участников" screen.
+ * Карточка участника на витрине.
  */
 export interface Participant {
   /**
-   * Unique id, used as the React key and route param.
+   * Идентификатор карточки (профиля).
    */
   id: string;
 
   /**
-   * Display name.
+   * Имя/фамилия.
    */
   name: string;
 
   /**
-   * Role/title shown under the name.
+   * Должность.
    */
   role: string;
 
   /**
-   * Experience level.
+   * Уровень опыта.
    */
   level: ParticipantLevel;
 
   /**
-   * Tech stack tags.
+   * Технологии.
    */
   stack: string[];
 
   /**
-   * Short self-description shown on the card.
+   * Текст "о себе".
    */
-  bio: string;
+  bio: string | null;
 
   /**
-   * Current availability status.
+   * Сколько интервью участник провёл.
    */
-  status: ParticipantStatus;
+  interviewsCount: number;
 
   /**
-   * Number of interviews conducted, formatted for display (e.g. "42").
+   * Участник сейчас в активной сессии.
    */
-  sessionsCount: string;
+  inSession: boolean;
 
   /**
-   * Average rating, formatted for display (e.g. "9.4/10").
+   * Мой отклик, из-за которого откликнуться пока нельзя.
    */
-  rating: string;
+  myResponse: MyResponse | null;
 }
+
+/**
+ * Отклик, блокирующий повторный.
+ */
+export interface MyResponse {
+  /**
+   * `PENDING` - ждём ответа, `REJECTED` - отклонён, пауза, `ACCEPTED` - встреча назначена.
+   */
+  status: "PENDING" | "REJECTED" | "ACCEPTED";
+
+  /**
+   * Когда пауза после отказа кончится (ISO); для `PENDING` - `null`.
+   */
+  canRetryAt: string | null;
+}
+
+/**
+ * Фильтры витрины.
+ */
+export interface ShowcaseFilters {
+  /**
+   * Подходит любой из выбранных уровней.
+   */
+  levels: ParticipantLevel[];
+
+  /**
+   * Подходит любая из выбранных технологий.
+   */
+  stack: string[];
+
+  /**
+   * Свободный поиск по имени, роли и тегам стека.
+   */
+  query: string;
+}
+
+/**
+ * Страница выдачи витрины.
+ */
+export interface ParticipantsPage {
+  /**
+   * Карточки страницы.
+   */
+  items: Participant[];
+
+  /**
+   * Курсор следующей страницы.
+   */
+  nextCursor: string | null;
+}
+
+export { participantApi } from "./participant-api";
+export { buildShowcaseParams, SHOWCASE_PAGE_SIZE } from "./showcase-query";

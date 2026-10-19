@@ -2,7 +2,6 @@
 // живут рядом с роутами, которые их используют, а не в entities/shared.
 import type { NewSessionDraft, SessionHistoryEntry } from "@/entities/session";
 import type { Profile, ProfileStatsData } from "@/entities/profile";
-import type { Participant } from "@/entities/participant";
 
 export const DEMO_SESSION_HISTORY: SessionHistoryEntry[] = [
   {
@@ -51,6 +50,7 @@ export const DEMO_PROFILE: Profile = {
   level: "middle",
   stack: ["React", "TypeScript"],
   bio: "Гоняю по архитектуре фронта и алгоритмам. Люблю разбирать реальные кейсы.",
+  showcaseVisible: true,
 };
 
 export const DEMO_PROFILE_STATS: ProfileStatsData = {
@@ -65,72 +65,3 @@ export const DEMO_NEW_SESSION_DRAFT: NewSessionDraft = {
   isPrivate: false,
   accessCode: "",
 };
-
-export const DEMO_PARTICIPANTS: Participant[] = [
-  {
-    id: "p-1",
-    name: "Артём Соколов",
-    role: "Senior Frontend Engineer",
-    level: "senior",
-    stack: ["React", "TypeScript", "Next.js"],
-    bio: "Гоняю по архитектуре фронта и алгоритмам. Люблю разбирать реальные кейсы.",
-    status: "available",
-    sessionsCount: "42",
-    rating: "9.4/10",
-  },
-  {
-    id: "p-2",
-    name: "Елена Волкова",
-    role: "Backend Specialist",
-    level: "middle",
-    stack: ["Python", "Go", "PostgreSQL"],
-    bio: "Спрошу про индексы, транзакции и очереди. Даю подробную обратную связь.",
-    status: "in-session",
-    sessionsCount: "31",
-    rating: "9.1/10",
-  },
-  {
-    id: "p-3",
-    name: "Марк Ченов",
-    role: "Full Stack Developer",
-    level: "senior",
-    stack: ["Node.js", "Docker", "Kubernetes"],
-    bio: "System design и инфраструктура. Готов к жёсткому мок-интервью.",
-    status: "top-rated",
-    sessionsCount: "87",
-    rating: "9.8/10",
-  },
-  {
-    id: "p-4",
-    name: "Игорь Мельник",
-    role: "Frontend Developer",
-    level: "junior",
-    stack: ["React", "TypeScript"],
-    bio: "Готовлюсь к первому офферу, ищу партнёра для регулярной практики.",
-    status: "available",
-    sessionsCount: "9",
-    rating: "8.2/10",
-  },
-  {
-    id: "p-5",
-    name: "Мария Лебедева",
-    role: "Systems Engineer",
-    level: "senior",
-    stack: ["Rust", "Go", "Docker"],
-    bio: "Память, конкурентность, производительность. Разберём низкий уровень.",
-    status: "available",
-    sessionsCount: "54",
-    rating: "9.6/10",
-  },
-  {
-    id: "p-6",
-    name: "Дмитрий Кузьмин",
-    role: "Data / Backend",
-    level: "middle",
-    stack: ["Python", "PostgreSQL", "Docker"],
-    bio: "SQL-задачи, ETL, немного алгоритмов. Спокойный формат без давления.",
-    status: "available",
-    sessionsCount: "23",
-    rating: "8.9/10",
-  },
-];

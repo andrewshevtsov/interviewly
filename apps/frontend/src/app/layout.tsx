@@ -5,6 +5,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import { getRequestLocale, getServerTranslations } from "@/shared/i18n-server";
 import { InlineScript } from "@/shared/ui/inline-script";
 import { QueryProvider } from "@/shared/api/query-provider";
+import { TimeZoneSync } from "@/features/sync-time-zone";
 import { AuthSessionInit } from "@/shared/api/auth-session-init";
 import "@/app/styles/global.css";
 
@@ -71,6 +72,7 @@ export default async function RootLayout(props: RootLayoutProps) {
       <body>
         <QueryProvider>
           <AuthSessionInit />
+          <TimeZoneSync />
           {props.children}
         </QueryProvider>
       </body>

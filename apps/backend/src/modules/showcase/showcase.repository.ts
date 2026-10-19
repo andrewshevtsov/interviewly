@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.ts';
 import type { Prisma } from '../../prisma/generated/client.ts';
-import type { ProfessionLevel } from '../../prisma/generated/enums.ts';
+import type { ProfessionLevel, SessionStatus, ShowcaseResponseStatus } from '../../prisma/generated/enums.ts';
 
 export interface ShowcaseFilters {
   viewerId: string;
@@ -41,8 +41,17 @@ const cardSelect = {
   },
 } satisfies Prisma.ProfileSelect;
 
+export interface LatestResponse {
+  status: ShowcaseResponseStatus;
+  scheduledAt: Date;
+  reviewedAt: Date | null;
+  timeMismatch: boolean;
+  sessionStatus: SessionStatus | null;
+}
+
 export type ShowcaseRow = Prisma.ProfileGetPayload<{ select: typeof cardSelect }> & {
   inSession: boolean;
+  latestResponse: LatestResponse | null;
 };
 
 @Injectable()
@@ -80,9 +89,44 @@ export class ShowcaseRepository {
       skip: cursor ? 1 : 0,
     });
 
-    const busyProfileIds = await this.findBusyProfileIds(rows.map((row) => row.id));
+    const cardIds = rows.map((row) => row.id);
+    const [busyProfileIds, latestResponses] = await Promise.all([
+      this.findBusyProfileIds(cardIds),
+      this.findLatestResponses(viewerId, cardIds),
+    ]);
 
-    return rows.map((row) => ({ ...row, inSession: busyProfileIds.has(row.id) }));
+    return rows.map((row) => ({
+      ...row,
+      inSession: busyProfileIds.has(row.id),
+      latestResponse: latestResponses.get(row.id) ?? null,
+    }));
+  }
+
+  private async findLatestResponses(viewerId: string, cardIds: string[]): Promise<Map<string, LatestResponse>> {
+    if (cardIds.length === 0) {
+      return new Map();
+    }
+
+    const responses = await this.prisma.showcaseResponse.findMany({
+      where: { responderId: viewerId, cardId: { in: cardIds } },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        cardId: true,
+        status: true,
+        scheduledAt: true,
+        reviewedAt: true,
+        timeMismatch: true,
+        session: { select: { status: true } },
+      },
+    });
+
+    const latest = new Map<string, LatestResponse>();
+    for (const { cardId, session, ...response } of responses) {
+      if (!latest.has(cardId)) {
+        latest.set(cardId, { ...response, sessionStatus: session?.status ?? null });
+      }
+    }
+    return latest;
   }
 
   private async findBusyProfileIds(profileIds: string[]): Promise<Set<string>> {

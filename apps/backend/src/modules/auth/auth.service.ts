@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { MetricsService } from '../../infrastructure/metrics/metrics.service.ts';
 import { UsersService } from '../users/users.service.ts';
 import { UserEntity } from '../users/entities/user-entity.ts';
 import { LoginDto } from './dto/login.dto.ts';
@@ -24,6 +25,7 @@ export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+    private readonly metrics: MetricsService,
     configService: ConfigService,
   ) {
     this.accessSecret = configService.getOrThrow<string>('JWT_ACCESS_SECRET');
@@ -54,6 +56,7 @@ export class AuthService {
       registrationCompleted: true,
     });
 
+    this.metrics.countEvent('user_registered');
     return this.issueTokens(user);
   }
 
@@ -132,6 +135,7 @@ export class AuthService {
         firstName: dto.first_name,
         lastName: dto.last_name,
       }));
+    if (!existingUser) this.metrics.countEvent('user_registered');
 
     return this.issueTokens(user);
   }
