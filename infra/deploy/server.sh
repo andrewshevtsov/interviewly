@@ -80,6 +80,10 @@ append_grafana_caddy() {
     echo "Нет ${auth_file}: Grafana не публикуется через Caddy."
     return 0
   fi
+  if [ ! -r "${auth_file}" ]; then
+    echo "Нет прав на чтение ${auth_file} у пользователя ${USER}: выполните sudo chown ${USER}: ${auth_file}"
+    exit 1
+  fi
   read -r user hash < "${auth_file}"
   printf '\n' >> "${CADDY_DIR}/Caddyfile"
   sed -e "s/interviewly\\.top/${PUBLIC_HOST}/g" \
