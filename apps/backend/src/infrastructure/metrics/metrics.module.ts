@@ -1,11 +1,14 @@
-import { Global, Module } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';
-import { MetricsInterceptor } from './metrics.interceptor.ts';
+import { Global, type MiddlewareConsumer, Module, type NestModule } from '@nestjs/common';
+import { MetricsMiddleware } from './metrics.middleware.ts';
 import { MetricsService } from './metrics.service.ts';
 
 @Global()
 @Module({
-  providers: [MetricsService, { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor }],
+  providers: [MetricsService],
   exports: [MetricsService],
 })
-export class MetricsModule {}
+export class MetricsModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(MetricsMiddleware).forRoutes('*path');
+  }
+}

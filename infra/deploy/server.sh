@@ -64,10 +64,10 @@ ensure_prod_public_urls() {
 }
 
 # Пароль-заглушку из .env.example (или отсутствующий ключ) на сервере не оставляем.
-ensure_grafana_password() {
-  local env_file="$1"
-  if ! grep -q '^GRAFANA_ADMIN_PASSWORD=' "${env_file}" || grep -qx 'GRAFANA_ADMIN_PASSWORD=password_change_me' "${env_file}"; then
-    set_env_key "${env_file}" GRAFANA_ADMIN_PASSWORD "$(head -c 24 /dev/urandom | base64 | tr -dc 'A-Za-z0-9')"
+ensure_generated_secret() {
+  local env_file="$1" key="$2"
+  if ! grep -q "^${key}=" "${env_file}" || grep -qx "${key}=password_change_me" "${env_file}"; then
+    set_env_key "${env_file}" "${key}" "$(head -c 24 /dev/urandom | base64 | tr -dc 'A-Za-z0-9')"
   fi
 }
 
@@ -174,7 +174,8 @@ elif is_domain_host; then
   ensure_prod_public_urls "${DEPLOY_PATH}/.env"
 fi
 
-ensure_grafana_password "${DEPLOY_PATH}/.env"
+ensure_generated_secret "${DEPLOY_PATH}/.env" GRAFANA_ADMIN_PASSWORD
+ensure_generated_secret "${DEPLOY_PATH}/.env" GRAFANA_DB_PASSWORD
 
 livekit_config="${DEPLOY_PATH}/infra/livekit/livekit.yaml"
 if [ -f "${livekit_config}" ]; then
@@ -218,3 +219,7 @@ if [ -n "${SERVICE}" ]; then
       ;;
   esac
 fi
+
+# Включает вход роли grafana_reader (создаётся миграцией backend), пароль берётся из .env
+DOCKER="$(docker info >/dev/null 2>&1 && echo docker || echo 'sudo -n docker')" \
+  bash infra/postgres/grafana-reader.sh

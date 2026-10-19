@@ -1,10 +1,29 @@
-import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  type OnModuleDestroy,
+  type OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createServer, type Server } from 'node:http';
-import { Histogram, Registry, collectDefaultMetrics } from 'prom-client';
+import {
+  Counter,
+  Histogram,
+  Registry,
+  collectDefaultMetrics,
+} from 'prom-client';
 
 const DEFAULT_METRICS_PORT = 9100;
 const METRICS_PATH = '/metrics';
+
+/** Продуктовые события */
+export type AppEvent =
+  | 'user_registered'
+  | 'session_created'
+  | 'access_request_created'
+  | 'access_request_approved'
+  | 'access_request_rejected'
+  | 'session_joined';
 
 /**
  * Метрики отдаются на отдельном порту, а не через основное приложение: Caddy проксирует
@@ -23,8 +42,19 @@ export class MetricsService implements OnModuleInit, OnModuleDestroy {
     registers: [this.registry],
   });
 
+  private readonly appEvents = new Counter({
+    name: 'app_events_total',
+    help: 'Продуктовые события',
+    labelNames: ['event'],
+    registers: [this.registry],
+  });
+
   constructor(private readonly configService: ConfigService) {
     collectDefaultMetrics({ register: this.registry });
+  }
+
+  countEvent(event: AppEvent): void {
+    this.appEvents.inc({ event });
   }
 
   getMetrics(): Promise<string> {
@@ -32,7 +62,9 @@ export class MetricsService implements OnModuleInit, OnModuleDestroy {
   }
 
   onModuleInit(): void {
-    const port = Number(this.configService.get<string>('METRICS_PORT') ?? DEFAULT_METRICS_PORT);
+    const port = Number(
+      this.configService.get<string>('METRICS_PORT') ?? DEFAULT_METRICS_PORT,
+    );
 
     this.server = createServer((req, res) => {
       if (req.url !== METRICS_PATH) {
@@ -50,7 +82,9 @@ export class MetricsService implements OnModuleInit, OnModuleDestroy {
         });
     });
     // Падение сервера метрик не должно ронять основное приложение
-    this.server.on('error', (error) => this.logger.error(`Сервер метрик (порт ${port})`, error));
+    this.server.on('error', (error) =>
+      this.logger.error(`Сервер метрик (порт ${port})`, error),
+    );
     this.server.listen(port);
   }
 

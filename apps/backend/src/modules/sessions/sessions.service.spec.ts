@@ -4,6 +4,7 @@ import { SessionParticipantRole, SessionStatus } from '../../prisma/generated/en
 import type { LivekitService } from '../../infrastructure/livekit/livekit.service.ts';
 import type { JwtPayload } from '../auth/auth.types.ts';
 import type { NotificationsService } from '../notifications/notifications.service.ts';
+import type { MetricsService } from '../../infrastructure/metrics/metrics.service.ts';
 import { SessionsService } from './sessions.service.ts';
 import type { SessionsRepository } from './sessions.repository.ts';
 
@@ -42,6 +43,7 @@ describe('SessionsService', () => {
   let repository: Mocked<SessionsRepository>;
   let livekit: Mocked<LivekitService>;
   let notifications: Mocked<NotificationsService>;
+  let metrics: Mocked<MetricsService>;
   let service: SessionsService;
 
   beforeEach(() => {
@@ -55,7 +57,8 @@ describe('SessionsService', () => {
       cancelSessionReminder: vi.fn(),
       notifySessionCancelled: vi.fn(),
     } as unknown as Mocked<NotificationsService>;
-    service = new SessionsService(repository, livekit, notifications);
+    metrics = { countEvent: vi.fn() } as unknown as Mocked<MetricsService>;
+    service = new SessionsService(repository, livekit, notifications, metrics);
     repository.findById.mockResolvedValue(session as never);
   });
 
@@ -186,6 +189,17 @@ describe('SessionsService', () => {
 
       await expect(service.cancel(SESSION_ID, owner, {})).rejects.toBeInstanceOf(ConflictException);
       expect(livekit.deleteRoom).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('join', () => {
+    it('считает вход в комнату', async () => {
+      repository.findParticipant.mockResolvedValue({ role: SessionParticipantRole.CANDIDATE } as never);
+      repository.findActiveParticipations.mockResolvedValue([] as never);
+
+      await service.join(SESSION_ID, CANDIDATE_ID, {});
+
+      expect(metrics.countEvent).toHaveBeenCalledWith('session_joined');
     });
   });
 
