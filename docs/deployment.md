@@ -10,7 +10,6 @@ cp .env.example .env
 docker compose up -d --build
 # frontend: http://localhost:3000
 # backend:  http://localhost:4000
-# coderunner: http://localhost:3003
 ```
 
 Исходники пробрасываются в контейнеры bind-mount'ом (`.:/app`) для hot-reload; `node_modules`
@@ -19,9 +18,11 @@ docker compose up -d --build
 
 ### Coderunner и Piston
 
-`coderunner` принимает код напрямую от frontend, передаёт JWT основному backend для
-проверки участия пользователя в сессии и только после успешной проверки вызывает Piston
-по внутреннему адресу `http://piston:2000`.
+Frontend передаёт код основному backend. Backend проверяет участие и статус сессии,
+ставит запрос в отдельную очередь BullMQ в Redis и повторно проверяет доступ перед
+выполнением. Обработчик очереди вызывает внутренний `coderunner`, который отвечает только
+за безопасное обращение к Piston по адресу `http://piston:2000`. Состояния запуска backend
+публикует через collaboration в общий Yjs-документ сессии.
 
 При первом старте одноразовый `piston-init` устанавливает зафиксированные runtime Python,
 JavaScript и TypeScript. Они сохраняются в `piston_data`, поэтому повторно не скачиваются.
@@ -74,11 +75,11 @@ PostgreSQL `CHECK`, индексы и триггеры, оформляются �
 Шаблон: [`infra/caddy/Caddyfile`](../infra/caddy/Caddyfile). На https-сайте браузер
 блокирует `ws://` (mixed content), поэтому в проде:
 
-| Назначение | URL |
-| --- | --- |
-| API | `https://<домен>/api` |
-| LiveKit signaling | `wss://livekit.<домен>` → `:7880` |
-| Collaboration | `wss://collaboration.<домен>` → `:1234` |
+| Назначение        | URL                                     |
+| ----------------- | --------------------------------------- |
+| API               | `https://<домен>/api`                   |
+| LiveKit signaling | `wss://livekit.<домен>` → `:7880`       |
+| Collaboration     | `wss://collaboration.<домен>` → `:1234` |
 
 RTC (UDP/TCP 7881/7882) идёт на публичный IP хоста (`node_ip` в livekit.yaml), не через
 прокси. DNS для `livekit` обычно **DNS only**; `collaboration` может быть proxied.
@@ -95,11 +96,11 @@ RTC (UDP/TCP 7881/7882) идёт на публичный IP хоста (`node_ip
 На каждом запуске считается diff от базы pull request или от предыдущего коммита `dev` до `HEAD`.
 По изменённым путям выбирается приложение:
 
-| Пути | Что запускается |
-| --- | --- |
-| `apps/frontend/**` | typecheck и eslint frontend, на push в `dev` — образ frontend |
-| `apps/backend/**` | typecheck и eslint backend, на push в `dev` — образ backend |
-| `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `.npmrc`, `patches/**` | оба приложения |
+| Пути                                                                            | Что запускается                                               |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `apps/frontend/**`                                                              | typecheck и eslint frontend, на push в `dev` — образ frontend |
+| `apps/backend/**`                                                               | typecheck и eslint backend, на push в `dev` — образ backend   |
+| `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `.npmrc`, `patches/**` | оба приложения                                                |
 
 Проверки в CI: `pnpm --filter @app/frontend run typecheck`, eslint frontend без `--fix`,
 `pnpm --filter @app/backend run typecheck`, eslint backend без `--fix`.

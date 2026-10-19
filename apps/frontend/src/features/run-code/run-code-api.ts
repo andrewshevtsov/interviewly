@@ -1,11 +1,10 @@
-import { refreshAccessToken } from "@/shared/api/http-client";
-import { useAuthStore } from "@/shared/model/auth-store";
+import { httpClient } from "@/shared/api/http-client";
 
 export type RunnableLanguage = "javascript" | "python" | "typescript";
 
 /** Запрос на выполнение исходного кода. */
 export interface ExecuteCodeRequest {
-  /** Сессия, участие в которой проверяет coderunner. */
+  /** Сессия, участие в которой проверяет backend. */
   sessionId: string;
 
   /** Язык выполнения. */
@@ -15,7 +14,7 @@ export interface ExecuteCodeRequest {
   code: string;
 }
 
-/** Нормализованный ответ coderunner. */
+/** Нормализованный результат, который сервер записывает в общий документ. */
 export interface ExecutionResult {
   /** Стандартный вывод программы. */
   stdout: string;
@@ -45,46 +44,20 @@ export interface ExecutionResult {
   wallTime: number | null;
 }
 
-const CODERUNNER_URL = (process.env.NEXT_PUBLIC_CODERUNNER_URL ?? "http://localhost:3003")
-  .replace(/\/+$/, "");
-const HTTP_UNAUTHORIZED = 401;
-
-/**
- * Отправляет один авторизованный запрос в coderunner.
- * @param {ExecuteCodeRequest} request - Сессия, язык и исходный код.
- * @param {string | null} accessToken - Текущий access JWT.
- * @returns {Promise<Response>} Необработанный HTTP-ответ coderunner.
- */
-function sendExecutionRequest(
-  request: ExecuteCodeRequest,
-  accessToken: string | null,
-): Promise<Response> {
-  return fetch(`${CODERUNNER_URL}/execution`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-    },
-    body: JSON.stringify(request),
-  });
+export interface QueuedExecution {
+  executionId: string;
+  status: "QUEUED";
+  queuedAt: number;
 }
 
 /**
- * Отправляет текущий код напрямую в coderunner.
+ * Ставит текущий код в серверную очередь выполнения.
  * @param {ExecuteCodeRequest} request - Язык и исходный код.
- * @returns {Promise<ExecutionResult>} Результат выполнения программы.
+ * @returns {Promise<QueuedExecution>} Подтверждение постановки в очередь.
  */
-export async function executeCode(request: ExecuteCodeRequest): Promise<ExecutionResult> {
-  let response = await sendExecutionRequest(request, useAuthStore.getState().accessToken);
-
-  if (response.status === HTTP_UNAUTHORIZED) {
-    const accessToken = await refreshAccessToken();
-    response = await sendExecutionRequest(request, accessToken);
-  }
-
-  if (!response.ok) {
-    throw new Error(`Coderunner request failed with status ${response.status}`);
-  }
-
-  return response.json() as Promise<ExecutionResult>;
+export async function executeCode(request: ExecuteCodeRequest): Promise<QueuedExecution> {
+  const { sessionId, ...body } = request;
+  return httpClient
+    .post<QueuedExecution>(`/sessions/${sessionId}/code-executions`, body)
+    .then((response) => response.data);
 }

@@ -15,7 +15,7 @@ export class ExecutionController {
   constructor(private readonly executionService: ExecutionService) {}
 
   /**
-   * Запускает код участника сессии; access JWT только пересылается backend для проверки.
+   * Выполняет доверенный внутренний запрос backend.
    * @param body Проверенное тело запроса.
    * @param authorization Исходный заголовок Authorization браузера.
    * @returns Нормализованный результат выполнения.
@@ -24,8 +24,8 @@ export class ExecutionController {
   @HttpCode(HttpStatus.OK)
   execute(
     @Body() body: ExecuteCodeDto,
-    @Headers('authorization') authorization?: string,
+    @Headers('x-internal-service-token') serviceToken?: string,
   ) {
-    return this.executionService.execute(body, authorization);
+    return this.executionService.execute(body, serviceToken);
   }
 }

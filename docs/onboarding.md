@@ -120,6 +120,10 @@ docker compose up -d --build
 и TypeScript в volume `piston_data`, после чего штатно переходит в `Exited (0)`. Coderunner
 стартует только после успешного завершения этой установки.
 
+Запросы на выполнение frontend отправляет backend. Очередь `code-executions` хранится в
+Redis, её обработчик работает в backend, а coderunner вызывается backend как внутренний
+адаптер Piston.
+
 - frontend: http://localhost:3000
 - backend: http://localhost:4000
 - collaboration: ws://localhost:1234

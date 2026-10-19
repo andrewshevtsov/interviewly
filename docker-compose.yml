@@ -141,6 +141,7 @@ services:
       - ./.env
     environment:
       BACKEND_INTERNAL_URL: http://backend:4000
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-service-token-change-me}
       DATABASE_URL: postgresql://${POSTGRES_USER:-interviewly}:${POSTGRES_PASSWORD:-interviewly}@postgres:5432/${POSTGRES_DB:-interviewly}?schema=public
     command: ["pnpm", "--filter", "@app/collaboration", "run", "dev"]
     ports:
@@ -163,6 +164,9 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-interviewly}:${POSTGRES_PASSWORD:-interviewly}@postgres:5432/${POSTGRES_DB:-interviewly}?schema=public
       REDIS_URL: redis://redis:6379
+      CODERUNNER_INTERNAL_URL: http://coderunner:3003
+      COLLABORATION_INTERNAL_URL: http://collaboration:1234
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-service-token-change-me}
       SMTP_HOST: mailpit
     command:
       [
@@ -210,7 +214,13 @@ services:
       - interviewly-network
     healthcheck:
       # В образе старый Node без fetch, поэтому проверка использует встроенный http-модуль.
-      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:2000/api/v2/runtimes',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:2000/api/v2/runtimes',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))",
+        ]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -232,7 +242,7 @@ services:
       - interviewly-network
 
   coderunner:
-    # Отдельный HTTP-сервис: проверяет участника через backend и только затем вызывает Piston.
+    # Внутренний HTTP-сервис: backend проверяет участника и передаёт ему только разрешённый запуск.
     build:
       context: .
       dockerfile: apps/coderunner/Dockerfile
@@ -245,8 +255,7 @@ services:
       # Имена сервисов Compose работают как DNS-имена внутри interviewly-network.
       BACKEND_INTERNAL_URL: http://backend:4000
       PISTON_URL: http://piston:2000
-    ports:
-      - "${CODERUNNER_PORT:-3003}:3003"
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-service-token-change-me}
     depends_on:
       # Запуск разрешён только после готовности всех runtime Piston.
       backend:

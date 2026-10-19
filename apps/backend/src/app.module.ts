@@ -9,6 +9,10 @@ import { FeedbackModule } from './modules/feedback/feedback.module.ts';
 import { SessionHintsModule } from './modules/session-hints/session-hints.module.ts';
 import { ShowcaseModule } from './modules/showcase/showcase.module.ts';
 import { LeaderboardModule } from './modules/leaderboard/leaderboard.module.ts';
+import { BullModule } from '@nestjs/bullmq';
+import { ConfigService } from '@nestjs/config';
+import { parseRedisUrl } from './modules/notifications/redis-connection.ts';
+import { CodeExecutionsModule } from './modules/code-executions/code-executions.module.ts';
 
 @Module({
   imports: [
@@ -16,6 +20,14 @@ import { LeaderboardModule } from './modules/leaderboard/leaderboard.module.ts';
     ConfigModule.forRoot({
       envFilePath: '../../.env',
       isGlobal: true,
+    }),
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        connection: parseRedisUrl(
+          config.get<string>('REDIS_URL') ?? 'redis://localhost:6379',
+        ),
+      }),
     }),
     UsersModule,
     AuthModule,
@@ -25,9 +37,9 @@ import { LeaderboardModule } from './modules/leaderboard/leaderboard.module.ts';
     SessionHintsModule,
     LeaderboardModule,
     ShowcaseModule,
+    CodeExecutionsModule,
   ],
   controllers: [],
   providers: [],
 })
-export class AppModule { }
-
+export class AppModule {}
