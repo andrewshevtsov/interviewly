@@ -45,3 +45,27 @@ echo "<логин> $(docker exec caddy caddy hash-password --plaintext '<пар�
 Дальше деплой сам допишет блок Grafana в Caddyfile. Нужна DNS-запись `grafana.<домен>`.
 Внутри Grafana остаётся собственный логин (`GRAFANA_ADMIN_PASSWORD` в `.env` на сервере,
 при первом деплое заменяется на случайный).
+
+## Ошибки: GlitchTip
+
+Sentry-совместимый сборщик ошибок, один контейнер `glitchtip` (воркер внутри) и отдельная БД
+`glitchtip-postgres`. Очередь и кэш на Postgres, Redis не нужен. Данные хранятся 30 дней
+(`GLITCHTIP_RETENTION_DAYS`).
+
+```bash
+docker compose --profile errors up -d glitchtip glitchtip-postgres
+```
+
+- Локально: http://localhost:8000. Прод: `https://glitchtip.<домен>` (Caddy без Basic auth: DSN
+  должны принимать события из браузеров, интерфейс защищён учётными записями GlitchTip).
+- Секреты `GLITCHTIP_SECRET_KEY` и `GLITCHTIP_DB_PASSWORD` на сервере генерирует `server.sh`.
+- Почта пока не настроена (`EMAIL_URL=consolemail://`): письма GlitchTip пишет в лог контейнера
+  (`docker compose logs glitchtip`). Приглашения и уведомления об ошибках по почте не приходят.
+
+### Первый запуск
+
+1. Сразу после запуска откройте GlitchTip и зарегистрируйтесь: первый пользователь становится
+   владельцем. Регистрация закрыта для остальных (`ENABLE_USER_REGISTRATION=False`), но до первой
+   регистрации форма открыта всем, поэтому не откладывайте этот шаг после деплоя на прод.
+2. Создайте организацию и проекты (backend, frontend, collaboration, coderunner).
+3. DSN каждого проекта нужен приложениям (задачи по подключению SDK).

@@ -30,6 +30,7 @@
 #   piston:   http://127.0.0.1:2000 (только для локальной диагностики)
 #   redis:    localhost:6379 (очередь уведомлений BullMQ)
 #   мониторинг (profile monitoring): Grafana http://localhost:3001, Prometheus http://localhost:9090
+#   ошибки (profile errors): GlitchTip http://localhost:8000
 #   mailpit:  SMTP localhost:1025, веб-интерфейс http://localhost:8025 - сюда в разработке
 #             приходят письма backend'а, наружу ничего не уходит
 #
@@ -338,6 +339,60 @@ services:
     networks:
       - interviewly-network
 
+  # --- Ошибки (profile errors): docker compose --profile errors up -d glitchtip ---
+
+  glitchtip-postgres:
+    # Отдельная БД: данные об ошибках быстро растут и не должны делить диск с БД приложения
+    image: postgres:17-alpine
+    profiles: [errors]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: glitchtip
+      POSTGRES_DB: glitchtip
+      POSTGRES_PASSWORD: ${GLITCHTIP_DB_PASSWORD:-password_change_me}
+    volumes:
+      - glitchtip_db_data:/var/lib/postgresql/data
+    networks:
+      - interviewly-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U glitchtip -d glitchtip"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  glitchtip:
+    image: glitchtip/glitchtip:6
+    profiles: [errors]
+    restart: unless-stopped
+    environment:
+      SECRET_KEY: ${GLITCHTIP_SECRET_KEY:-password_change_me}
+      DATABASE_URL: postgresql://glitchtip:${GLITCHTIP_DB_PASSWORD:-password_change_me}@glitchtip-postgres:5432/glitchtip
+      GLITCHTIP_DOMAIN: ${GLITCHTIP_DOMAIN:-http://localhost:8000}
+      CSRF_TRUSTED_ORIGINS: ${GLITCHTIP_DOMAIN:-http://localhost:8000}
+      # Один контейнер: веб, воркер и миграции. GLITCHTIP_EMBED_WORKER работает только
+      # со значением "true" в нижнем регистре, SERVER_ROLE надёжнее
+      SERVER_ROLE: all_in_one
+      # Пустой URL - очередь, кэш и сессии на Postgres, Redis не нужен
+      VALKEY_URL: ""
+      # Пока SMTP не настроен: письма пишутся в лог контейнера
+      EMAIL_URL: consolemail://
+      DEFAULT_FROM_EMAIL: glitchtip@interviewly.local
+      # После первого пользователя саморегистрация закрывается
+      ENABLE_USER_REGISTRATION: "False"
+      GLITCHTIP_RETENTION_DAYS: "30"
+      # Лишние функции отключены, чтобы экономить память
+      GLITCHTIP_ENABLE_UPTIME: "False"
+      GLITCHTIP_ENABLE_LOGS: "False"
+    ports:
+      - "127.0.0.1:${GLITCHTIP_PORT:-8000}:8000"
+    volumes:
+      - glitchtip_uploads:/code/uploads
+    depends_on:
+      glitchtip-postgres:
+        condition: service_healthy
+    networks:
+      - interviewly-network
+
 networks:
   interviewly-network:
     driver: bridge
@@ -354,3 +409,5 @@ volumes:
   piston_data:
   prometheus_data:
   grafana_data:
+  glitchtip_db_data:
+  glitchtip_uploads:

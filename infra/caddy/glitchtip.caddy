@@ -1,0 +1,5 @@
+# Блок GlitchTip дописывается к Caddyfile в server.sh. Без Basic auth: события шлют браузеры
+# пользователей, вход в интерфейс защищён учётными записями GlitchTip.
+glitchtip.interviewly.top {
+	reverse_proxy 172.17.0.1:8000
+}

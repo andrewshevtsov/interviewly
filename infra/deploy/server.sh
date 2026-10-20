@@ -55,6 +55,7 @@ ensure_prod_public_urls() {
   set_env_key "${env_file}" LIVEKIT_URL "wss://livekit.${PUBLIC_HOST}"
   set_env_key "${env_file}" NEXT_PUBLIC_COLLABORATION_URL "wss://collaboration.${PUBLIC_HOST}"
   set_env_key "${env_file}" GRAFANA_ROOT_URL "https://grafana.${PUBLIC_HOST}"
+  set_env_key "${env_file}" GLITCHTIP_DOMAIN "https://glitchtip.${PUBLIC_HOST}"
   set_env_key "${env_file}" FRONTEND_SCRIPT start
   if grep -q '^DEV_TUNNEL_ORIGIN=' "${env_file}"; then
     sed -i "s|^DEV_TUNNEL_ORIGIN=.*|DEV_TUNNEL_ORIGIN=${PUBLIC_HOST},www.${PUBLIC_HOST}|" "${env_file}"
@@ -91,6 +92,17 @@ append_grafana_caddy() {
     -e "s|__GRAFANA_AUTH_HASH__|${hash}|" "${snippet}" >> "${CADDY_DIR}/Caddyfile"
 }
 
+# GlitchTip доступен без Basic auth: DSN-эндпоинты должны принимать события из браузеров,
+# вход в интерфейс защищён его собственными учётными записями.
+append_glitchtip_caddy() {
+  local snippet="${DEPLOY_PATH}/infra/caddy/glitchtip.caddy"
+  if [ ! -f "${snippet}" ]; then
+    return 0
+  fi
+  printf '\n' >> "${CADDY_DIR}/Caddyfile"
+  sed "s/interviewly\\.top/${PUBLIC_HOST}/g" "${snippet}" >> "${CADDY_DIR}/Caddyfile"
+}
+
 sync_caddyfile() {
   local template="${DEPLOY_PATH}/infra/caddy/Caddyfile"
   if [ ! -f "${template}" ]; then
@@ -100,6 +112,7 @@ sync_caddyfile() {
   # Подставляем домен деплоя вместо шаблонного interviewly.top.
   sed "s/interviewly\\.top/${PUBLIC_HOST}/g" "${template}" > "${CADDY_DIR}/Caddyfile"
   append_grafana_caddy
+  append_glitchtip_caddy
   if docker_cmd ps -a --format '{{.Names}}' | grep -qx caddy; then
     # Caddyfile примонтирован в контейнер read-only из CADDY_DIR: docker cp и запись изнутри
     # невозможны. Файл выше перезаписан на месте (тот же inode), контейнеру остаётся его перечитать.
@@ -180,6 +193,8 @@ fi
 
 ensure_generated_secret "${DEPLOY_PATH}/.env" GRAFANA_ADMIN_PASSWORD
 ensure_generated_secret "${DEPLOY_PATH}/.env" GRAFANA_DB_PASSWORD
+ensure_generated_secret "${DEPLOY_PATH}/.env" GLITCHTIP_SECRET_KEY
+ensure_generated_secret "${DEPLOY_PATH}/.env" GLITCHTIP_DB_PASSWORD
 
 livekit_config="${DEPLOY_PATH}/infra/livekit/livekit.yaml"
 if [ -f "${livekit_config}" ]; then
@@ -199,7 +214,7 @@ compose up -d postgres livekit
 # Только в provision: параллельные деплои frontend/backend иначе пересоздают его одновременно.
 if [ -z "${SERVICE}" ]; then
   compose up -d --build collaboration
-  compose up -d prometheus grafana postgres-exporter redis-exporter cadvisor
+  compose up -d prometheus grafana postgres-exporter redis-exporter cadvisor glitchtip-postgres glitchtip
 fi
 
 if [ -n "${SERVICE}" ]; then
