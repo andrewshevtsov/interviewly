@@ -148,6 +148,7 @@ jobs:
             NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL || 'https://interviewly.top/api' }}
             NEXT_PUBLIC_COLLABORATION_URL=${{ vars.NEXT_PUBLIC_COLLABORATION_URL || 'wss://collaboration.interviewly.top' }}
             NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=${{ vars.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME }}
+            NEXT_PUBLIC_SENTRY_DSN=${{ vars.NEXT_PUBLIC_SENTRY_DSN }}
           tags: |
             ${{ steps.image.outputs.name }}:${{ github.sha }}
             ${{ steps.image.outputs.name }}:dev
