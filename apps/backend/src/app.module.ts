@@ -13,6 +13,10 @@ import { ShowcaseModule } from './modules/showcase/showcase.module.ts';
 import { TelegramBotModule } from './modules/telegram-bot/telegram-bot.module.ts';
 import { MetricsModule } from './infrastructure/metrics/metrics.module.ts';
 import { LeaderboardModule } from './modules/leaderboard/leaderboard.module.ts';
+import { BullModule } from '@nestjs/bullmq';
+import { ConfigService } from '@nestjs/config';
+import { parseRedisUrl } from './modules/notifications/redis-connection.ts';
+import { CodeExecutionsModule } from './modules/code-executions/code-executions.module.ts';
 
 @Module({
   imports: [
@@ -23,6 +27,14 @@ import { LeaderboardModule } from './modules/leaderboard/leaderboard.module.ts';
       envFilePath: '../../.env',
       isGlobal: true,
     }),
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        connection: parseRedisUrl(
+          config.get<string>('REDIS_URL') ?? 'redis://localhost:6379',
+        ),
+      }),
+    }),
     UsersModule,
     AuthModule,
     ProfileModule,
@@ -32,9 +44,9 @@ import { LeaderboardModule } from './modules/leaderboard/leaderboard.module.ts';
     LeaderboardModule,
     ShowcaseModule,
     TelegramBotModule,
+    CodeExecutionsModule,
   ],
   controllers: [],
   providers: [{ provide: APP_FILTER, useClass: SentryGlobalFilter }],
 })
-export class AppModule { }
-
+export class AppModule {}

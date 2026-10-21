@@ -25,13 +25,13 @@ const MIN_OUTPUT_HEIGHT = 96;
 const MAX_OUTPUT_HEIGHT_RATIO = 0.65;
 const DATE_PART_LENGTH = 2;
 const MONTH_NUMBER_OFFSET = 1;
-const SINGLE_LOG_ENTRY = 1;
 const OUTPUT_SEPARATOR = "=============================";
+const OPTIMISTIC_OUTPUT_TTL_MS = 30_000;
 
 /** Выполнение ещё не завершилось. */
-interface RunningOutput {
+interface PendingOutput {
   /** Текущий этап выполнения. */
-  status: "running";
+  status: "queued" | "running";
 }
 
 /** Код успешно выполнен. */
@@ -46,11 +46,11 @@ interface SuccessfulOutput {
 /** Coderunner недоступен или отклонил запрос. */
 interface FailedOutput {
   /** Текущий этап выполнения. */
-  status: "error";
+  status: "error" | "queue_timeout" | "rejected";
 }
 
 /** Состояние отображаемой консоли. */
-type OutputState = RunningOutput | SuccessfulOutput | FailedOutput;
+type OutputState = PendingOutput | SuccessfulOutput | FailedOutput;
 
 /** Одна запись общего журнала запусков. */
 type OutputLogEntry = OutputState & {
@@ -94,7 +94,13 @@ function isOutputLogEntry(value: unknown): value is OutputLogEntry {
     return "result" in value && typeof value.result === "object" && value.result !== null;
   }
 
-  return value.status === "running" || value.status === "error";
+  return (
+    value.status === "queued" ||
+    value.status === "running" ||
+    value.status === "error" ||
+    value.status === "queue_timeout" ||
+    value.status === "rejected"
+  );
 }
 
 /** Отформатированные дата и время запуска. */
@@ -166,10 +172,10 @@ export function SessionCodeEditor(props: SessionCodeEditorProps) {
   const { collaboration, status } = useSessionCollaboration(sessionId, currentUserId);
   const t = useTranslations("session");
   const [outputLog, setOutputLog] = useState<OutputLogEntry[]>([]);
+  const [optimisticOutput, setOptimisticOutput] = useState<OutputLogEntry | null>(null);
   const [outputHeight, setOutputHeight] = useState(DEFAULT_OUTPUT_HEIGHT);
   const outputPanelRef = useRef<HTMLDivElement | null>(null);
   const resizeStartRef = useRef<ResizeStart | null>(null);
-  const activeExecutionIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!collaboration) {
@@ -181,7 +187,11 @@ export function SessionCodeEditor(props: SessionCodeEditorProps) {
 
     /** Переносит общий журнал запусков в локальное состояние интерфейса. */
     function updateOutputLog(): void {
-      setOutputLog(sharedOutputLog.toArray().filter(isOutputLogEntry));
+      const nextOutputLog = sharedOutputLog.toArray().filter(isOutputLogEntry);
+      setOutputLog(nextOutputLog);
+      setOptimisticOutput((current) =>
+        current && nextOutputLog.some((entry) => entry.id === current.id) ? null : current,
+      );
     }
 
     updateOutputLog();
@@ -191,53 +201,28 @@ export function SessionCodeEditor(props: SessionCodeEditorProps) {
   }, [collaboration]);
 
   useEffect(() => {
+    if (!optimisticOutput) {
+      return;
+    }
+    const executionId = optimisticOutput.id;
+    const timeout = window.setTimeout(() => {
+      setOptimisticOutput((current) => (current?.id === executionId ? null : current));
+    }, OPTIMISTIC_OUTPUT_TTL_MS);
+
+    return () => window.clearTimeout(timeout);
+  }, [optimisticOutput]);
+
+  const visibleOutputLog =
+    optimisticOutput && !outputLog.some((entry) => entry.id === optimisticOutput.id)
+      ? [optimisticOutput, ...outputLog]
+      : outputLog;
+
+  useEffect(() => {
     const panel = outputPanelRef.current;
     if (panel) {
       panel.scrollTop = 0;
     }
-  }, [outputLog]);
-
-  /** Добавляет новый запуск в общий журнал. */
-  function startExecution(): void {
-    if (!collaboration) {
-      return;
-    }
-
-    const id = crypto.randomUUID();
-    const entry: OutputLogEntry = {
-      id,
-      userName: currentUserName,
-      startedAt: Date.now(),
-      status: "running",
-    };
-    activeExecutionIdRef.current = id;
-    collaboration.sharedOutputLog.insert(0, [entry]);
-  }
-
-  /**
-   * Обновляет результат текущего запуска в общем журнале.
-   * @param {OutputState} nextOutput Итог выполнения или ошибка запроса.
-   */
-  function finishExecution(nextOutput: OutputState): void {
-    const id = activeExecutionIdRef.current;
-    const sharedLog = collaboration?.sharedOutputLog;
-    if (!id || !sharedLog) {
-      return;
-    }
-
-    const entries = sharedLog.toArray();
-    const index = entries.findIndex((entry) => isOutputLogEntry(entry) && entry.id === id);
-    const currentEntry = entries[index];
-    if (index < 0 || !isOutputLogEntry(currentEntry)) {
-      return;
-    }
-
-    sharedLog.doc?.transact(() => {
-      sharedLog.delete(index, SINGLE_LOG_ENTRY);
-      sharedLog.insert(index, [{ ...currentEntry, ...nextOutput }]);
-    });
-    activeExecutionIdRef.current = null;
-  }
+  }, [visibleOutputLog]);
 
   /**
    * Запоминает исходные координаты перед изменением высоты консоли.
@@ -295,7 +280,7 @@ export function SessionCodeEditor(props: SessionCodeEditorProps) {
         )}
       </div>
 
-      {outputLog.length > 0 && (
+      {visibleOutputLog.length > 0 && (
         <div
           ref={outputPanelRef}
           className="relative shrink-0 overflow-auto border-t border-border bg-muted/30"
@@ -320,7 +305,7 @@ export function SessionCodeEditor(props: SessionCodeEditorProps) {
           </div>
 
           <div className="p-4">
-            {outputLog.map((entry, index) => {
+            {visibleOutputLog.map((entry, index) => {
               const startedAt = formatStartedAt(entry.startedAt);
 
               return (
@@ -334,10 +319,12 @@ export function SessionCodeEditor(props: SessionCodeEditorProps) {
                     {t("codeRunBy")} {entry.userName} {t("dateLabel")} {startedAt.date}{" "}
                     {t("timeLabel")} {startedAt.time}
                   </div>
-                  {entry.status === "running" && (
+                  {(entry.status === "queued" || entry.status === "running") && (
                     <span className="font-sans text-muted-foreground">{t("running")}</span>
                   )}
-                  {entry.status === "error" && (
+                  {(entry.status === "error" ||
+                    entry.status === "queue_timeout" ||
+                    entry.status === "rejected") && (
                     <span className="font-sans text-destructive">{t("runCodeError")}</span>
                   )}
                   {entry.status === "success" && (
@@ -369,10 +356,20 @@ export function SessionCodeEditor(props: SessionCodeEditorProps) {
           sessionId={sessionId}
           language={language}
           getCode={() => collaboration?.sharedText.toString() ?? ""}
-          disabled={!collaboration}
-          onRunStart={startExecution}
-          onRunSuccess={(result) => finishExecution({ status: "success", result })}
-          onRunError={() => finishExecution({ status: "error" })}
+          onQueued={(execution) =>
+            setOptimisticOutput({
+              id: execution.executionId,
+              userName: currentUserName,
+              startedAt: execution.queuedAt,
+              status: "queued",
+            })
+          }
+          disabled={
+            !collaboration ||
+            visibleOutputLog.some(
+              (entry) => entry.status === "queued" || entry.status === "running",
+            )
+          }
         />
       </div>
     </Card>

@@ -2,9 +2,7 @@ import {
   BadGatewayException,
   GatewayTimeoutException,
   Injectable,
-  NotFoundException,
   UnauthorizedException,
-  ForbiddenException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -28,15 +26,6 @@ interface PistonExecuteResponse {
   run: PistonRunResult;
 }
 
-/** Часть ответа backend, достаточная для допуска пользователя к запуску. */
-interface SessionState {
-  role: unknown;
-  sessionStatus: unknown;
-}
-
-/** Статусы сессии, после которых запуск кода больше недоступен. */
-const CLOSED_SESSION_STATUSES = new Set(['COMPLETED', 'CANCELLED', 'EXPIRED']);
-
 /** Стабильный внешний контракт coderunner, не зависящий от имён полей Piston. */
 export interface ExecutionResult {
   stdout: string;
@@ -54,24 +43,25 @@ export interface ExecutionResult {
 @Injectable()
 export class ExecutionService {
   private readonly pistonUrl: string;
-  private readonly backendUrl: string;
+  private readonly internalServiceToken: string;
 
   constructor(configService: ConfigService) {
     // Удаляем завершающий слеш, чтобы дальнейшая склейка URL не создавала `//`.
     this.pistonUrl = configService
       .getOrThrow<string>('PISTON_URL')
       .replace(/\/+$/, '');
-    this.backendUrl = configService
-      .getOrThrow<string>('BACKEND_INTERNAL_URL')
-      .replace(/\/+$/, '');
+    this.internalServiceToken = configService.getOrThrow<string>(
+      'INTERNAL_SERVICE_TOKEN',
+    );
   }
 
   async execute(
     input: ExecuteCodeDto,
-    authorization?: string,
+    serviceToken?: string,
   ): Promise<ExecutionResult> {
-    // Чужой код не попадёт в Piston, пока backend не подтвердит участие в сессии.
-    await this.assertSessionAccess(input.sessionId, authorization);
+    if (serviceToken !== this.internalServiceToken) {
+      throw new UnauthorizedException('Invalid internal service token');
+    }
 
     let response: Response;
 
@@ -87,8 +77,8 @@ export class ExecutionService {
           files: [{ content: input.code }],
           stdin: input.stdin ?? '',
         }),
-        // Piston ограничивает сам запуск тремя секундами; две секунды оставлены на HTTP-обвязку.
-        signal: AbortSignal.timeout(5_000),
+        // Piston ограничивает сам запуск тремя секундами; секунда оставлена на HTTP-обвязку.
+        signal: AbortSignal.timeout(4_000),
       });
     } catch (error) {
       if (
@@ -137,74 +127,6 @@ export class ExecutionService {
       cpuTime: payload.run.cpu_time ?? null,
       wallTime: payload.run.wall_time ?? null,
     };
-  }
-
-  /**
-   * Передаёт JWT основному backend и допускает только участника указанной сессии.
-   * @param sessionId UUID сессии из тела запроса.
-   * @param authorization Bearer-заголовок браузера.
-   */
-  private async assertSessionAccess(
-    sessionId: string,
-    authorization?: string,
-  ): Promise<void> {
-    if (!authorization?.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Missing bearer token');
-    }
-
-    let response: Response;
-
-    try {
-      response = await fetch(
-        `${this.backendUrl}/sessions/${encodeURIComponent(sessionId)}/me`,
-        {
-          headers: { Authorization: authorization },
-          signal: AbortSignal.timeout(3_000),
-        },
-      );
-    } catch {
-      throw new ServiceUnavailableException(
-        'Session authorization service is unavailable',
-      );
-    }
-
-    if (response.status === 401) {
-      throw new UnauthorizedException('Invalid or expired access token');
-    }
-
-    if (response.status === 404) {
-      throw new NotFoundException('Session not found');
-    }
-
-    if (response.status >= 500) {
-      throw new ServiceUnavailableException(
-        'Session authorization service is unavailable',
-      );
-    }
-
-    if (!response.ok) {
-      throw new ForbiddenException('Session access denied');
-    }
-
-    let state: SessionState;
-
-    try {
-      state = (await response.json()) as SessionState;
-    } catch {
-      throw new ServiceUnavailableException(
-        'Session authorization service returned an invalid response',
-      );
-    }
-
-    const isParticipant =
-      state.role === 'INTERVIEWER' || state.role === 'CANDIDATE';
-    const isSessionClosed = CLOSED_SESSION_STATUSES.has(
-      String(state.sessionStatus),
-    );
-
-    if (!isParticipant || isSessionClosed) {
-      throw new ForbiddenException('Session access denied');
-    }
   }
 
   /**

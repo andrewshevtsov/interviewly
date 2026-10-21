@@ -1,11 +1,7 @@
-import { IsIn, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 /** Проверенное тело запроса на однократный запуск консольной программы. */
 export class ExecuteCodeDto {
-  /** Сессия, участие в которой coderunner подтверждает через основной backend. */
-  @IsUUID()
-  sessionId!: string;
-
   /** Runtime Piston, доступный в текущем MVP. */
   @IsIn(['python', 'javascript', 'typescript'])
   language!: string;
