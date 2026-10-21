@@ -1,3 +1,4 @@
+import './instrument.ts';
 import 'reflect-metadata';
 import cookieParser from 'cookie-parser';
 import { NestFactory } from '@nestjs/core';
