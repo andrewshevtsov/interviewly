@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
+import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup';
 import { PrismaModule } from './prisma/prisma.module.ts';
 import { ConfigModule } from '@nestjs/config';
 import { UsersModule } from './modules/users/user.module.ts';
@@ -14,6 +16,7 @@ import { LeaderboardModule } from './modules/leaderboard/leaderboard.module.ts';
 
 @Module({
   imports: [
+    SentryModule.forRoot(),
     PrismaModule,
     MetricsModule,
     ConfigModule.forRoot({
@@ -31,7 +34,7 @@ import { LeaderboardModule } from './modules/leaderboard/leaderboard.module.ts';
     TelegramBotModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [{ provide: APP_FILTER, useClass: SentryGlobalFilter }],
 })
 export class AppModule { }
 
