@@ -1,0 +1,123 @@
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Req,
+  Res,
+  UnauthorizedException,
+  UseGuards,
+} from '@nestjs/common';
+import type { Request, Response } from 'express';
+import { AuthService } from './auth.service.ts';
+import { LoginDto } from './dto/login.dto.ts';
+import { RegisterDto } from './dto/register.dto.ts';
+import { TelegramAuthDto } from './dto/telegram-auth.dto.ts';
+import { JwtAuthGuard } from './guards/jwt-auth.guard.ts';
+import { CurrentUser } from './decorators/current-user.decorator.ts';
+import { AuthTokens } from './auth.types.ts';
+import {
+  REFRESH_TOKEN_COOKIE,
+  legacyRefreshTokenCookieOptions,
+  refreshTokenCookieOptions,
+} from './auth.constants.ts';
+import { ApiBearerAuth, ApiProperty } from '@nestjs/swagger';
+
+@Controller('auth')
+export class AuthController {
+  constructor(private readonly authService: AuthService) {}
+
+  /** Чистит Path=/ и legacy Path=/auth — иначе старая кука переживает logout. */
+  private clearRefreshTokenCookies(res: Response): void {
+    res.clearCookie(REFRESH_TOKEN_COOKIE, refreshTokenCookieOptions());
+    res.clearCookie(REFRESH_TOKEN_COOKIE, legacyRefreshTokenCookieOptions());
+  }
+
+  @Post('register')
+  @ApiProperty()
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ accessToken: string }> {
+    const tokens = await this.authService.register(dto);
+    return this.respondWithTokens(res, tokens);
+  }
+
+  @Post('login')
+  @ApiProperty()
+  @HttpCode(HttpStatus.OK)
+  async login(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ accessToken: string }> {
+    const tokens = await this.authService.login(dto);
+    return this.respondWithTokens(res, tokens);
+  }
+
+  @Post('telegram')
+  @ApiProperty()
+  @HttpCode(HttpStatus.OK)
+  async telegramLogin(
+    @Body() dto: TelegramAuthDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ accessToken: string }> {
+    const tokens = await this.authService.loginWithTelegram(dto);
+    return this.respondWithTokens(res, tokens);
+  }
+
+  @Post('telegram/link')
+  @ApiBearerAuth()
+  @ApiProperty()
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async linkTelegram(
+    @CurrentUser('sub') userId: string,
+    @Body() dto: TelegramAuthDto,
+  ): Promise<{ success: true }> {
+    await this.authService.linkTelegram(userId, dto);
+    return { success: true };
+  }
+
+  @Post('refresh')
+  @ApiProperty()
+  @HttpCode(HttpStatus.OK)
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ accessToken: string }> {
+    const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE] as string | undefined;
+    if (!refreshToken) {
+      throw new UnauthorizedException('Missing refresh token');
+    }
+
+    const tokens = await this.authService.refresh(refreshToken);
+    return this.respondWithTokens(res, tokens);
+  }
+
+  @Post('logout')
+  @ApiBearerAuth()
+  @ApiProperty()
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  logout(@Res({ passthrough: true }) res: Response): { success: true } {
+    this.clearRefreshTokenCookies(res);
+    return this.authService.logout();
+  }
+
+  /**
+   * Кладёт refresh-токен в httpOnly-куку и возвращает клиенту только access-токен —
+   * refresh-токен в теле ответа больше не отдаётся. Без «запомнить меня» кука
+   * сессионная (без `expires`): браузер удалит её при закрытии, сам JWT
+   * живёт свой обычный срок
+   */
+  private respondWithTokens(res: Response, tokens: AuthTokens): { accessToken: string } {
+    // Снести legacy Path=/auth, чтобы cookie-parser не читал старую куку первой.
+    res.clearCookie(REFRESH_TOKEN_COOKIE, legacyRefreshTokenCookieOptions());
+    res.cookie(REFRESH_TOKEN_COOKIE, tokens.refreshToken, {
+      ...refreshTokenCookieOptions(),
+      ...(tokens.rememberMe && { expires: tokens.refreshTokenExpiresAt }),
+    });
+    return { accessToken: tokens.accessToken };
+  }
+}

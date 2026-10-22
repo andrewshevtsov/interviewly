@@ -1,0 +1,60 @@
+# Production override: образ как источник правды (без bind-mount и без
+# именованных node_modules). На сервере:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Локальная разработка по-прежнему: docker compose up (только docker-compose.yml).
+
+services:
+  frontend:
+    command: ["pnpm", "--filter", "@app/frontend", "run", "start"]
+    environment:
+      NODE_ENV: production
+    volumes: !reset []
+
+  backend:
+    command:
+      [
+        "sh",
+        "-c",
+        "pnpm --filter @app/backend exec prisma migrate deploy && pnpm --filter @app/backend exec prisma db seed && pnpm --filter @app/backend run start:prod",
+      ]
+    environment:
+      NODE_ENV: production
+    volumes: !reset []
+
+  collaboration:
+    image: ${COLLABORATION_IMAGE:-interviewly-collaboration}
+    command: ["pnpm", "--filter", "@app/collaboration", "run", "start"]
+    environment:
+      NODE_ENV: production
+    volumes: !reset []
+
+  # БД и Redis доступны только внутри сети compose: сервисы ходят к ним по имени, снаружи порты не нужны
+  postgres:
+    ports: !reset []
+
+  redis:
+    ports: !reset []
+
+  # Prometheus наружу не публикуется; Grafana доступна Caddy на docker-мосту хоста.
+  prometheus:
+    ports: !reset []
+
+  grafana:
+    environment:
+      # В проде пароль обязателен, без него compose падает
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Задайте GRAFANA_ADMIN_PASSWORD в .env}
+    ports: !override
+      - "172.17.0.1:3001:3000"
+
+  # Caddy проксирует GlitchTip с docker-моста хоста
+  glitchtip:
+    environment:
+      SECRET_KEY: ${GLITCHTIP_SECRET_KEY:?Задайте GLITCHTIP_SECRET_KEY в .env}
+      DATABASE_URL: postgresql://glitchtip:${GLITCHTIP_DB_PASSWORD:?Задайте GLITCHTIP_DB_PASSWORD в .env}@glitchtip-postgres:5432/glitchtip
+    ports: !override
+      - "172.17.0.1:8000:8000"
+
+  glitchtip-postgres:
+    environment:
+      POSTGRES_PASSWORD: ${GLITCHTIP_DB_PASSWORD:?Задайте GLITCHTIP_DB_PASSWORD в .env}

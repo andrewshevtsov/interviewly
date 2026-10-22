@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "frontend-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "apps/frontend"],
+      "port": 3000
+    },
+    {
+      "name": "backend-dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["back-dev"],
+      "port": 4000
+    },
+    {
+      "name": "storybook",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "storybook", "--prefix", "apps/frontend"],
+      "port": 6006
+    }
+  ]
+}

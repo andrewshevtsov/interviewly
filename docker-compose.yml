@@ -1,0 +1,423 @@
+# Docker Compose для ЛОКАЛЬНОЙ РАЗРАБОТКИ. Поднимает frontend, backend, postgres,
+# LiveKit (SFU для видео/аудио) и collaboration (Hocuspocus/Yjs для редактора).
+# Docker Compose для ЛОКАЛЬНОЙ РАЗРАБОТКИ. Поднимает frontend, backend, collaboration,
+# coderunner, Piston, PostgreSQL и LiveKit (SFU для видео/аудио сессий).
+#
+# Быстрый старт всех Docker-сервисов:
+#   cp .env.example .env
+#   docker compose up -d --build
+# Первый запуск дольше обычного: piston-init скачивает runtime Python/JS/TypeScript,
+# сохраняет их в piston_data и штатно завершается с кодом 0.
+#
+# Запуск только PostgreSQL в фоне (например, для локального запуска backend вне Docker):
+#   docker compose up -d postgres
+#
+# PostgreSQL + LiveKit (локальный backend + проверка комнат):
+#   docker compose up -d postgres livekit
+#   # или: pnpm db-dev
+#
+# Дальше:
+#   frontend:       http://localhost:3000
+#   backend:        http://localhost:4000
+#   collaboration:  ws://localhost:1234
+#   frontend: http://localhost:3000
+#   backend:  http://localhost:4000
+#   coderunner: http://localhost:3003
+#   postgres: localhost:5432 (при запуске в Docker backend подключается к postgres
+#             по имени сервиса "postgres" в сети interviewly-network; при локальном
+#             запуске backend вне Docker — через localhost, см. DATABASE_URL в .env)
+#   livekit:  ws://localhost:7880 (signaling); RTC TCP 7881, UDP 7882
+#   piston:   http://127.0.0.1:2000 (только для локальной диагностики)
+#   redis:    localhost:6379 (очередь уведомлений BullMQ)
+#   мониторинг (profile monitoring): Grafana http://localhost:3001, Prometheus http://localhost:9090
+#   ошибки (profile errors): GlitchTip http://localhost:8000
+#   mailpit:  SMTP localhost:1025, веб-интерфейс http://localhost:8025 - сюда в разработке
+#             приходят письма backend'а, наружу ничего не уходит
+#
+
+services:
+  postgres:
+    # Alpine-образ меньше полного образа и достаточен для локальной разработки.
+    image: postgres:17-alpine
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    ports:
+      # Слева порт Mac, справа стандартный порт PostgreSQL в контейнере.
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Именованный volume сохраняет таблицы между перезапусками контейнера.
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - interviewly-network
+    healthcheck:
+      # Контейнер считается готовым только после ответа выбранной базы.
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-interviewly} -d ${POSTGRES_DB:-interviewly}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  livekit:
+    image: livekit/livekit-server:v1.13.7
+    restart: unless-stopped
+    command: ["--config", "/etc/livekit.yaml"]
+    ports:
+      - "${LIVEKIT_PORT:-7880}:7880"
+      - "${LIVEKIT_RTC_TCP_PORT:-7881}:7881"
+      - "${LIVEKIT_RTC_UDP_PORT:-7882}:7882/udp"
+    volumes:
+      - ./infra/livekit/livekit.yaml:/etc/livekit.yaml:ro
+    networks:
+      - interviewly-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:7880"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # AOF: отложенные задания (напоминание за 2 часа до встречи) переживают перезапуск Redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - interviewly-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mailpit:
+    # Ловушка для писем: принимает SMTP и показывает письма в браузере
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    networks:
+      - interviewly-network
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-interviewly-frontend}
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+        NEXT_PUBLIC_COLLABORATION_URL: ${NEXT_PUBLIC_COLLABORATION_URL:-ws://localhost:1234}
+        NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: ${NEXT_PUBLIC_TELEGRAM_BOT_USERNAME:-}
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      # Серверные компоненты Next.js ходят к backend внутри Docker-сети, а не через localhost
+      BACKEND_INTERNAL_URL: http://backend:4000
+    command:
+      ["pnpm", "--filter", "@app/frontend", "run", "${FRONTEND_SCRIPT:-dev}"]
+    ports:
+      - 3000:3000
+    networks:
+      - interviewly-network
+    volumes:
+      - .:/app
+      - frontend_node_modules:/app/node_modules
+      - frontend_app_node_modules:/app/apps/frontend/node_modules
+
+  collaboration:
+    image: ${COLLABORATION_IMAGE:-interviewly-collaboration}
+    build:
+      context: .
+      dockerfile: apps/collaboration/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      BACKEND_INTERNAL_URL: http://backend:4000
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-service-token-change-me}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-interviewly}:${POSTGRES_PASSWORD:-interviewly}@postgres:5432/${POSTGRES_DB:-interviewly}?schema=public
+    command: ["pnpm", "--filter", "@app/collaboration", "run", "dev"]
+    ports:
+      - "${COLLABORATION_PORT:-1234}:1234"
+    depends_on:
+      - backend
+    networks:
+      - interviewly-network
+    volumes:
+      - .:/app
+      - collaboration_node_modules:/app/node_modules
+
+  backend:
+    image: ${BACKEND_IMAGE:-interviewly-backend}
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    restart: unless-stopped
+    env_file: ./.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-interviewly}:${POSTGRES_PASSWORD:-interviewly}@postgres:5432/${POSTGRES_DB:-interviewly}?schema=public
+      REDIS_URL: redis://redis:6379
+      CODERUNNER_INTERNAL_URL: http://coderunner:3003
+      COLLABORATION_INTERNAL_URL: http://collaboration:1234
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-service-token-change-me}
+      SMTP_HOST: mailpit
+    command:
+      [
+        "sh",
+        "-c",
+        "pnpm --filter @app/backend exec prisma generate && pnpm --filter @app/backend exec prisma migrate deploy && pnpm --filter @app/backend exec prisma db seed && pnpm run back-dev",
+      ]
+    ports:
+      - 4000:4000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - interviewly-network
+    volumes:
+      - .:/app
+      - backend_node_modules:/app/node_modules
+      - backend_app_node_modules:/app/apps/backend/node_modules
+
+  piston:
+    # Piston публикует API только на loopback хоста; контейнеры используют внутреннюю сеть.
+    image: ghcr.io/engineer-man/piston
+    # Официальный образ собран для amd64; на ARM Docker Desktop использует эмуляцию.
+    platform: linux/amd64
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - "127.0.0.1:2000:2000"
+    volumes:
+      - piston_data:/piston
+    environment:
+      # Пользовательский код не должен иметь сетевого доступа.
+      PISTON_DISABLE_NETWORKING: "true"
+      # Небольшой сервер обрабатывает только один тяжёлый запуск одновременно.
+      PISTON_MAX_CONCURRENT_JOBS: "1"
+      PISTON_RUN_TIMEOUT: "3000"
+      PISTON_RUN_CPU_TIME: "3000"
+      PISTON_RUN_MEMORY_LIMIT: "134217728"
+      PISTON_OUTPUT_MAX_SIZE: "65536"
+      PISTON_MAX_FILE_SIZE: "100000"
+      PISTON_MAX_PROCESS_COUNT: "32"
+    networks:
+      - interviewly-network
+    healthcheck:
+      # В образе старый Node без fetch, поэтому проверка использует встроенный http-модуль.
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:2000/api/v2/runtimes',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  piston-init:
+    # Одноразово устанавливает недостающие runtime после готовности API Piston.
+    image: curlimages/curl:8.10.1
+    restart: "no"
+    environment:
+      PISTON_URL: http://piston:2000
+    depends_on:
+      piston:
+        condition: service_healthy
+    volumes:
+      - ./infra/piston/install-runtimes.sh:/scripts/install-runtimes.sh:ro
+    entrypoint: ["/bin/sh", "/scripts/install-runtimes.sh"]
+    networks:
+      - interviewly-network
+
+  coderunner:
+    # Внутренний HTTP-сервис: backend проверяет участника и передаёт ему только разрешённый запуск.
+    build:
+      context: .
+      dockerfile: apps/coderunner/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      PORT: 3003
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      # Имена сервисов Compose работают как DNS-имена внутри interviewly-network.
+      BACKEND_INTERNAL_URL: http://backend:4000
+      PISTON_URL: http://piston:2000
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-service-token-change-me}
+    depends_on:
+      # Запуск разрешён только после готовности всех runtime Piston.
+      backend:
+        condition: service_started
+      piston-init:
+        condition: service_completed_successfully
+    networks:
+      - interviewly-network
+    volumes:
+      # Dev-режим видит изменения исходников, а Linux-зависимости остаются внутри volume.
+      - .:/app
+      - coderunner_node_modules:/app/node_modules
+
+  # --- Мониторинг (profile monitoring): docker compose --profile monitoring up -d ---
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    profiles: [monitoring]
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - interviewly-network
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    profiles: [monitoring]
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-password_change_me}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3001}
+      # Подставляются в provisioning/datasources/postgres.datasource.yml
+      POSTGRES_DB: ${POSTGRES_DB:-interviewly}
+      GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD:-password_change_me}
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3001}:3000"
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - interviewly-network
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    profiles: [monitoring]
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER:-interviewly}:${POSTGRES_PASSWORD:-interviewly}@postgres:5432/${POSTGRES_DB:-interviewly}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - interviewly-network
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    profiles: [monitoring]
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - interviewly-network
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    profiles: [monitoring]
+    restart: unless-stopped
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - interviewly-network
+
+  # --- Ошибки (profile errors): docker compose --profile errors up -d glitchtip ---
+
+  glitchtip-postgres:
+    # Отдельная БД: данные об ошибках быстро растут и не должны делить диск с БД приложения
+    image: postgres:17-alpine
+    profiles: [errors]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: glitchtip
+      POSTGRES_DB: glitchtip
+      POSTGRES_PASSWORD: ${GLITCHTIP_DB_PASSWORD:-password_change_me}
+    volumes:
+      - glitchtip_db_data:/var/lib/postgresql/data
+    networks:
+      - interviewly-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U glitchtip -d glitchtip"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  glitchtip:
+    image: glitchtip/glitchtip:6
+    profiles: [errors]
+    restart: unless-stopped
+    environment:
+      SECRET_KEY: ${GLITCHTIP_SECRET_KEY:-password_change_me}
+      DATABASE_URL: postgresql://glitchtip:${GLITCHTIP_DB_PASSWORD:-password_change_me}@glitchtip-postgres:5432/glitchtip
+      GLITCHTIP_DOMAIN: ${GLITCHTIP_DOMAIN:-http://localhost:8000}
+      CSRF_TRUSTED_ORIGINS: ${GLITCHTIP_DOMAIN:-http://localhost:8000}
+      # Один контейнер: веб, воркер и миграции. GLITCHTIP_EMBED_WORKER работает только
+      # со значением "true" в нижнем регистре, SERVER_ROLE надёжнее
+      SERVER_ROLE: all_in_one
+      # Пустой URL - очередь, кэш и сессии на Postgres, Redis не нужен
+      VALKEY_URL: ""
+      # Пока SMTP не настроен: письма пишутся в лог контейнера
+      EMAIL_URL: consolemail://
+      DEFAULT_FROM_EMAIL: glitchtip@interviewly.local
+      # После первого пользователя саморегистрация закрывается
+      ENABLE_USER_REGISTRATION: "False"
+      GLITCHTIP_RETENTION_DAYS: "30"
+      # Лишние функции отключены, чтобы экономить память
+      GLITCHTIP_ENABLE_UPTIME: "False"
+      GLITCHTIP_ENABLE_LOGS: "False"
+    ports:
+      - "127.0.0.1:${GLITCHTIP_PORT:-8000}:8000"
+    volumes:
+      - glitchtip_uploads:/code/uploads
+    depends_on:
+      glitchtip-postgres:
+        condition: service_healthy
+    networks:
+      - interviewly-network
+
+networks:
+  interviewly-network:
+    driver: bridge
+volumes:
+  redis_data:
+  frontend_node_modules:
+  frontend_app_node_modules:
+  backend_node_modules:
+  backend_app_node_modules:
+  collaboration_node_modules:
+  # Не смешиваем Linux node_modules разных сервисов и node_modules хоста.
+  coderunner_node_modules:
+  postgres_data:
+  piston_data:
+  prometheus_data:
+  grafana_data:
+  glitchtip_db_data:
+  glitchtip_uploads:

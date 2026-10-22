@@ -1,0 +1,82 @@
+enum ShowcaseResponseStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED // отозван
+  EXPIRED // время встречи прошло но решения не было
+}
+
+// Отклик на карточку витрины. Откликающийся сразу выбирает роль, в которой хочет прийти;
+// владелец карточки принимает отклик или отклоняет его с причиной.
+// Время встречи откликающийся предлагает сразу с откликом: в случае принятия создаётся сессия на это время.
+// Откликов одного человека на одну карточку может быть несколько (повтор после отказа через
+// SHOWCASE_RESPONSE_COOLDOWN_HOURS), но «в ожидании» - только один: это держит частичный
+// уникальный индекс из миграции (Prisma такие индексы описать не может).
+model ShowcaseResponse {
+  id String @id @default(uuid()) @db.Uuid
+
+  cardId String  @db.Uuid
+  card   Profile @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  responderId String @db.Uuid
+  responder   User   @relation(fields: [responderId], references: [id], onDelete: Cascade)
+
+  // Роль откликнувшегося; владелец карточки получает противоположную.
+  role   SessionParticipantRole
+  status ShowcaseResponseStatus @default(PENDING)
+
+  // Предложенное начало встречи. Длительность для проверки пересечений - INTERVIEW_DURATION_MINUTES.
+  scheduledAt DateTime @db.Timestamptz(3)
+
+  // Обязательна при REJECTED, 30-500 символов: CHECK ShowcaseResponse_rejection_reason.
+  rejectionReason String?
+  reviewedAt      DateTime? @db.Timestamptz(3)
+  // Отказ только из-за времени: пауза перед повторным откликом не действует.
+  timeMismatch Boolean @default(false)
+
+  // Когда владелец / автор отклика последний раз получал его в списке: события новее этого момента дают значок «Мои отклики».
+  ownerSeenAt     DateTime? @db.Timestamptz(3)
+  responderSeenAt DateTime? @db.Timestamptz(3)
+
+  // Сессия, созданная при принятии.
+  sessionId String?  @unique @db.Uuid
+  session   Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  messages  ShowcaseMessage[]
+  chatReads ShowcaseChatRead[]
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([cardId, status])
+  @@index([responderId, createdAt])
+}
+
+// Сообщение в чате двух участников отклика; чат открывается после решения владельца, не realtime (клиент опрашивает).
+model ShowcaseMessage {
+  id String @id @default(uuid()) @db.Uuid
+
+  responseId String           @db.Uuid
+  response   ShowcaseResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+
+  senderId String @db.Uuid
+  sender   User   @relation("ShowcaseMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  text      String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([responseId, createdAt])
+}
+
+// Когда участник последний раз открывал чат: сообщения собеседника новее этого момента считаются непрочитанными.
+model ShowcaseChatRead {
+  responseId String           @db.Uuid
+  response   ShowcaseResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+
+  userId String @db.Uuid
+  user   User   @relation("ShowcaseChatReader", fields: [userId], references: [id], onDelete: Cascade)
+
+  lastReadAt DateTime @db.Timestamptz(3)
+
+  @@id([responseId, userId])
+}

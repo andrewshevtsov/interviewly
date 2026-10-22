@@ -1,0 +1,42 @@
+export default [
+  {
+    showcaseVisible: false,
+    role: 'Product Manager',
+    userEmail: 'owner@interviewly.test',
+    level: 'middle',
+    stack: ['Product Strategy', 'Agile', 'Stakeholder Management', 'UX Research'],
+    bio: 'Experienced product manager focused on building interview platforms. 7+ years in SaaS.',
+  },
+  {
+    showcaseVisible: true,
+    role: 'Senior Backend Engineer',
+    userEmail: 'interviewer@interviewly.test',
+    level: 'senior',
+    stack: ['NestJS', 'PostgreSQL', 'Docker', 'Kubernetes', 'TypeScript', 'GraphQL'],
+    bio: 'Passionate backend developer with expertise in scalable systems. 10+ years of experience.',
+  },
+  {
+    showcaseVisible: true,
+    role: 'Full Stack Developer',
+    userEmail: 'candidate@interviewly.test',
+    level: 'junior',
+    stack: ['React', 'Node.js', 'MongoDB', 'JavaScript', 'CSS', 'REST API'],
+    bio: 'Eager junior full stack developer with 1-2 years of experience. Always learning and improving.',
+  },
+  {
+    showcaseVisible: true,
+    role: 'DevOps Engineer',
+    userEmail: 'admin@interviewly.test',
+    level: 'senior',
+    stack: ['Kubernetes', 'Docker', 'AWS', 'CI/CD', 'Terraform', 'Linux'],
+    bio: 'DevOps specialist with 8+ years managing cloud infrastructure. Strong focus on automation.',
+  },
+  {
+    showcaseVisible: true,
+    role: 'Frontend Developer',
+    userEmail: 'user@interviewly.test',
+    level: 'middle',
+    stack: ['React', 'Vue.js', 'TypeScript', 'TailwindCSS', 'Webpack', 'Testing Library'],
+    bio: 'Frontend enthusiast with 5 years of experience building beautiful and performant UIs.',
+  },
+];

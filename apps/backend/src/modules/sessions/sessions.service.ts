@@ -1,0 +1,752 @@
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import * as bcrypt from 'bcrypt';
+import { MetricsService } from '../../infrastructure/metrics/metrics.service.ts';
+import { LivekitService } from '../../infrastructure/livekit/livekit.service.ts';
+import {
+  SessionAccess,
+  SessionAccessRequestStatus,
+  SessionParticipantRole,
+  SessionStatus,
+  SessionType,
+} from '../../prisma/generated/enums.ts';
+import type { Prisma, Session } from '../../prisma/generated/client.ts';
+import type { JwtPayload } from '../auth/auth.types.ts';
+import { CancelSessionDto } from './dto/cancel-session.dto.ts';
+import { CreateAccessRequestDto } from './dto/create-access-request.dto.ts';
+import { CreateSessionDto } from './dto/create-session.dto.ts';
+import { JoinSessionDto } from './dto/join-session.dto.ts';
+import { TransferOwnershipDto } from './dto/transfer-ownership.dto.ts';
+import {
+  LivekitTokenResponse,
+  MySessionStateResponse,
+  SessionAccessRequestEntity,
+  SessionEntity,
+  SessionHistoryItemResponse,
+  SessionParticipantEntity,
+  SessionParticipantsResponse,
+} from './entities/session.entity.ts';
+import { NotificationsService } from '../notifications/notifications.service.ts';
+import { SESSION_PERMISSIONS } from './sessions.permissions.ts';
+import { SessionsRepository } from './sessions.repository.ts';
+
+const PASSWORD_SALT_ROUNDS = 12;
+
+const TOKEN_ALLOWED_STATUSES: ReadonlySet<SessionStatus> = new Set([
+  SessionStatus.SCHEDULED,
+  SessionStatus.READY,
+  SessionStatus.ACTIVE,
+]);
+
+// Интервью начинается, когда в комнате собрались двое: время ожидания владельца не учитывается
+const PARTICIPANTS_TO_START = 2;
+
+const CLOSED_STATUSES: ReadonlySet<SessionStatus> = new Set([
+  SessionStatus.COMPLETED,
+  SessionStatus.CANCELLED,
+  SessionStatus.EXPIRED,
+]);
+
+@Injectable()
+export class SessionsService {
+  constructor(
+    private readonly sessionsRepository: SessionsRepository,
+    private readonly livekitService: LivekitService,
+    private readonly notifications: NotificationsService,
+    private readonly metrics: MetricsService,
+  ) {}
+
+  async create(
+    ownerId: string,
+    dto: CreateSessionDto,
+  ): Promise<SessionEntity> {
+    const access = dto.access ?? SessionAccess.INVITE;
+
+    if (access === SessionAccess.PASSWORD && !dto.password) {
+      throw new BadRequestException(
+        'password is required when access is PASSWORD',
+      );
+    }
+
+    const passwordHash =
+      access === SessionAccess.PASSWORD && dto.password
+        ? await bcrypt.hash(dto.password, PASSWORD_SALT_ROUNDS)
+        : null;
+
+    const id = randomUUID();
+    const invited = dto.participants ?? [];
+
+    const session = await this.sessionsRepository.create({
+      id,
+      livekitRoomName: id,
+      title: dto.title,
+      task: dto.task,
+      editorLanguage: dto.editorLanguage,
+      type: dto.type,
+      access,
+      passwordHash,
+      scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : undefined,
+      owner: { connect: { id: ownerId } },
+      participants: {
+        create: [
+          {
+            userId: ownerId,
+            role: SessionParticipantRole.INTERVIEWER,
+            joinedAt: null,
+          },
+          ...invited
+            .filter((participant) => participant.userId !== ownerId)
+            .map((participant) => ({
+              userId: participant.userId,
+              role: participant.role ?? SessionParticipantRole.CANDIDATE,
+              joinedAt: null,
+            })),
+        ],
+      },
+    });
+
+    this.metrics.countEvent('session_created');
+    return new SessionEntity(session);
+  }
+
+  /**
+   * Сессия под мэтч из витрины: на договорённое время, доступ по приглашению. Владелец -
+   * интервьюер (по модели комнат владелец всегда INTERVIEWER, кандидату владение не
+   * передаётся), поэтому автором сессии становится тот, кто интервьюирует.
+   * `db` - клиент транзакции, чтобы принятие отклика и создание сессии были атомарны.
+   */
+  createMatchSession(
+    params: { interviewerId: string; candidateId: string; scheduledAt: Date },
+    db?: Prisma.TransactionClient,
+  ): Promise<Session> {
+    const id = randomUUID();
+
+    return this.sessionsRepository.create(
+      {
+        id,
+        livekitRoomName: id,
+        type: SessionType.MOCK,
+        access: SessionAccess.INVITE,
+        status: SessionStatus.SCHEDULED,
+        scheduledAt: params.scheduledAt,
+        owner: { connect: { id: params.interviewerId } },
+        participants: {
+          create: [
+            { userId: params.interviewerId, role: SessionParticipantRole.INTERVIEWER, joinedAt: null },
+            { userId: params.candidateId, role: SessionParticipantRole.CANDIDATE, joinedAt: null },
+          ],
+        },
+      },
+      db,
+    );
+  }
+
+  async findAll(actor: JwtPayload): Promise<SessionEntity[]> {
+    const sessions = await this.sessionsRepository.findManyForUser({
+      userId: actor.sub,
+      isAdmin:
+        actor.isAdmin && SESSION_PERMISSIONS.listAllSessions.allowAdmin,
+    });
+    return sessions.map((session) => new SessionEntity(session));
+  }
+
+  async findHistory(userId: string): Promise<SessionHistoryItemResponse[]> {
+    const sessions = await this.sessionsRepository.findCompletedForUser(userId);
+
+    return sessions.map(({ participants, ...session }) => {
+      const me = participants.find((participant) => participant.userId === userId);
+      if (!me) {
+        throw new Error(`User "${userId}" is missing from session "${session.id}" participants`);
+      }
+
+      return new SessionHistoryItemResponse({
+        id: session.id,
+        type: session.type,
+        startedAt: session.startedAt,
+        endedAt: session.endedAt,
+        myRole: me.role,
+        partners: participants
+          .filter((participant) => participant !== me)
+          .map((participant) => new SessionParticipantEntity(participant)),
+      });
+    });
+  }
+
+  async findOne(id: string, actor: JwtPayload): Promise<SessionEntity> {
+    const session = await this.requireSession(id);
+    await this.assertCanViewSession(session.id, session.ownerId, actor);
+    return new SessionEntity(session);
+  }
+
+  /**
+   * Только собственные данные вызывающего, поэтому доступно любому авторизованному:
+   * так гость по ссылке узнаёт, нужен ли пароль и что с его заявкой.
+   */
+  async getMyState(
+    sessionId: string,
+    userId: string,
+  ): Promise<MySessionStateResponse> {
+    const session = await this.requireSession(sessionId);
+    const [participant, latestRequest, user] = await Promise.all([
+      this.sessionsRepository.findParticipant(sessionId, userId),
+      this.sessionsRepository.findLatestAccessRequest(sessionId, userId),
+      this.sessionsRepository.findUserById(userId),
+    ]);
+
+    if (!user) {
+      throw new NotFoundException(`User "${userId}" not found`);
+    }
+
+    return new MySessionStateResponse({
+      userId,
+      user,
+      isOwner: session.ownerId === userId,
+      sessionStatus: session.status,
+      access: session.access,
+      role: participant?.role ?? null,
+      accessRequestStatus: latestRequest?.status ?? null,
+      editorOpen: session.editorOpen,
+    });
+  }
+
+  /**
+   * Проверяет, что пользователь видит участников,
+   * подсказки, realtime-события, и возвращает сессию
+   */
+  async requireRoomViewer(sessionId: string, actor: JwtPayload): Promise<Session> {
+    const session = await this.requireSession(sessionId);
+    await this.assertCanViewParticipants(session, actor);
+    return session;
+  }
+
+  async listParticipants(
+    sessionId: string,
+    actor: JwtPayload,
+  ): Promise<SessionParticipantsResponse> {
+    const session = await this.requireSession(sessionId);
+    await this.assertCanViewParticipants(session, actor);
+
+    const [participants, count] = await Promise.all([
+      this.sessionsRepository.listParticipants(sessionId),
+      this.sessionsRepository.countParticipants(sessionId),
+    ]);
+
+    return new SessionParticipantsResponse({
+      sessionId,
+      count,
+      participants: participants.map(
+        (participant) => new SessionParticipantEntity(participant),
+      ),
+    });
+  }
+
+  async createAccessRequest(
+    sessionId: string,
+    actor: JwtPayload,
+    dto: CreateAccessRequestDto,
+  ): Promise<SessionAccessRequestEntity> {
+    const session = await this.requireSession(sessionId);
+
+    if (CLOSED_STATUSES.has(session.status)) {
+      throw new ForbiddenException(
+        `Session "${sessionId}" is ${session.status.toLowerCase()}`,
+      );
+    }
+
+    const existingParticipant = await this.sessionsRepository.findParticipant(
+      sessionId,
+      actor.sub,
+    );
+    if (existingParticipant) {
+      throw new ConflictException('You are already a participant of this session');
+    }
+
+    if (session.access === SessionAccess.INVITE) {
+      throw new ForbiddenException(
+        'Invite-only session: wait for an invitation or ask the owner to add you',
+      );
+    }
+
+    if (session.access === SessionAccess.PASSWORD) {
+      if (!dto.password || !session.passwordHash) {
+        throw new UnauthorizedException('Password required');
+      }
+      const matches = await bcrypt.compare(dto.password, session.passwordHash);
+      if (!matches) {
+        throw new UnauthorizedException('Invalid session password');
+      }
+    }
+
+    const pending = await this.sessionsRepository.findPendingAccessRequest(
+      sessionId,
+      actor.sub,
+    );
+    if (pending) {
+      return new SessionAccessRequestEntity(pending);
+    }
+
+    const requestedRole = dto.role ?? SessionParticipantRole.CANDIDATE;
+
+    const created = await this.sessionsRepository.createAccessRequest({
+      sessionId,
+      requesterId: actor.sub,
+      requestedRole,
+    });
+
+    this.metrics.countEvent('access_request_created');
+    return new SessionAccessRequestEntity(created);
+  }
+
+  async listAccessRequests(
+    sessionId: string,
+    actor: JwtPayload,
+  ): Promise<SessionAccessRequestEntity[]> {
+    const session = await this.requireSession(sessionId);
+    this.assertCanManageAccessRequests(session, actor);
+
+    const requests = await this.sessionsRepository.listAccessRequests(sessionId);
+    return requests.map(
+      (request) => new SessionAccessRequestEntity(request),
+    );
+  }
+
+  async approveAccessRequest(
+    sessionId: string,
+    requestId: string,
+    actor: JwtPayload,
+  ): Promise<SessionAccessRequestEntity> {
+    const session = await this.requireSession(sessionId);
+    this.assertCanManageAccessRequests(session, actor);
+
+    const request = await this.requireAccessRequest(sessionId, requestId);
+    if (request.status !== SessionAccessRequestStatus.PENDING) {
+      throw new ConflictException(
+        `Request is already ${request.status.toLowerCase()}`,
+      );
+    }
+
+    const updated = await this.sessionsRepository.updateAccessRequest(
+      requestId,
+      {
+        status: SessionAccessRequestStatus.APPROVED,
+        reviewedAt: new Date(),
+        reviewedById: actor.sub,
+      },
+    );
+
+    await this.sessionsRepository.upsertParticipant({
+      sessionId,
+      userId: request.requesterId,
+      role: request.requestedRole,
+      joinedAt: null,
+    });
+
+    this.metrics.countEvent('access_request_approved');
+    return new SessionAccessRequestEntity(updated);
+  }
+
+  async rejectAccessRequest(
+    sessionId: string,
+    requestId: string,
+    actor: JwtPayload,
+  ): Promise<SessionAccessRequestEntity> {
+    const session = await this.requireSession(sessionId);
+    this.assertCanManageAccessRequests(session, actor);
+
+    const request = await this.requireAccessRequest(sessionId, requestId);
+    if (request.status !== SessionAccessRequestStatus.PENDING) {
+      throw new ConflictException(
+        `Request is already ${request.status.toLowerCase()}`,
+      );
+    }
+
+    const updated = await this.sessionsRepository.updateAccessRequest(
+      requestId,
+      {
+        status: SessionAccessRequestStatus.REJECTED,
+        reviewedAt: new Date(),
+        reviewedById: actor.sub,
+      },
+    );
+
+    this.metrics.countEvent('access_request_rejected');
+    return new SessionAccessRequestEntity(updated);
+  }
+
+  /**
+   * Передаёт владение комнатой другому интервьюеру: права владельца (заявки, свои комнаты
+   * остаются открытыми) вычисляются из ownerId, поэтому переходят сразу. Роли не меняются.
+   */
+  async transferOwnership(
+    sessionId: string,
+    actor: JwtPayload,
+    dto: TransferOwnershipDto,
+  ): Promise<SessionEntity> {
+    const session = await this.requireSession(sessionId);
+    const rule = SESSION_PERMISSIONS.transferOwnership;
+
+    const isAllowed =
+      (rule.allowAdmin && actor.isAdmin) ||
+      (rule.allowOwner && session.ownerId === actor.sub);
+    if (!isAllowed) {
+      throw new ForbiddenException('Only the room owner can transfer ownership');
+    }
+
+    if (CLOSED_STATUSES.has(session.status)) {
+      throw new ForbiddenException(
+        `Session "${sessionId}" is ${session.status.toLowerCase()}`,
+      );
+    }
+
+    if (dto.userId === session.ownerId) {
+      throw new ConflictException('This user already owns the session');
+    }
+
+    const target = await this.sessionsRepository.findParticipant(
+      sessionId,
+      dto.userId,
+    );
+    const targetRoles: readonly SessionParticipantRole[] = rule.allowTargetRoles;
+    if (!target || !targetRoles.includes(target.role)) {
+      throw new BadRequestException(
+        'Ownership can only be transferred to an interviewer of this session',
+      );
+    }
+
+    const updated = await this.sessionsRepository.updateOwner(
+      sessionId,
+      dto.userId,
+    );
+    return new SessionEntity(updated);
+  }
+
+  /**
+   * Завершает интервью для всех: сессия становится COMPLETED, участники выходят,
+   * LiveKit-комната закрывается. Повторный вызов для завершённой сессии ничего не меняет.
+   */
+  async end(sessionId: string, actor: JwtPayload): Promise<SessionEntity> {
+    const session = await this.requireSession(sessionId);
+    const rule = SESSION_PERMISSIONS.endSession;
+
+    const isAllowed =
+      (rule.allowAdmin && actor.isAdmin) ||
+      (rule.allowOwner && session.ownerId === actor.sub);
+    if (!isAllowed) {
+      throw new ForbiddenException('Only the room owner can end the session');
+    }
+
+    if (session.status === SessionStatus.COMPLETED) {
+      return new SessionEntity(session);
+    }
+    if (CLOSED_STATUSES.has(session.status)) {
+      throw new ConflictException(
+        `Session "${sessionId}" is ${session.status.toLowerCase()}`,
+      );
+    }
+
+    const completed = await this.sessionsRepository.complete(sessionId, new Date());
+    await this.livekitService.deleteRoom(session.livekitRoomName);
+
+    return new SessionEntity(completed);
+  }
+
+  /**
+   * Повторный вход уже принятого участника (не заявка).
+   */
+  async join(
+    sessionId: string,
+    userId: string,
+    dto: JoinSessionDto,
+  ): Promise<SessionEntity> {
+    const session = await this.requireSession(sessionId);
+
+    if (CLOSED_STATUSES.has(session.status)) {
+      throw new ForbiddenException(
+        `Session "${sessionId}" is ${session.status.toLowerCase()}`,
+      );
+    }
+
+    const participant = await this.sessionsRepository.findParticipant(
+      sessionId,
+      userId,
+    );
+    if (!participant) {
+      throw new ForbiddenException(
+        'Not a participant: submit an access request and wait for owner approval',
+      );
+    }
+
+    if (session.access === SessionAccess.PASSWORD) {
+      if (!dto.password || !session.passwordHash) {
+        throw new UnauthorizedException('Password required');
+      }
+      const matches = await bcrypt.compare(dto.password, session.passwordHash);
+      if (!matches) {
+        throw new UnauthorizedException('Invalid session password');
+      }
+    }
+
+    await this.leaveOtherRooms(session, userId);
+
+    await this.sessionsRepository.upsertParticipant({
+      sessionId,
+      userId,
+      role: participant.role,
+    });
+
+    this.metrics.countEvent('session_joined');
+    return new SessionEntity(session);
+  }
+
+  /**
+   * Отмена до начала интервью: владелец, любой участник или admin. Повторная отмена ничего не
+   * меняет. Начавшееся интервью отменить нельзя - его завершают через `end`.
+   */
+  async cancel(
+    sessionId: string,
+    actor: JwtPayload,
+    dto: CancelSessionDto,
+  ): Promise<SessionEntity> {
+    const session = await this.requireSession(sessionId);
+    const rule = SESSION_PERMISSIONS.cancelSession;
+    const participant = await this.sessionsRepository.findParticipant(sessionId, actor.sub);
+
+    const isAllowed =
+      (rule.allowAdmin && actor.isAdmin) ||
+      (rule.allowOwner && session.ownerId === actor.sub) ||
+      (rule.allowParticipant && participant !== null);
+
+    if (!isAllowed) {
+      throw new ForbiddenException('Only a participant of the session can cancel it');
+    }
+
+    if (session.status === SessionStatus.CANCELLED) {
+      return new SessionEntity(session);
+    }
+    if (session.status !== SessionStatus.SCHEDULED && session.status !== SessionStatus.READY) {
+      throw new ConflictException(
+        `Session "${sessionId}" is ${session.status.toLowerCase()} and cannot be cancelled`,
+      );
+    }
+
+    const cancelled = await this.sessionsRepository.cancel(sessionId, {
+      cancelledById: actor.sub,
+      reason: dto.reason ?? null,
+      at: new Date(),
+    });
+
+    if (!cancelled) {
+      throw new ConflictException(`Session "${sessionId}" has already started and cannot be cancelled`);
+    }
+
+    await this.livekitService.deleteRoom(session.livekitRoomName);
+    await this.notifications.cancelSessionReminder(sessionId);
+    await this.notifications.notifySessionCancelled(sessionId, actor.sub);
+
+    return new SessionEntity(cancelled);
+  }
+
+  async createLivekitToken(
+    sessionId: string,
+    userId: string,
+  ): Promise<LivekitTokenResponse> {
+    const session = await this.requireSession(sessionId);
+
+    if (!TOKEN_ALLOWED_STATUSES.has(session.status)) {
+      throw new ForbiddenException(
+        `LiveKit token is not available for status ${session.status}`,
+      );
+    }
+
+    const participant = await this.sessionsRepository.findParticipant(
+      sessionId,
+      userId,
+    );
+    if (!participant) {
+      throw new ForbiddenException(
+        'Not a participant: submit an access request and wait for owner approval',
+      );
+    }
+
+    await this.leaveOtherRooms(session, userId);
+
+    await this.sessionsRepository.upsertParticipant({
+      sessionId,
+      userId,
+      role: participant.role,
+    });
+
+    await this.startIfEveryoneJoined(session);
+
+    const user = await this.sessionsRepository.findUserById(userId);
+    if (!user) {
+      throw new NotFoundException(`User "${userId}" not found`);
+    }
+
+    const displayName = [user.firstName, user.lastName]
+      .filter(Boolean)
+      .join(' ');
+
+    const token = await this.livekitService.createParticipantToken({
+      roomName: session.livekitRoomName,
+      identity: userId,
+      name: displayName || user.email,
+      metadata: JSON.stringify({
+        role: participant.role,
+        sessionId: session.id,
+      }),
+    });
+
+    return new LivekitTokenResponse({
+      serverUrl: this.livekitService.getServerUrl(),
+      roomName: session.livekitRoomName,
+      token,
+    });
+  }
+
+  private async startIfEveryoneJoined(
+    session: { id: string; startedAt: Date | null },
+  ): Promise<void> {
+    if (session.startedAt) {
+      return;
+    }
+
+    const present = await this.sessionsRepository.countPresentParticipants(session.id);
+    if (present >= PARTICIPANTS_TO_START) {
+      await this.sessionsRepository.markStarted(session.id, new Date());
+    }
+  }
+
+  /**
+   * Одна активная комната на участника: при входе в чужую комнату выводит из остальных.
+   * Владелец (exemptOwner) держит свои комнаты открытыми и не выкидывается из них.
+   */
+  private async leaveOtherRooms(
+    session: { id: string; ownerId: string },
+    userId: string,
+  ): Promise<void> {
+    const rule = SESSION_PERMISSIONS.singleActiveRoom;
+    if (!rule.enabled || (rule.exemptOwner && session.ownerId === userId)) {
+      return;
+    }
+
+    const active = await this.sessionsRepository.findActiveParticipations(
+      userId,
+      session.id,
+    );
+    const toLeave = rule.exemptOwner
+      ? active.filter((participation) => participation.session.ownerId !== userId)
+      : active;
+
+    await Promise.all(
+      toLeave.map(async (participation) => {
+        await this.sessionsRepository.markLeft(
+          participation.sessionId,
+          userId,
+        );
+        await this.livekitService.removeParticipant(
+          participation.session.livekitRoomName,
+          userId,
+        );
+      }),
+    );
+  }
+
+  private async requireSession(id: string) {
+    const session = await this.sessionsRepository.findById(id);
+    if (!session) {
+      throw new NotFoundException(`Session "${id}" not found`);
+    }
+    return session;
+  }
+
+  private async requireAccessRequest(sessionId: string, requestId: string) {
+    const request =
+      await this.sessionsRepository.findAccessRequestById(requestId);
+    if (!request || request.sessionId !== sessionId) {
+      throw new NotFoundException(`Access request "${requestId}" not found`);
+    }
+    return request;
+  }
+
+  private async assertCanViewSession(
+    sessionId: string,
+    ownerId: string,
+    actor: JwtPayload,
+  ): Promise<void> {
+    const perm = SESSION_PERMISSIONS.viewSession;
+    if (perm.allowAdmin && actor.isAdmin) {
+      return;
+    }
+    if (perm.allowOwner && ownerId === actor.sub) {
+      return;
+    }
+    if (perm.allowParticipant) {
+      const participant = await this.sessionsRepository.findParticipant(
+        sessionId,
+        actor.sub,
+      );
+      if (participant) {
+        return;
+      }
+    }
+    if (perm.allowAccessRequester) {
+      const hasRequest = await this.sessionsRepository.hasPendingOrApprovedRequest(
+        sessionId,
+        actor.sub,
+      );
+      if (hasRequest) {
+        return;
+      }
+    }
+    throw new ForbiddenException('No access to this session');
+  }
+
+  private async assertCanViewParticipants(
+    session: { id: string; ownerId: string },
+    actor: JwtPayload,
+  ): Promise<void> {
+    const perm = SESSION_PERMISSIONS.viewParticipants;
+    if (perm.allowAdmin && actor.isAdmin) {
+      return;
+    }
+    if (perm.allowOwner && session.ownerId === actor.sub) {
+      return;
+    }
+    if (perm.allowParticipant) {
+      const participant = await this.sessionsRepository.findParticipant(
+        session.id,
+        actor.sub,
+      );
+      if (participant) {
+        return;
+      }
+    }
+
+    throw new ForbiddenException(
+      'Only the owner or participants of this room can view the participant list',
+    );
+  }
+
+  private assertCanManageAccessRequests(
+    session: { ownerId: string },
+    actor: JwtPayload,
+  ): void {
+    const perm = SESSION_PERMISSIONS.manageAccessRequests;
+    if (perm.allowAdmin && actor.isAdmin) {
+      return;
+    }
+    if (perm.allowOwner && session.ownerId === actor.sub) {
+      return;
+    }
+
+    throw new ForbiddenException('Only the room owner can manage access requests');
+  }
+}

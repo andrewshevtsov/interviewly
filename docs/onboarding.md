@@ -1,0 +1,184 @@
+# Онбординг
+
+Гайд по настройке окружения. Если нужен просто быстрый старт — см. корневой
+[README.md](../README.md), здесь — то же самое, но подробнее и с объяснением "почему".
+
+## Требования
+
+- Node.js `>=22.13.0` (зафиксировано в `engines` корневого `package.json`; для нативного ESM +
+  decorators без предупреждений рекомендуется именно Node 22)
+- pnpm `11.22.0` — не обязательно ставить вручную: Corepack (идёт в комплекте с Node 20+)
+  сам поднимет нужную версию по полю `packageManager` в корневом `package.json`
+- Docker + Docker Compose — если нужно поднять сервисы в контейнерах
+  вместо локального запуска
+
+## Установка
+
+```bash
+git clone <url-репозитория>
+cd interviewly
+pnpm install
+```
+
+`pnpm install` ставит зависимости для всех пакетов workspace (`apps/*`) одной командой.
+
+Пакет для одного приложения добавляется через `--filter`. Имя берётся из его `package.json`.
+
+```bash
+pnpm --filter @app/frontend add axios
+pnpm --filter @app/backend add @nestjs/config
+pnpm --filter @app/frontend add -D eslint-plugin-react
+```
+
+`-D` кладёт пакет в `devDependencies` этого приложения. Запись появляется только в его `package.json` и в `pnpm-lock.yaml`.
+
+Общий пакет, которым пользуются оба приложения (`typescript`, `eslint`, `prettier` и остальные из корневого `package.json`), ставится в корень флагом `-w`:
+
+```bash
+pnpm add -Dw typescript
+```
+
+Уже описанные зависимости одного приложения ставятся так:
+
+```bash
+pnpm install --filter @app/frontend
+```
+
+Без `--filter` `pnpm install` по-прежнему ставит весь workspace: корень, frontend и backend.
+
+## Подготовка PostgreSQL и Prisma
+
+Нужно только для запуска backend **локально, вне Docker** (раздел ниже). Если вы просто
+поднимаете всё через `docker compose up --build` (см. «Запуск через Docker»), пропустите
+этот раздел — миграции, генерацию Prisma Client и сиды сервис `backend` делает сам при
+каждом старте контейнера.
+
+После установки зависимостей подготовьте локальную базу перед запуском приложений:
+
+```bash
+# 1. Создать локальный файл окружения (выполняется один раз после клонирования)
+cp .env.example .env
+
+# 2. Запустить PostgreSQL в Docker в фоновом режиме
+docker compose up -d postgres
+
+# 3. Применить закоммиченные миграции к локальной базе
+pnpm --filter backend exec prisma migrate dev
+
+# 4. Сгенерировать Prisma Client для backend
+pnpm --filter backend exec prisma generate
+
+# 5. Заполнить локальную базу тестовыми данными (необязательно)
+pnpm --filter backend exec prisma db seed
+```
+
+После этого PostgreSQL продолжает работать в Docker, а frontend и backend запускаются
+отдельными командами из следующего раздела. Остановить инфраструктуру можно командой
+`docker compose down`; данные PostgreSQL сохранятся в именованном volume `postgres_data`.
+
+Seed предназначен только для локальной разработки. Он создаёт 5 пользователей, 3 сессии
+и 6 участий в сессиях через `upsert`, поэтому повторный запуск обновляет те же записи и не
+создаёт дубликаты. Запускайте seed после применения миграций и генерации Prisma Client.
+
+## Запуск приложений локально (без Docker)
+
+Каждый пакет запускается независимо через `pnpm --filter`:
+
+```bash
+pnpm --filter @app/frontend run dev   # http://localhost:3000
+pnpm --filter @app/backend run dev    # http://localhost:4000
+pnpm --filter @app/collaboration run dev # ws://localhost:1234
+pnpm --filter @app/coderunner run start:dev # http://localhost:3003
+```
+
+Для локального coderunner Piston всё равно работает в Docker. Перед первым запуском
+установите его runtime'ы одной командой (после успеха `piston-init` завершится с кодом 0):
+
+```bash
+docker compose up -d piston-init
+```
+
+Подробности про каждое приложение (текущее состояние, переменные окружения, что именно
+сейчас запущено) — в `README.md` внутри `apps/frontend` и `apps/backend`.
+
+## Запуск через Docker
+
+`docker-compose.yml` поднимает frontend, backend, collaboration, coderunner, Piston,
+PostgreSQL и LiveKit (подробности — в [docs/deployment.md](deployment.md)):
+
+```bash
+cp .env.example .env
+docker compose up -d --build
+```
+
+Больше ничего готовить руками не нужно. Сервис `backend` сам генерирует Prisma Client,
+применяет закоммиченные миграции (`prisma migrate deploy`) и заполняет базу сидами при
+каждом старте контейнера. `backend` подключается к `postgres` по имени сервиса в сети
+`interviewly-network` (см. `DATABASE_URL` в `.env.example`), а не через `localhost`.
+
+Одноразовый сервис `piston-init` ждёт готовности Piston, устанавливает Python, JavaScript
+и TypeScript в volume `piston_data`, после чего штатно переходит в `Exited (0)`. Coderunner
+стартует только после успешного завершения этой установки.
+
+Запросы на выполнение frontend отправляет backend. Очередь `code-executions` хранится в
+Redis, её обработчик работает в backend, а coderunner вызывается backend как внутренний
+адаптер Piston.
+
+- frontend: http://localhost:3000
+- backend: http://localhost:4000
+- collaboration: ws://localhost:1234
+- coderunner: http://localhost:3003
+
+Проверить состояние и посмотреть логи coderunner:
+
+```bash
+docker compose ps
+docker compose logs -f coderunner
+```
+
+## Переменные окружения
+
+Шаблон — `.env.example` в корне репозитория. Скопируйте его в `.env`, дефолтные значения
+подходят для локальной разработки (не секретны, не идут в прод).
+
+`DATABASE_URL` (и `POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB`/`POSTGRES_PORT`) нужны
+backend'у для подключения к postgres через Prisma.
+
+## Prisma и миграции
+
+Prisma-схема backend разбита по предметным областям:
+
+```text
+apps/backend/prisma/
+├── schema.prisma       # datasource и генератор Prisma Client
+├── models/             # модели и enum
+└── migrations/         # применяемая по порядку история SQL-изменений БД
+```
+
+Основные команды запускаются из корня монорепозитория через фильтр backend:
+
+```bash
+pnpm --filter backend exec prisma validate       # проверить схему
+pnpm --filter backend exec prisma migrate status # проверить состояние миграций
+pnpm --filter backend exec prisma generate       # обновить Prisma Client
+```
+
+После изменения моделей новую dev-миграцию создают командой:
+
+```bash
+pnpm --filter backend exec prisma migrate dev --name <короткое-название>
+```
+
+Файлы уже применённых миграций не редактируют: Prisma хранит их checksum в базе. Если
+нужно изменить существующую структуру, создайте следующую миграцию. Ручные PostgreSQL
+`CHECK` и триггеры находятся в SQL миграций, потому что они не выражаются текущей
+Prisma-схемой полностью.
+
+## Проверка окружения
+
+```bash
+pnpm typecheck     # tsc --noEmit по всем пакетам
+pnpm format:check  # проверка форматирования Prettier
+```
+
+Соглашения по стилю кода и коммитов — в [docs/style-guide.md](style-guide.md).

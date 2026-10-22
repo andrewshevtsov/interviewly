@@ -1,0 +1,25 @@
+model Feedback {
+  id String @default(uuid()) @db.Uuid
+
+  sessionId String  @db.Uuid
+  session   Session @relation(fields: [sessionId], references: [id])
+
+  authorId String @db.Uuid
+  author   User   @relation("FeedbackAuthored", fields: [authorId], references: [id])
+
+  targetUserId String @db.Uuid
+  targetUser   User   @relation("FeedbackReceived", fields: [targetUserId], references: [id])
+
+  score   Int
+  comment String?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@id([id])
+  // Один отзыв от автора на конкретного участника в рамках сессии; повторная
+  // отправка — это PATCH существующей записи, а не новый POST.
+  @@unique([sessionId, authorId, targetUserId])
+  @@index([authorId])
+  @@index([targetUserId])
+}
