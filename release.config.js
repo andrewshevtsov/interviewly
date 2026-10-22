@@ -11,7 +11,7 @@ const ticketType = "+([A-Z])-[0-9]*";
 const sectionByType = {
   feature: "Features",
   hotfix: "Bug Fixes",
-  fix: "Bug Fixes",
+  bugfix: "Bug Fixes",
 };
 
 const toSection = (type) =>
@@ -29,7 +29,7 @@ export default {
           { breaking: true, release: "major" },
           { type: "feature", release: "minor" },
           { type: "hotfix", release: "patch" },
-          { type: "fix", release: "patch" },
+          { type: "bugfix", release: "patch" },
           { type: ticketType, release: "patch" },
           { type: "infra", release: false },
           { type: "chore", release: false },
@@ -70,6 +70,6 @@ export default {
           "release: v${nextRelease.version} [skip ci]\n\n${nextRelease.notes}",
       },
     ],
-    "@semantic-release/github",
+    ["@semantic-release/github", { successComment: false, failComment: false }],
   ],
 };
