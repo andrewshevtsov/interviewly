@@ -6,6 +6,7 @@ import sessionsSeedData from './seed-data/sessions';
 import participantsSeedData from './seed-data/session-participants';
 import profilesSeedData from './seed-data/profiles';
 import feedbackSeedData from './seed-data/feedback';
+import programmingTasksSeedData from './seed-data/programming-tasks';
 
 // Тот же фактор, что и в AuthService, чтобы сид-хеши были неотличимы
 // от реальных регистраций.
@@ -19,6 +20,44 @@ async function main() {
   console.log('Starting database seed...');
 
   const userIdByEmail = new Map<string, string>();
+
+  for (const eachTask of programmingTasksSeedData) {
+    const { id, variants, testCases, ...taskData } = eachTask;
+
+    // Банк задач синхронизируется по slug. Варианты обновляются независимо по
+    // языку, а test cases пересоздаются, чтобы удалённые из seed кейсы не
+    // оставались в локальной базе после следующего запуска контейнера.
+    await prisma.$transaction(async (transaction) => {
+      const task = await transaction.programmingTask.upsert({
+        where: { slug: taskData.slug },
+        update: taskData,
+        create: { id, ...taskData },
+      });
+
+      for (const variant of variants) {
+        await transaction.programmingTaskVariant.upsert({
+          where: {
+            taskId_language: {
+              taskId: task.id,
+              language: variant.language,
+            },
+          },
+          update: variant,
+          create: { taskId: task.id, ...variant },
+        });
+      }
+
+      await transaction.programmingTaskCase.deleteMany({
+        where: { taskId: task.id },
+      });
+      await transaction.programmingTaskCase.createMany({
+        data: testCases.map((testCase) => ({
+          taskId: task.id,
+          ...testCase,
+        })),
+      });
+    });
+  }
 
   for (const { password, ...eachUser } of usersSeedData) {
     // Сырой пароль из сид-данных хешируем ровно как AuthService.register.
@@ -129,6 +168,7 @@ async function main() {
   console.log(`Seeded ${participantsSeedData.length} session participants`);
   console.log(`Seeded ${profilesSeedData.length} profiles`);
   console.log(`Seeded ${feedbackSeedData.length} feedback entries`);
+  console.log(`Seeded ${programmingTasksSeedData.length} programming tasks`);
 }
 
 main()

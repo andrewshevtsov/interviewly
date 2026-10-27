@@ -392,6 +392,12 @@ export interface CreateSessionInput {
    */
   task?: string;
 
+  /** Задача из банка; не передаётся для пользовательского условия. */
+  programmingTaskId?: string;
+
+  /** Язык редактора и выполнения кода. */
+  editorLanguage: EditorLanguage;
+
   /**
    * Кто может попасть в сессию.
    */

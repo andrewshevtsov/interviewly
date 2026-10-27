@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-use-before-define */
+
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 import { RunCodeButton, type ExecutionResult } from "@/features/run-code";
@@ -32,6 +34,9 @@ const OPTIMISTIC_OUTPUT_TTL_MS = 30_000;
 interface PendingOutput {
   /** Текущий этап выполнения. */
   status: "queued" | "running";
+
+  /** Уже завершённые тест-кейсы банковской задачи. */
+  result?: TaskExecutionResult;
 }
 
 /** Код успешно выполнен. */
@@ -49,8 +54,44 @@ interface FailedOutput {
   status: "error" | "queue_timeout" | "rejected";
 }
 
+/** Результат одного статичного тест-кейса. */
+interface TaskCaseResult {
+  /** Stable order of the case in the task. */
+  position: number;
+  /** Human-readable case name. */
+  name: string;
+  /** Input passed to the harness. */
+  input: unknown;
+  /** Expected JSON-compatible result. */
+  expectedOutput: unknown;
+  /** Parsed stdout returned by the solution. */
+  actualOutput: unknown;
+  /** Comparison or execution outcome. */
+  status: "passed" | "failed" | "error";
+  /** Raw normalized runner response. */
+  execution: ExecutionResult | null;
+}
+
+/** Накопленный результат запуска задачи из банка. */
+interface TaskExecutionResult {
+  /** Number of cases already published. */
+  completedCases: number;
+  /** Total number of cases in the task. */
+  totalCases: number;
+  /** Results accumulated in task order. */
+  cases: TaskCaseResult[];
+}
+
+/** Все тест-кейсы банковской задачи обработаны. */
+interface CompletedTaskOutput {
+  /** Terminal status of a bank-task execution. */
+  status: "completed";
+  /** Complete collection of case results. */
+  result: TaskExecutionResult;
+}
+
 /** Состояние отображаемой консоли. */
-type OutputState = PendingOutput | SuccessfulOutput | FailedOutput;
+type OutputState = PendingOutput | SuccessfulOutput | CompletedTaskOutput | FailedOutput;
 
 /** Одна запись общего журнала запусков. */
 type OutputLogEntry = OutputState & {
@@ -90,7 +131,7 @@ function isOutputLogEntry(value: unknown): value is OutputLogEntry {
     return false;
   }
 
-  if (value.status === "success") {
+  if (value.status === "success" || value.status === "completed") {
     return "result" in value && typeof value.result === "object" && value.result !== null;
   }
 
@@ -100,6 +141,24 @@ function isOutputLogEntry(value: unknown): value is OutputLogEntry {
     value.status === "error" ||
     value.status === "queue_timeout" ||
     value.status === "rejected"
+  );
+}
+
+/**
+ * Проверяет накопленный результат тест-кейсов перед отображением.
+ * @param {unknown} value Значение из общего Y.Doc.
+ * @returns {boolean} Признак результата банковской задачи.
+ */
+function isTaskExecutionResult(value: unknown): value is TaskExecutionResult {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "completedCases" in value &&
+    typeof value.completedCases === "number" &&
+    "totalCases" in value &&
+    typeof value.totalCases === "number" &&
+    "cases" in value &&
+    Array.isArray(value.cases)
   );
 }
 
@@ -320,7 +379,12 @@ export function SessionCodeEditor(props: SessionCodeEditorProps) {
                     {t("timeLabel")} {startedAt.time}
                   </div>
                   {(entry.status === "queued" || entry.status === "running") && (
-                    <span className="font-sans text-muted-foreground">{t("running")}</span>
+                    <>
+                      <span className="font-sans text-muted-foreground">{t("running")}</span>
+                      {isTaskExecutionResult(entry.result) && (
+                        <TaskCasesOutput result={entry.result} />
+                      )}
+                    </>
                   )}
                   {(entry.status === "error" ||
                     entry.status === "queue_timeout" ||
@@ -344,6 +408,7 @@ export function SessionCodeEditor(props: SessionCodeEditorProps) {
                       )}
                     </>
                   )}
+                  {entry.status === "completed" && <TaskCasesOutput result={entry.result} />}
                 </div>
               );
             })}
@@ -373,5 +438,54 @@ export function SessionCodeEditor(props: SessionCodeEditorProps) {
         />
       </div>
     </Card>
+  );
+}
+
+/** Свойства списка результатов тест-кейсов. */
+interface TaskCasesOutputProps {
+  /** Накопленный результат запуска. */
+  result: TaskExecutionResult;
+}
+
+/**
+ * Отображает результаты тест-кейсов по мере их поступления из Y.Doc.
+ * @param {TaskCasesOutputProps} props Накопленные результаты.
+ * @returns {import('react').ReactNode} Прогресс и раскрытые тест-кейсы.
+ */
+function TaskCasesOutput(props: TaskCasesOutputProps) {
+  const { result } = props;
+  const t = useTranslations("session");
+  /** Локализованные подписи исхода одного кейса. */
+  const statusLabels = {
+    passed: t("testStatuspassed"),
+    failed: t("testStatusfailed"),
+    error: t("testStatuserror"),
+  };
+
+  return (
+    <div className="mt-2 space-y-3 font-sans text-sm">
+      <p className="text-muted-foreground">
+        {t("testProgress")}: {result.completedCases}/{result.totalCases}
+      </p>
+      {result.cases.map((testCase) => (
+        <div key={testCase.position} className="rounded border border-border p-3">
+          <p className={testCase.status === "passed" ? "text-success" : "text-destructive"}>
+            {testCase.name}: {statusLabels[testCase.status]}
+          </p>
+          <pre className="mt-2 whitespace-pre-wrap">
+            {t("testInput")}: {JSON.stringify(testCase.input)}
+            {"\n"}
+            {t("testExpected")}: {JSON.stringify(testCase.expectedOutput)}
+            {"\n"}
+            {t("testActual")}: {JSON.stringify(testCase.actualOutput)}
+          </pre>
+          {testCase.execution?.stderr && (
+            <pre className="mt-2 whitespace-pre-wrap text-destructive">
+              {testCase.execution.stderr}
+            </pre>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }

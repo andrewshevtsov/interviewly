@@ -1,0 +1,66 @@
+// Стабильный ключ сложности. Локализованная подпись (например, «Легко» или
+// «Easy») формируется на frontend и не хранится в базе данных.
+enum ProgrammingTaskDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+// Переиспользуемая задача из банка. Условие и тест-кейсы не зависят от языка,
+// а стартовый код хранится отдельно для каждого поддерживаемого языка.
+model ProgrammingTask {
+  id          String                    @id @default(uuid()) @db.Uuid
+  slug        String                    @unique
+  title       String
+  description String
+  difficulty  ProgrammingTaskDifficulty
+  isActive    Boolean                   @default(true)
+
+  variants  ProgrammingTaskVariant[]
+  testCases ProgrammingTaskCase[]
+  sessions  Session[]
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([isActive])
+}
+
+// Языковая версия задачи. Наличие варианта означает, что задачу можно выбрать
+// для соответствующего языка редактора.
+model ProgrammingTaskVariant {
+  id     String          @id @default(uuid()) @db.Uuid
+  taskId String          @db.Uuid
+  task   ProgrammingTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  language    EditorLanguage
+  starterCode String
+  // Системная обвязка добавляется к коду кандидата только при исполнении:
+  // читает JSON из stdin, вызывает решение и печатает результат как JSON.
+  harnessCode String
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([taskId, language])
+  @@index([language])
+}
+
+// Один статичный набор входных данных и ожидаемый результат. JSON позволяет
+// передавать в solve(params) объекты, массивы и примитивы без привязки к числу
+// аргументов функции.
+model ProgrammingTaskCase {
+  id     String          @id @default(uuid()) @db.Uuid
+  taskId String          @db.Uuid
+  task   ProgrammingTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  position       Int
+  name           String
+  input          Json
+  expectedOutput Json?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([taskId, position])
+}

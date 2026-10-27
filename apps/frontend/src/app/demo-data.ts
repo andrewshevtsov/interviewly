@@ -60,7 +60,7 @@ export const DEMO_PROFILE_STATS: ProfileStatsData = {
 };
 
 export const DEMO_NEW_SESSION_DRAFT: NewSessionDraft = {
-  title: "Техническое интервью: скобочная последовательность",
+  title: "",
   task: "Проверьте, что в строке из скобок ()[]{} все скобки закрыты в правильном порядке.",
   isPrivate: false,
   accessCode: "",

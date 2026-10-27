@@ -50,6 +50,12 @@ model Session {
   title           String?
   // Условие задачи: его видит модель, когда кандидат просит AI-подсказку
   task            String?
+  // Задача из банка; null означает пользовательское условие из поля task.
+  programmingTaskId String?          @db.Uuid
+  programmingTask   ProgrammingTask? @relation(fields: [programmingTaskId], references: [id], onDelete: SetNull)
+  // Неизменяемая копия условия, языкового варианта и тест-кейсов на момент
+  // создания сессии. Она сохраняет воспроизводимость после изменения банка.
+  programmingTaskSnapshot Json?
   // Временно (AI_HINTS_DEMO_CONTEXT): номер демо-задачи, которую интервьюер
   // показал в комнате. Удалить вместе с демо-задачами.
   demoTaskIndex   Int?
@@ -83,6 +89,7 @@ model Session {
   showcaseResponse ShowcaseResponse?
 
   @@id([id])
+  @@index([programmingTaskId])
 }
 
 // Последний сохранённый бинарный снимок Yjs-документа сессии.
