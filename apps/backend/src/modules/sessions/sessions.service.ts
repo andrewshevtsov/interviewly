@@ -11,6 +11,7 @@ import * as bcrypt from 'bcrypt';
 import { MetricsService } from '../../infrastructure/metrics/metrics.service.ts';
 import { LivekitService } from '../../infrastructure/livekit/livekit.service.ts';
 import {
+  EditorLanguage,
   SessionAccess,
   SessionAccessRequestStatus,
   SessionParticipantRole,
@@ -36,6 +37,7 @@ import {
 import { NotificationsService } from '../notifications/notifications.service.ts';
 import { SESSION_PERMISSIONS } from './sessions.permissions.ts';
 import { SessionsRepository } from './sessions.repository.ts';
+import { ProgrammingTasksService } from '../programming-tasks/programming-tasks.service.ts';
 
 const PASSWORD_SALT_ROUNDS = 12;
 
@@ -61,12 +63,10 @@ export class SessionsService {
     private readonly livekitService: LivekitService,
     private readonly notifications: NotificationsService,
     private readonly metrics: MetricsService,
+    private readonly programmingTasks: ProgrammingTasksService,
   ) {}
 
-  async create(
-    ownerId: string,
-    dto: CreateSessionDto,
-  ): Promise<SessionEntity> {
+  async create(ownerId: string, dto: CreateSessionDto): Promise<SessionEntity> {
     const access = dto.access ?? SessionAccess.INVITE;
 
     if (access === SessionAccess.PASSWORD && !dto.password) {
@@ -74,6 +74,43 @@ export class SessionsService {
         'password is required when access is PASSWORD',
       );
     }
+
+    const hasCustomTask = dto.task !== undefined;
+    const hasBankTask = dto.programmingTaskId !== undefined;
+    if (hasCustomTask === hasBankTask) {
+      throw new BadRequestException(
+        'Exactly one of task or programmingTaskId is required',
+      );
+    }
+
+    const bankTask = dto.programmingTaskId
+      ? await this.programmingTasks.findActiveForSession(
+          dto.programmingTaskId,
+          dto.editorLanguage,
+        )
+      : null;
+    const bankTaskVariant = bankTask?.variants[0];
+    const programmingTaskSnapshot =
+      bankTask && bankTaskVariant
+        ? (JSON.parse(
+            JSON.stringify({
+              taskId: bankTask.id,
+              slug: bankTask.slug,
+              title: bankTask.title,
+              description: bankTask.description,
+              difficulty: bankTask.difficulty,
+              language: dto.editorLanguage,
+              starterCode: bankTaskVariant.starterCode,
+              harnessCode: bankTaskVariant.harnessCode,
+              testCases: bankTaskVariant.testCases.map((testCase) => ({
+                position: testCase.position,
+                name: testCase.name,
+                input: testCase.input,
+                expectedOutput: testCase.expectedOutput,
+              })),
+            }),
+          ) as Prisma.InputJsonValue)
+        : undefined;
 
     const passwordHash =
       access === SessionAccess.PASSWORD && dto.password
@@ -87,8 +124,10 @@ export class SessionsService {
       id,
       livekitRoomName: id,
       title: dto.title,
-      task: dto.task,
+      task: bankTask?.description ?? dto.task,
       editorLanguage: dto.editorLanguage,
+      programmingTask: bankTask ? { connect: { id: bankTask.id } } : undefined,
+      programmingTaskSnapshot,
       type: dto.type,
       access,
       passwordHash,
@@ -139,8 +178,16 @@ export class SessionsService {
         owner: { connect: { id: params.interviewerId } },
         participants: {
           create: [
-            { userId: params.interviewerId, role: SessionParticipantRole.INTERVIEWER, joinedAt: null },
-            { userId: params.candidateId, role: SessionParticipantRole.CANDIDATE, joinedAt: null },
+            {
+              userId: params.interviewerId,
+              role: SessionParticipantRole.INTERVIEWER,
+              joinedAt: null,
+            },
+            {
+              userId: params.candidateId,
+              role: SessionParticipantRole.CANDIDATE,
+              joinedAt: null,
+            },
           ],
         },
       },
@@ -151,8 +198,7 @@ export class SessionsService {
   async findAll(actor: JwtPayload): Promise<SessionEntity[]> {
     const sessions = await this.sessionsRepository.findManyForUser({
       userId: actor.sub,
-      isAdmin:
-        actor.isAdmin && SESSION_PERMISSIONS.listAllSessions.allowAdmin,
+      isAdmin: actor.isAdmin && SESSION_PERMISSIONS.listAllSessions.allowAdmin,
     });
     return sessions.map((session) => new SessionEntity(session));
   }
@@ -161,9 +207,13 @@ export class SessionsService {
     const sessions = await this.sessionsRepository.findCompletedForUser(userId);
 
     return sessions.map(({ participants, ...session }) => {
-      const me = participants.find((participant) => participant.userId === userId);
+      const me = participants.find(
+        (participant) => participant.userId === userId,
+      );
       if (!me) {
-        throw new Error(`User "${userId}" is missing from session "${session.id}" participants`);
+        throw new Error(
+          `User "${userId}" is missing from session "${session.id}" participants`,
+        );
       }
 
       return new SessionHistoryItemResponse({
@@ -183,6 +233,11 @@ export class SessionsService {
     const session = await this.requireSession(id);
     await this.assertCanViewSession(session.id, session.ownerId, actor);
     return new SessionEntity(session);
+  }
+
+  async getDocumentStarterCode(id: string): Promise<string | null> {
+    const session = await this.requireSession(id);
+    return this.getStarterCode(session.programmingTaskSnapshot);
   }
 
   /**
@@ -220,7 +275,10 @@ export class SessionsService {
    * Проверяет, что пользователь видит участников,
    * подсказки, realtime-события, и возвращает сессию
    */
-  async requireRoomViewer(sessionId: string, actor: JwtPayload): Promise<Session> {
+  async requireRoomViewer(
+    sessionId: string,
+    actor: JwtPayload,
+  ): Promise<Session> {
     const session = await this.requireSession(sessionId);
     await this.assertCanViewParticipants(session, actor);
     return session;
@@ -265,7 +323,9 @@ export class SessionsService {
       actor.sub,
     );
     if (existingParticipant) {
-      throw new ConflictException('You are already a participant of this session');
+      throw new ConflictException(
+        'You are already a participant of this session',
+      );
     }
 
     if (session.access === SessionAccess.INVITE) {
@@ -311,10 +371,9 @@ export class SessionsService {
     const session = await this.requireSession(sessionId);
     this.assertCanManageAccessRequests(session, actor);
 
-    const requests = await this.sessionsRepository.listAccessRequests(sessionId);
-    return requests.map(
-      (request) => new SessionAccessRequestEntity(request),
-    );
+    const requests =
+      await this.sessionsRepository.listAccessRequests(sessionId);
+    return requests.map((request) => new SessionAccessRequestEntity(request));
   }
 
   async approveAccessRequest(
@@ -396,7 +455,9 @@ export class SessionsService {
       (rule.allowAdmin && actor.isAdmin) ||
       (rule.allowOwner && session.ownerId === actor.sub);
     if (!isAllowed) {
-      throw new ForbiddenException('Only the room owner can transfer ownership');
+      throw new ForbiddenException(
+        'Only the room owner can transfer ownership',
+      );
     }
 
     if (CLOSED_STATUSES.has(session.status)) {
@@ -413,7 +474,8 @@ export class SessionsService {
       sessionId,
       dto.userId,
     );
-    const targetRoles: readonly SessionParticipantRole[] = rule.allowTargetRoles;
+    const targetRoles: readonly SessionParticipantRole[] =
+      rule.allowTargetRoles;
     if (!target || !targetRoles.includes(target.role)) {
       throw new BadRequestException(
         'Ownership can only be transferred to an interviewer of this session',
@@ -451,7 +513,10 @@ export class SessionsService {
       );
     }
 
-    const completed = await this.sessionsRepository.complete(sessionId, new Date());
+    const completed = await this.sessionsRepository.complete(
+      sessionId,
+      new Date(),
+    );
     await this.livekitService.deleteRoom(session.livekitRoomName);
 
     return new SessionEntity(completed);
@@ -516,7 +581,10 @@ export class SessionsService {
   ): Promise<SessionEntity> {
     const session = await this.requireSession(sessionId);
     const rule = SESSION_PERMISSIONS.cancelSession;
-    const participant = await this.sessionsRepository.findParticipant(sessionId, actor.sub);
+    const participant = await this.sessionsRepository.findParticipant(
+      sessionId,
+      actor.sub,
+    );
 
     const isAllowed =
       (rule.allowAdmin && actor.isAdmin) ||
@@ -524,13 +592,18 @@ export class SessionsService {
       (rule.allowParticipant && participant !== null);
 
     if (!isAllowed) {
-      throw new ForbiddenException('Only a participant of the session can cancel it');
+      throw new ForbiddenException(
+        'Only a participant of the session can cancel it',
+      );
     }
 
     if (session.status === SessionStatus.CANCELLED) {
       return new SessionEntity(session);
     }
-    if (session.status !== SessionStatus.SCHEDULED && session.status !== SessionStatus.READY) {
+    if (
+      session.status !== SessionStatus.SCHEDULED &&
+      session.status !== SessionStatus.READY
+    ) {
       throw new ConflictException(
         `Session "${sessionId}" is ${session.status.toLowerCase()} and cannot be cancelled`,
       );
@@ -543,7 +616,9 @@ export class SessionsService {
     });
 
     if (!cancelled) {
-      throw new ConflictException(`Session "${sessionId}" has already started and cannot be cancelled`);
+      throw new ConflictException(
+        `Session "${sessionId}" has already started and cannot be cancelled`,
+      );
     }
 
     await this.livekitService.deleteRoom(session.livekitRoomName);
@@ -611,17 +686,51 @@ export class SessionsService {
     });
   }
 
-  private async startIfEveryoneJoined(
-    session: { id: string; startedAt: Date | null },
-  ): Promise<void> {
+  private async startIfEveryoneJoined(session: {
+    id: string;
+    startedAt: Date | null;
+  }): Promise<void> {
     if (session.startedAt) {
       return;
     }
 
-    const present = await this.sessionsRepository.countPresentParticipants(session.id);
+    const present = await this.sessionsRepository.countPresentParticipants(
+      session.id,
+    );
     if (present >= PARTICIPANTS_TO_START) {
       await this.sessionsRepository.markStarted(session.id, new Date());
     }
+  }
+
+  private getStarterCode(snapshot: Prisma.JsonValue): string | null {
+    if (
+      typeof snapshot !== 'object' ||
+      snapshot === null ||
+      Array.isArray(snapshot)
+    ) {
+      return null;
+    }
+
+    const starterCode = snapshot.starterCode;
+    if (typeof starterCode !== 'string') {
+      return null;
+    }
+
+    const description = snapshot.description;
+    const language = snapshot.language;
+    if (typeof description !== 'string' || typeof language !== 'string') {
+      return starterCode;
+    }
+
+    const commentPrefix = language === EditorLanguage.PYTHON ? '#' : '//';
+    const commentedDescription = description
+      .split(/\r?\n/)
+      .map((line) =>
+        line.length > 0 ? `${commentPrefix} ${line}` : commentPrefix,
+      )
+      .join('\n');
+
+    return `${commentedDescription}\n\n${starterCode}`;
   }
 
   /**
@@ -642,15 +751,14 @@ export class SessionsService {
       session.id,
     );
     const toLeave = rule.exemptOwner
-      ? active.filter((participation) => participation.session.ownerId !== userId)
+      ? active.filter(
+          (participation) => participation.session.ownerId !== userId,
+        )
       : active;
 
     await Promise.all(
       toLeave.map(async (participation) => {
-        await this.sessionsRepository.markLeft(
-          participation.sessionId,
-          userId,
-        );
+        await this.sessionsRepository.markLeft(participation.sessionId, userId);
         await this.livekitService.removeParticipant(
           participation.session.livekitRoomName,
           userId,
@@ -698,10 +806,11 @@ export class SessionsService {
       }
     }
     if (perm.allowAccessRequester) {
-      const hasRequest = await this.sessionsRepository.hasPendingOrApprovedRequest(
-        sessionId,
-        actor.sub,
-      );
+      const hasRequest =
+        await this.sessionsRepository.hasPendingOrApprovedRequest(
+          sessionId,
+          actor.sub,
+        );
       if (hasRequest) {
         return;
       }
@@ -747,6 +856,8 @@ export class SessionsService {
       return;
     }
 
-    throw new ForbiddenException('Only the room owner can manage access requests');
+    throw new ForbiddenException(
+      'Only the room owner can manage access requests',
+    );
   }
 }

@@ -1,11 +1,14 @@
 import * as bcrypt from 'bcrypt';
 import { createPrismaAdapter } from '../src/prisma/prisma-client-adapter';
 import { PrismaClient } from '../src/prisma/generated/client';
+import { ProgrammingTaskVariantStatus } from '../src/prisma/generated/enums';
 import usersSeedData from './seed-data/users';
 import sessionsSeedData from './seed-data/sessions';
 import participantsSeedData from './seed-data/session-participants';
 import profilesSeedData from './seed-data/profiles';
 import feedbackSeedData from './seed-data/feedback';
+import programmingTasksSeedData from './seed-data/programming-tasks';
+import harnessTemplatesSeedData from './seed-data/programming-task-harness-templates';
 
 // Тот же фактор, что и в AuthService, чтобы сид-хеши были неотличимы
 // от реальных регистраций.
@@ -19,6 +22,64 @@ async function main() {
   console.log('Starting database seed...');
 
   const userIdByEmail = new Map<string, string>();
+
+  for (const template of harnessTemplatesSeedData) {
+    await prisma.programmingTaskHarnessTemplate.upsert({
+      where: { language: template.language },
+      update: template,
+      create: template,
+    });
+  }
+
+  for (const eachTask of programmingTasksSeedData) {
+    const { id, variants, testCases, ...taskData } = eachTask;
+
+    // Банк задач синхронизируется по slug. Варианты обновляются независимо по
+    // языку, а test cases пересоздаются, чтобы удалённые из seed кейсы не
+    // оставались в локальной базе после следующего запуска контейнера.
+    await prisma.$transaction(async (transaction) => {
+      const task = await transaction.programmingTask.upsert({
+        where: { slug: taskData.slug },
+        update: taskData,
+        create: { id, ...taskData },
+      });
+
+      for (const variant of variants) {
+        const savedVariant = await transaction.programmingTaskVariant.upsert({
+          where: {
+            taskId_language: {
+              taskId: task.id,
+              language: variant.language,
+            },
+          },
+          update: {
+            ...variant,
+            status: ProgrammingTaskVariantStatus.VERIFIED,
+            verifiedAt: new Date(),
+            lastVerificationError: null,
+          },
+          create: {
+            taskId: task.id,
+            ...variant,
+            status: ProgrammingTaskVariantStatus.VERIFIED,
+            verifiedAt: new Date(),
+          },
+        });
+
+        // Seed-задачи используют одинаковые JSON-кейсы для всех языков, но в
+        // базе каждый набор принадлежит конкретному языковому варианту.
+        await transaction.programmingTaskCase.deleteMany({
+          where: { variantId: savedVariant.id },
+        });
+        await transaction.programmingTaskCase.createMany({
+          data: testCases.map((testCase) => ({
+            variantId: savedVariant.id,
+            ...testCase,
+          })),
+        });
+      }
+    });
+  }
 
   for (const { password, ...eachUser } of usersSeedData) {
     // Сырой пароль из сид-данных хешируем ровно как AuthService.register.
@@ -129,6 +190,7 @@ async function main() {
   console.log(`Seeded ${participantsSeedData.length} session participants`);
   console.log(`Seeded ${profilesSeedData.length} profiles`);
   console.log(`Seeded ${feedbackSeedData.length} feedback entries`);
+  console.log(`Seeded ${programmingTasksSeedData.length} programming tasks`);
 }
 
 main()

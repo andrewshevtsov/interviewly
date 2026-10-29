@@ -1,0 +1,107 @@
+// Стабильный ключ сложности. Локализованная подпись (например, «Легко» или
+// «Easy») формируется на frontend и не хранится в базе данных.
+enum ProgrammingTaskDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum ProgrammingTaskVariantStatus {
+  DRAFT
+  VERIFYING
+  VERIFIED
+  FAILED
+}
+
+// Редактируемый без деплоя стандартный Harness для языка. При создании
+// варианта задачи его код копируется в ProgrammingTaskVariant.harnessCode.
+model ProgrammingTaskHarnessTemplate {
+  id       String         @id @default(uuid()) @db.Uuid
+  language EditorLanguage @unique
+  code     String
+  version  Int            @default(1)
+  isActive Boolean        @default(true)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([isActive])
+}
+
+// Переиспользуемая задача из банка. Условие общее, а исполняемые данные
+// (стартовый код, harness и тест-кейсы) принадлежат языковым вариантам.
+model ProgrammingTask {
+  id          String                    @id @default(uuid()) @db.Uuid
+  slug        String                    @unique
+  title       String
+  description String
+  difficulty  ProgrammingTaskDifficulty
+  isActive    Boolean                   @default(true)
+  createdById String?                   @db.Uuid
+  createdBy   User?                     @relation("ProgrammingTaskCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  variants ProgrammingTaskVariant[]
+  sessions Session[]
+
+  // Счётчик optimistic locking для title/description/difficulty - растёт
+  // только атомарным increment в updateDetails, не завязан на время.
+  version Int @default(0)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([isActive])
+  @@index([createdById])
+}
+
+// Языковая версия задачи. Наличие варианта означает, что задачу можно выбрать
+// для соответствующего языка редактора.
+model ProgrammingTaskVariant {
+  id     String          @id @default(uuid()) @db.Uuid
+  taskId String          @db.Uuid
+  task   ProgrammingTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  language          EditorLanguage
+  starterCode       String
+  // Проверенное авторское решение используется для валидации тест-кейсов.
+  referenceSolution String
+  // Системная обвязка добавляется к коду кандидата только при исполнении:
+  // читает JSON из stdin, вызывает решение и печатает результат как JSON.
+  harnessCode       String
+  createdById       String?        @db.Uuid
+  createdBy         User?          @relation("ProgrammingTaskVariantCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  status                ProgrammingTaskVariantStatus @default(DRAFT)
+  verifiedAt            DateTime?                    @db.Timestamptz(3)
+  lastVerificationError String?
+
+  testCases ProgrammingTaskCase[]
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([taskId, language])
+  @@index([language])
+  @@index([status])
+  @@index([createdById])
+}
+
+// Один статичный набор входных данных и ожидаемый результат для конкретного
+// языка. JSON позволяет передавать объекты, массивы и примитивы.
+model ProgrammingTaskCase {
+  id        String                 @id @default(uuid()) @db.Uuid
+  variantId String                 @db.Uuid
+  variant   ProgrammingTaskVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  position       Int
+  name           String
+  input          Json
+  // Json, не Json?: ожидаемый результат может быть JSON null (например,
+  // Python None), но колонка всегда хранит значение, а не SQL NULL.
+  expectedOutput Json
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([variantId, position])
+}

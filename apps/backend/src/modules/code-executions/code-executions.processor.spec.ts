@@ -4,12 +4,14 @@ import { CodeExecutionsProcessor } from './code-executions.processor.ts';
 import type { CodeExecutionJob } from './code-executions.types.ts';
 
 const DATA: CodeExecutionJob = {
+  kind: 'custom',
   executionId: 'execution-id',
   sessionId: 'session-id',
   requestedById: 'user-id',
   userName: 'User',
   language: 'typescript',
   code: 'console.log(1)',
+  executionStartedAt: Date.now(),
   queuedAt: Date.now(),
 };
 
@@ -26,7 +28,11 @@ const RESULT = {
 };
 
 function setup() {
-  const executions = { assertAllowed: vi.fn().mockResolvedValue(undefined) };
+  const executions = {
+    assertAllowed: vi.fn().mockResolvedValue(undefined),
+    enqueueNextCase: vi.fn().mockResolvedValue(undefined),
+    releaseLock: vi.fn().mockResolvedValue(undefined),
+  };
   const coderunner = {
     execute: vi.fn().mockResolvedValue(RESULT),
   };
@@ -79,7 +85,7 @@ describe('CodeExecutionsProcessor', () => {
       {
         id: 'execution-id',
         userName: 'User',
-        startedAt: DATA.queuedAt,
+        startedAt: DATA.executionStartedAt,
         status: 'running',
       },
     );
@@ -135,7 +141,7 @@ describe('CodeExecutionsProcessor', () => {
       {
         id: 'execution-id',
         userName: 'User',
-        startedAt: DATA.queuedAt,
+        startedAt: DATA.executionStartedAt,
         status: 'success',
         result: RESULT,
       },
@@ -161,7 +167,7 @@ describe('CodeExecutionsProcessor', () => {
       expect.objectContaining({
         id: 'execution-id',
         userName: 'User',
-        startedAt: DATA.queuedAt,
+        startedAt: DATA.executionStartedAt,
         status: 'success',
       }),
     );
@@ -187,5 +193,96 @@ describe('CodeExecutionsProcessor', () => {
         status: 'error',
       },
     );
+  });
+
+  it('publishes a completed test case and queues the next one', async () => {
+    const { processor, coderunner, collaboration, executions } = setup();
+    coderunner.execute.mockResolvedValue({ ...RESULT, stdout: '3' });
+    const job = createJob({
+      ...DATA,
+      kind: 'task-case',
+      caseIndex: 0,
+      testCases: [
+        {
+          position: 0,
+          name: 'Сумма',
+          input: { numbers: [1, 2] },
+          expectedOutput: 3,
+        },
+        {
+          position: 1,
+          name: 'Пустой массив',
+          input: { numbers: [] },
+          expectedOutput: 0,
+        },
+      ],
+      caseResults: [],
+    });
+
+    await processor.process(job);
+
+    expect(coderunner.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ stdin: '{"numbers":[1,2]}' }),
+    );
+    expect(collaboration.updateExecution).toHaveBeenCalledWith(
+      'session-id',
+      expect.objectContaining({
+        status: 'running',
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        result: expect.objectContaining({ completedCases: 1, totalCases: 2 }),
+      }),
+    );
+    expect(executions.enqueueNextCase).toHaveBeenCalledWith(
+      expect.objectContaining({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        caseResult: expect.objectContaining({
+          status: 'passed',
+          actualOutput: 3,
+        }),
+      }),
+    );
+    expect(executions.releaseLock).not.toHaveBeenCalled();
+  });
+
+  it('publishes the final chunk and releases the session lock', async () => {
+    const { processor, coderunner, collaboration, executions } = setup();
+    coderunner.execute.mockResolvedValue({ ...RESULT, stdout: '4' });
+    const previousResult = {
+      position: 0,
+      name: 'Первый',
+      input: { numbers: [1, 2] },
+      expectedOutput: 3,
+      actualOutput: 3,
+      status: 'passed' as const,
+      execution: RESULT,
+    };
+    const job = createJob({
+      ...DATA,
+      kind: 'task-case',
+      caseIndex: 1,
+      testCases: [
+        previousResult,
+        {
+          position: 1,
+          name: 'Второй',
+          input: { numbers: [2, 2] },
+          expectedOutput: 5,
+        },
+      ],
+      caseResults: [previousResult],
+    });
+
+    await processor.process(job);
+
+    expect(collaboration.updateExecution).toHaveBeenCalledWith(
+      'session-id',
+      expect.objectContaining({
+        status: 'completed',
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        result: expect.objectContaining({ completedCases: 2, totalCases: 2 }),
+      }),
+    );
+    expect(executions.enqueueNextCase).not.toHaveBeenCalled();
+    expect(executions.releaseLock).toHaveBeenCalled();
   });
 });

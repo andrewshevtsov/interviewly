@@ -70,13 +70,19 @@ export class CreateSessionDto {
   task?: string;
 
   @ApiPropertyOptional({
-    enum: EditorLanguage,
-    enumName: 'EditorLanguage',
-    default: EditorLanguage.TYPESCRIPT,
+    description: 'UUID активной задачи из банка. Не передаётся для своей задачи.',
+    format: 'uuid',
   })
   @IsOptional()
+  @IsUUID()
+  programmingTaskId?: string;
+
+  @ApiProperty({
+    enum: EditorLanguage,
+    enumName: 'EditorLanguage',
+  })
   @IsEnum(EditorLanguage)
-  editorLanguage?: EditorLanguage;
+  editorLanguage!: EditorLanguage;
 
   @ApiPropertyOptional({
     enum: SessionType,

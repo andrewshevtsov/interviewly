@@ -30,6 +30,9 @@ export const messages = {
     loading: { ru: "Загрузка...", en: "Loading..." },
     email: { ru: "email", en: "email" },
     telegram: { ru: "telegram", en: "telegram" },
+    difficultyEasy: { ru: "легкий", en: "easy" },
+    difficultyMedium: { ru: "средний", en: "medium" },
+    difficultyHard: { ru: "сложный", en: "hard" },
   },
   metadata: {
     description: {
@@ -39,6 +42,7 @@ export const messages = {
   },
   navigation: {
     showcase: { ru: "витрина", en: "showcase" },
+    taskBank: { ru: "банк задач", en: "task bank" },
     leaderboard: { ru: "лидерборд", en: "leaderboard" },
     history: { ru: "история", en: "history" },
     profile: { ru: "кабинет", en: "profile" },
@@ -46,6 +50,216 @@ export const messages = {
     signIn: { ru: "войти", en: "sign in" },
     logout: { ru: "выйти", en: "log out" },
     createSession: { ru: "создать сессию", en: "create session" },
+  },
+  taskBank: {
+    title: { ru: "банк задач", en: "task bank" },
+    createTask: { ru: "добавить задачу", en: "create new task" },
+    editTask: { ru: "редактировать", en: "edit task" },
+    editTitle: { ru: "редактирование задачи", en: "edit task" },
+    editDescription: {
+      ru: "Измените данные задачи или выбранного языкового варианта. После сохранения эталонное решение будет проверено снова.",
+      en: "Update the task or selected language variant. The reference solution will be verified again after saving.",
+    },
+    backToTasks: { ru: "к банку задач", en: "back to task bank" },
+    unsavedChangesTitle: {
+      ru: "есть несохранённые изменения",
+      en: "you have unsaved changes",
+    },
+    unsavedChangesDescription: {
+      ru: "Если уйти со страницы сейчас, изменения в задаче и языковых вариантах будут потеряны.",
+      en: "If you leave this page now, changes to the task and its language variants will be lost.",
+    },
+    stayOnPage: { ru: "остаться", en: "stay on page" },
+    leaveWithoutSaving: { ru: "уйти без сохранения", en: "leave without saving" },
+    stack: { ru: "стек", en: "stack" },
+    statusNotImplemented: { ru: "не реализован", en: "not implemented" },
+    saveAndVerify: { ru: "сохранить и проверить", en: "save and verify" },
+    editSuccess: {
+      ru: "Изменения сохранены, вариант успешно прошёл проверку.",
+      en: "Changes saved and the variant passed verification.",
+    },
+    editError: {
+      ru: "Не удалось сохранить изменения. Попробуйте ещё раз.",
+      en: "Couldn't save the changes. Try again.",
+    },
+    editConflict: {
+      ru: "Задачу уже изменил другой администратор. Обновите страницу перед повторным сохранением.",
+      en: "Another administrator has already changed this task. Refresh the page before saving again.",
+    },
+    editLoadError: {
+      ru: "Не удалось загрузить задачу для редактирования.",
+      en: "Couldn't load the task for editing.",
+    },
+    editAccessDenied: {
+      ru: "Редактировать задачи могут только администраторы.",
+      en: "Only administrators can edit tasks.",
+    },
+    noTaskVariants: {
+      ru: "У задачи нет языковых вариантов для редактирования.",
+      en: "This task has no language variants to edit.",
+    },
+    statusDraft: { ru: "черновик", en: "draft" },
+    statusVerifying: { ru: "проверяется", en: "verifying" },
+    statusVerified: { ru: "проверен", en: "verified" },
+    statusFailed: { ru: "ошибка", en: "failed" },
+    createTitle: { ru: "новая задача", en: "new task" },
+    createDescription: {
+      ru: "Сначала опишите задачу, затем добавьте одну или несколько языковых реализаций.",
+      en: "Describe the task first, then add one or more language implementations.",
+    },
+    creationProgress: { ru: "этапы создания задачи", en: "task creation steps" },
+    editingProgress: { ru: "этапы редактирования задачи", en: "task editing steps" },
+    detailsStep: { ru: "1. задача", en: "1. task details" },
+    implementationStep: { ru: "2. реализация", en: "2. implementation" },
+    next: { ru: "далее", en: "next" },
+    back: { ru: "назад", en: "back" },
+    save: { ru: "сохранить", en: "save" },
+    saving: { ru: "сохраняем...", en: "saving..." },
+    detailsSaved: {
+      ru: "Основные данные задачи сохранены.",
+      en: "Task details saved.",
+    },
+    deleteTask: { ru: "удалить задачу", en: "delete task" },
+    deleteTaskTitle: { ru: "удалить задачу?", en: "delete task?" },
+    deleteTaskDescription: {
+      ru:
+        "Задача пропадёт из банка задач и больше не будет доступна для создания " +
+        "новых сессий. Уже созданные сессии сохранят снимок задачи.",
+      en:
+        "The task will disappear from the task bank and won't be available for new " +
+        "sessions anymore. Existing sessions will retain their task snapshot.",
+    },
+    deleteTaskCancel: { ru: "не удалять", en: "keep task" },
+    deletingTask: { ru: "удаляем...", en: "deleting..." },
+    deleteTaskError: {
+      ru: "Не удалось удалить задачу. Попробуйте ещё раз.",
+      en: "Couldn't delete the task. Try again.",
+    },
+    close: { ru: "закрыть", en: "close" },
+    name: { ru: "название", en: "title" },
+    namePlaceholder: {
+      ru: "Сумма элементов массива",
+      en: "Sum of array elements",
+    },
+    taskDescription: { ru: "описание", en: "description" },
+    descriptionPlaceholder: {
+      ru: "Напишите функцию, которая принимает массив чисел и возвращает сумму всех его элементов.",
+      en: "Write a function that accepts an array of numbers and returns the sum of all its elements.",
+    },
+    difficultyPlaceholder: {
+      ru: "Выберите уровень сложности",
+      en: "Select a difficulty level",
+    },
+    selectDifficulty: {
+      ru: "Выберите уровень сложности.",
+      en: "Select a difficulty level.",
+    },
+    language: { ru: "язык", en: "language" },
+    languagePlaceholder: {
+      ru: "Выберите язык первой реализации",
+      en: "Select the language for the first implementation",
+    },
+    selectLanguage: { ru: "Выберите язык.", en: "Select a language." },
+    selectStackPlaceholder: { ru: "Выберите стек", en: "Select a stack" },
+    startingCode: { ru: "стартовый код", en: "starting code" },
+    startingCodeHint: {
+      ru: "Заготовка, которую кандидат увидит в редакторе и дополнит своим решением.",
+      en: "The initial code candidates see in the editor and complete with their solution.",
+    },
+    startingCodePlaceholder: {
+      ru: "function solve(numbers) {\n  // Напишите решение здесь\n}",
+      en: "function solve(numbers) {\n  // Write your solution here\n}",
+    },
+    harness: { ru: "харнесс", en: "harness" },
+    harnessHint: {
+      ru: "Служебный код, который получает входные данные, запускает решение пользователя и возвращает результат для проверки.",
+      en: "Runner code that reads the input, invokes the user's solution, and returns its result for validation.",
+    },
+    harnessPlaceholder: {
+      ru: "const result = solve(input.numbers);\nprocess.stdout.write(JSON.stringify(result));",
+      en: "const result = solve(input.numbers);\nprocess.stdout.write(JSON.stringify(result));",
+    },
+    harnessLoadError: {
+      ru: "Не удалось загрузить стандартный Harness. Выберите язык ещё раз.",
+      en: "Couldn't load the default harness. Select the language again.",
+    },
+    testCases: { ru: "тест-кейсы", en: "test cases" },
+    testCasesHint: {
+      ru: "Скрытые проверки: кандидат их не увидит. Результат решения будет сравниваться с ожидаемым значением каждого кейса.",
+      en: "Hidden checks candidates cannot see. Their solution output is compared with the expected result for each case.",
+    },
+    testCase: { ru: "входные данные", en: "input" },
+    addTestCase: { ru: "добавить тест-кейс", en: "add test case" },
+    removeTestCase: { ru: "удалить тест-кейс", en: "remove test case" },
+    testCaseInputPlaceholder: {
+      ru: "[1, 2, 3, 4]",
+      en: "[1, 2, 3, 4]",
+    },
+    expectedOutput: { ru: "ожидаемый результат", en: "expected output" },
+    expectedOutputPlaceholder: { ru: "10", en: "10" },
+    sampleCode: { ru: "эталонное решение", en: "sample code" },
+    sampleCodeHint: {
+      ru:
+        "Полное правильное решение задачи. Оно запускается для каждого тест-кейса и " +
+        "подтверждает, что входные данные дают указанный ожидаемый результат. " +
+        "Кандидату этот код никогда не показывается.",
+      en:
+        "A complete correct solution. It runs against every test case to confirm that each " +
+        "input produces the specified expected output. Candidates never see this code.",
+    },
+    sampleCodePlaceholder: {
+      ru: "function solve(numbers) {\n  return numbers.reduce((sum, value) => sum + value, 0);\n}",
+      en: "function solve(numbers) {\n  return numbers.reduce((sum, value) => sum + value, 0);\n}",
+    },
+    createSubmit: { ru: "создать задачу", en: "create task" },
+    finishCreation: { ru: "завершить", en: "finish" },
+    languageVariantSaved: {
+      ru: "Вариант проверен и сохранён. Выберите следующий язык.",
+      en: "The variant was verified and saved. Select the next language.",
+    },
+    verifying: {
+      ru: "проверяем решение...",
+      en: "verifying solution...",
+    },
+    testCaseName: { ru: "Тест-кейс", en: "Test case" },
+    invalidTestCaseJson: {
+      ru: "Входные данные и ожидаемые результаты должны быть корректным JSON.",
+      en: "Test inputs and expected outputs must be valid JSON.",
+    },
+    verificationFailed: {
+      ru: "Эталонное решение не прошло проверку.",
+      en: "The reference solution failed verification.",
+    },
+    createError: {
+      ru: "Не удалось создать задачу. Попробуйте ещё раз.",
+      en: "Couldn't create the task. Try again.",
+    },
+    accessDenied: {
+      ru: "Добавлять задачи могут только администраторы.",
+      en: "Only administrators can create tasks.",
+    },
+    description: {
+      ru: "Выберите задачу для подготовки к техническому интервью.",
+      en: "Choose a problem to prepare for a technical interview.",
+    },
+    difficulty: { ru: "сложность", en: "difficulty" },
+    allLanguages: { ru: "все языки", en: "all languages" },
+    allDifficulties: { ru: "любая сложность", en: "any difficulty" },
+    python: { ru: "Python", en: "Python" },
+    javascript: { ru: "JavaScript", en: "JavaScript" },
+    typescript: { ru: "TypeScript", en: "TypeScript" },
+    taskCount: { ru: "задач найдено", en: "Tasks found" },
+    loading: { ru: "Загрузка...", en: "Loading..." },
+    showDescription: { ru: "показать условие", en: "show description" },
+    hideDescription: { ru: "скрыть условие", en: "hide description" },
+    empty: {
+      ru: "Задач с такими параметрами пока нет.",
+      en: "There are no problems matching these filters yet.",
+    },
+    loadError: {
+      ru: "Не удалось загрузить задачи. Попробуйте обновить страницу.",
+      en: "Couldn't load the problems. Try refreshing the page.",
+    },
   },
   auth: {
     login: { ru: "войти", en: "sign in" },
@@ -198,7 +412,10 @@ export const messages = {
       ru: "Проверьте время: оно должно быть от 3 часов до 30 дней от текущего момента.",
       en: "Check the time: it must be between 3 hours and 30 days from now.",
     },
-    errOwnCard: { ru: "Нельзя откликнуться на свою карточку.", en: "You can't respond to your own card." },
+    errOwnCard: {
+      ru: "Нельзя откликнуться на свою карточку.",
+      en: "You can't respond to your own card.",
+    },
     errCardGone: {
       ru: "Эта карточка больше недоступна на витрине.",
       en: "This card is no longer available on the showcase.",
@@ -447,7 +664,7 @@ export const messages = {
     pendingUntil: { ru: "Ссылка действует до", en: "The link is valid until" },
     pendingHint: {
       ru: "Чтобы отправить письмо ещё раз или на другой адрес, нажмите «сменить email».",
-      en: "To resend the email or use another address, press \"change email\".",
+      en: "To resend the email or use another address, press the change email button.",
     },
     cancelChange: { ru: "отменить смену", en: "cancel change" },
     errWrongPassword: { ru: "неверный пароль", en: "wrong password" },
@@ -463,7 +680,10 @@ export const messages = {
       ru: "не удалось отправить письмо. попробуйте позже",
       en: "couldn't send the email. try again later",
     },
-    errGeneric: { ru: "что-то пошло не так. попробуйте ещё раз", en: "something went wrong. try again" },
+    errGeneric: {
+      ru: "что-то пошло не так. попробуйте ещё раз",
+      en: "something went wrong. try again",
+    },
   },
   confirmEmail: {
     title: { ru: "подтверждение email", en: "email confirmation" },
@@ -500,7 +720,10 @@ export const messages = {
       ru: "Сначала добавьте почту: иначе вы потеряете вход в аккаунт.",
       en: "Add an email first, otherwise you would lose access to your account.",
     },
-    errGeneric: { ru: "Не получилось. Попробуйте ещё раз.", en: "Something went wrong. Try again." },
+    errGeneric: {
+      ru: "Не получилось. Попробуйте ещё раз.",
+      en: "Something went wrong. Try again.",
+    },
   },
   session: {
     title: { ru: "сессия интервью", en: "interview session" },
@@ -519,6 +742,13 @@ export const messages = {
     scheduled: { ru: "запланирована", en: "scheduled" },
     active: { ru: "активна", en: "active" },
     completed: { ru: "завершена", en: "completed" },
+    testProgress: { ru: "выполнено тестов", en: "tests completed" },
+    testStatuspassed: { ru: "пройден", en: "passed" },
+    testStatusfailed: { ru: "не пройден", en: "failed" },
+    testStatuserror: { ru: "ошибка запуска", en: "execution error" },
+    testInput: { ru: "входные данные", en: "input" },
+    testExpected: { ru: "ожидалось", en: "expected" },
+    testActual: { ru: "получено", en: "actual" },
     interviewerVideo: { ru: "видео интервьюера", en: "interviewer video" },
     candidateVideo: { ru: "видео кандидата", en: "candidate video" },
     interviewer: { ru: "интервьюер", en: "interviewer" },
@@ -653,8 +883,8 @@ export const messages = {
     },
     sessionTitleLabel: { ru: "название", en: "title" },
     sessionTitlePlaceholder: {
-      ru: "Техническое интервью: алгоритмы",
-      en: "Technical interview: algorithms",
+      ru: "Техническое интервью",
+      en: "Technical interview",
     },
     taskLabel: { ru: "условие задачи", en: "task" },
     taskPlaceholder: {
@@ -664,6 +894,26 @@ export const messages = {
     taskHint: {
       ru: "Условие видит AI, когда кандидат просит подсказку.",
       en: "The AI sees the task when the candidate asks for a hint.",
+    },
+    languageLabel: { ru: "язык программирования", en: "programming language" },
+    languageSelectPlaceholder: {
+      ru: "выберите язык…",
+      en: "choose a language…",
+    },
+    languagePython: { ru: "Python", en: "Python" },
+    languageJavaScript: { ru: "JavaScript", en: "JavaScript" },
+    languageTypeScript: { ru: "TypeScript", en: "TypeScript" },
+    bankTaskLabel: { ru: "задача из банка", en: "task from the library" },
+    taskSelectPlaceholder: { ru: "выберите задачу…", en: "choose a task…" },
+    tasksLoading: { ru: "загружаем задачи…", en: "loading tasks…" },
+    tasksLoadError: {
+      ru: "не удалось загрузить задачи для выбранного языка",
+      en: "couldn't load tasks for the selected language",
+    },
+    customTask: { ru: "Своя задача", en: "Custom task" },
+    customTaskHint: {
+      ru: "Вместо задачи из банка укажите собственное условие.",
+      en: "Provide your own prompt instead of using a task from the library.",
     },
     privateSession: { ru: "закрытая сессия", en: "private session" },
     privateSessionHint: {
