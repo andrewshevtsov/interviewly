@@ -1,29 +1,39 @@
 import {
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
+import { randomBytes } from 'node:crypto';
 import type { Queue } from 'bullmq';
 import {
   EditorLanguage,
   ProgrammingTaskVariantStatus,
 } from '../../prisma/generated/enums.ts';
 import { Prisma } from '../../prisma/generated/client.ts';
+import { slugify } from '../../shared/utils/slugify.ts';
 import { PROGRAMMING_TASK_VERIFICATIONS_QUEUE } from './programming-task-verification.constants.ts';
 import { enqueueProgrammingTaskVerification } from './programming-task-verification.queue.ts';
 import type { ProgrammingTaskVerificationJob } from './programming-task-verification.types.ts';
-import type { CreateProgrammingTaskDto } from './dto/create-programming-task.dto.ts';
+import type {
+  CreateProgrammingTaskCaseDto,
+  CreateProgrammingTaskDto,
+} from './dto/create-programming-task.dto.ts';
+import type { ReverifyProgrammingTaskVariantDto } from './dto/reverify-programming-task-variant.dto.ts';
 import type { UpdateProgrammingTaskDetailsDto } from './dto/update-programming-task-details.dto.ts';
 import type { UpsertProgrammingTaskVariantDto } from './dto/upsert-programming-task-variant.dto.ts';
 import { ProgrammingTaskListItemResponse } from './entities/programming-task.entity.ts';
 import { ProgrammingTasksRepository } from './programming-tasks.repository.ts';
 
 const MAX_SLUG_CREATION_ATTEMPTS = 10;
+const SLUG_SUFFIX_BYTES = 3;
 
 @Injectable()
 export class ProgrammingTasksService {
+  private readonly logger = new Logger(ProgrammingTasksService.name);
+
   constructor(
     private readonly repository: ProgrammingTasksRepository,
     @InjectQueue(PROGRAMMING_TASK_VERIFICATIONS_QUEUE)
@@ -36,12 +46,12 @@ export class ProgrammingTasksService {
     > | null = null;
 
     for (let attempt = 1; attempt <= MAX_SLUG_CREATION_ATTEMPTS; attempt += 1) {
-      const slug = await this.findAvailableSlugCandidate(dto.title);
+      const slug = this.generateSlugCandidate(dto.title);
       try {
         task = await this.repository.createWithVariant({
           slug,
-          title: dto.title.trim(),
-          description: dto.description.trim(),
+          title: dto.title,
+          description: dto.description,
           difficulty: dto.difficulty,
           createdBy: { connect: { id: authorId } },
           variants: {
@@ -53,12 +63,9 @@ export class ProgrammingTasksService {
               status: ProgrammingTaskVariantStatus.VERIFYING,
               createdBy: { connect: { id: authorId } },
               testCases: {
-                create: dto.testCases.map((testCase, index) => ({
-                  position: index,
-                  name: testCase.name.trim(),
-                  input: this.toPrismaJson(testCase.input),
-                  expectedOutput: this.toPrismaJson(testCase.expectedOutput),
-                })),
+                create: dto.testCases.map((testCase, index) =>
+                  this.toCaseInput(testCase, index),
+                ),
               },
             },
           },
@@ -86,15 +93,20 @@ export class ProgrammingTasksService {
       throw new Error('Created programming task has no variant');
     }
 
-    await this.enqueueVerification(variant.id, variant.updatedAt);
+    try {
+      await this.enqueueVerification(variant.id, variant.updatedAt);
+    } catch (error) {
+      // Очередь недоступна сразу после создания: откатываем только что
+      // созданную задачу, чтобы повторный POST не породил дубль с другим slug.
+      await this.repository.delete(task.id);
+      throw error;
+    }
 
-    return {
-      id: task.id,
-      slug: task.slug,
+    return this.toVerifyingResponse({
+      taskId: task.id,
+      taskSlug: task.slug,
       variantId: variant.id,
-      status: ProgrammingTaskVariantStatus.VERIFYING,
-      verificationError: null,
-    };
+    });
   }
 
   async addVariantAndVerify(
@@ -116,39 +128,55 @@ export class ProgrammingTasksService {
       );
     }
 
-    const variant = await this.repository.createVariantForTask({
-      task: { connect: { id: taskId } },
-      language: dto.language,
-      starterCode: dto.starterCode,
-      harnessCode: dto.harnessCode,
-      referenceSolution: dto.referenceSolution,
-      status: ProgrammingTaskVariantStatus.VERIFYING,
-      createdBy: { connect: { id: authorId } },
-      testCases: {
-        create: dto.testCases.map((testCase, index) => ({
-          position: index,
-          name: testCase.name.trim(),
-          input: this.toPrismaJson(testCase.input),
-          expectedOutput: this.toPrismaJson(testCase.expectedOutput),
-        })),
-      },
-    });
+    let variant: Awaited<
+      ReturnType<ProgrammingTasksRepository['createVariantForTask']>
+    >;
+    try {
+      variant = await this.repository.createVariantForTask({
+        task: { connect: { id: taskId } },
+        language: dto.language,
+        starterCode: dto.starterCode,
+        harnessCode: dto.harnessCode,
+        referenceSolution: dto.referenceSolution,
+        status: ProgrammingTaskVariantStatus.VERIFYING,
+        createdBy: { connect: { id: authorId } },
+        testCases: {
+          create: dto.testCases.map((testCase, index) =>
+            this.toCaseInput(testCase, index),
+          ),
+        },
+      });
+    } catch (error) {
+      // Гонка с findVariantByLanguage выше: параллельный запрос успел создать
+      // вариант для этого языка первым - конфликт БД превращаем в 409.
+      if (this.isUniqueConstraintConflict(error, 'language')) {
+        throw new ConflictException(
+          'Programming task already has a variant for this language',
+        );
+      }
+      throw error;
+    }
 
-    await this.enqueueVerification(variant.id, variant.updatedAt);
+    try {
+      await this.enqueueVerification(variant.id, variant.updatedAt);
+    } catch (error) {
+      // Очередь недоступна сразу после создания варианта: удаляем его, иначе
+      // повторный запрос упрётся в занятый язык и не сможет создать новую попытку.
+      await this.repository.deleteVariant(variant.id);
+      throw error;
+    }
 
-    return {
-      id: task.id,
-      slug: task.slug,
+    return this.toVerifyingResponse({
+      taskId: task.id,
+      taskSlug: task.slug,
       variantId: variant.id,
-      status: ProgrammingTaskVariantStatus.VERIFYING,
-      verificationError: null,
-    };
+    });
   }
 
   async updateAndVerify(
     taskId: string,
     variantId: string,
-    dto: UpsertProgrammingTaskVariantDto,
+    dto: ReverifyProgrammingTaskVariantDto,
   ) {
     const existing = await this.repository.findVariantForTask(
       taskId,
@@ -159,27 +187,19 @@ export class ProgrammingTasksService {
     }
 
     const variant = await this.repository.updateForVerification(variantId, {
-      language: dto.language,
       starterCode: dto.starterCode,
       harnessCode: dto.harnessCode,
       referenceSolution: dto.referenceSolution,
-      testCases: dto.testCases.map((testCase, index) => ({
-        position: index,
-        name: testCase.name.trim(),
-        input: this.toPrismaJson(testCase.input),
-        expectedOutput: this.toPrismaJson(testCase.expectedOutput),
-      })),
+      testCases: dto.testCases.map((testCase, index) => this.toCaseInput(testCase, index)),
     });
 
     await this.enqueueVerification(variantId, variant.updatedAt);
 
-    return {
-      id: existing.task.id,
-      slug: existing.task.slug,
+    return this.toVerifyingResponse({
+      taskId: existing.task.id,
+      taskSlug: existing.task.slug,
       variantId,
-      status: ProgrammingTaskVariantStatus.VERIFYING,
-      verificationError: null,
-    };
+    });
   }
 
   async findForEditing(id: string) {
@@ -192,20 +212,20 @@ export class ProgrammingTasksService {
   }
 
   async updateDetails(id: string, dto: UpdateProgrammingTaskDetailsDto) {
-    const task = await this.findForEditing(id);
-    const expectedUpdatedAt = new Date(dto.expectedUpdatedAt);
-    const nextUpdatedAt = new Date(
-      Math.max(Date.now(), expectedUpdatedAt.getTime() + 1),
-    );
+    // Лёгкий select вместо findForEditing: тут нужен только slug для ответа,
+    // не все варианты и скрытые тесты задачи.
+    const task = await this.repository.findById(id);
+    if (!task) {
+      throw new NotFoundException('Programming task was not found');
+    }
     const data = {
-      title: dto.title.trim(),
-      description: dto.description.trim(),
+      title: dto.title,
+      description: dto.description,
       difficulty: dto.difficulty,
     };
     const result = await this.repository.updateDetails(
       id,
-      expectedUpdatedAt,
-      nextUpdatedAt,
+      dto.expectedVersion,
       data,
     );
     if (result.count === 0) {
@@ -218,7 +238,7 @@ export class ProgrammingTasksService {
       id: task.id,
       slug: task.slug,
       ...data,
-      updatedAt: nextUpdatedAt,
+      version: dto.expectedVersion + 1,
     };
   }
 
@@ -271,12 +291,14 @@ export class ProgrammingTasksService {
         variantId,
         updatedAt,
       );
-    } catch {
-      await this.repository.completeVariantVerification(variantId, updatedAt, {
-        status: ProgrammingTaskVariantStatus.FAILED,
-        verifiedAt: null,
-        lastVerificationError: 'Verification queue is unavailable',
-      });
+    } catch (error) {
+      this.logger.warn(
+        `Could not enqueue verification for variant ${variantId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      // Вариант остаётся VERIFYING: ProgrammingTaskVerificationRecoveryService
+      // поставит его в очередь повторно, когда она снова станет доступна.
+      // Здесь нельзя трогать его статус - это создало бы конфликт с recovery
+      // и могло бы само бросить исключение, скрыв исходную ошибку очереди.
       throw new ServiceUnavailableException(
         'Programming task verification queue is unavailable',
       );
@@ -289,18 +311,47 @@ export class ProgrammingTasksService {
     return value === null ? Prisma.JsonNull : (value as Prisma.InputJsonValue);
   }
 
-  private async findAvailableSlugCandidate(title: string): Promise<string> {
-    const base = this.slugify(title) || 'task';
-    let slug = base;
-    let suffix = 2;
-    while (await this.repository.findBySlug(slug)) {
-      slug = `${base}-${suffix}`;
-      suffix += 1;
-    }
-    return slug;
+  // Общий маппинг тест-кейса для create/addVariant/updateAndVerify -
+  // раньше был скопирован в каждый из трёх методов отдельно.
+  private toCaseInput(testCase: CreateProgrammingTaskCaseDto, position: number) {
+    return {
+      position,
+      name: testCase.name,
+      input: this.toPrismaJson(testCase.input),
+      expectedOutput: this.toPrismaJson(testCase.expectedOutput),
+    };
+  }
+
+  // Общая форма ответа create/addVariant/updateAndVerify сразу после
+  // постановки проверки в очередь - раньше дублировалась в каждом методе.
+  private toVerifyingResponse(params: {
+    taskId: string;
+    taskSlug: string;
+    variantId: string;
+  }) {
+    return {
+      id: params.taskId,
+      slug: params.taskSlug,
+      variantId: params.variantId,
+      status: ProgrammingTaskVariantStatus.VERIFYING,
+      verificationError: null,
+    };
+  }
+
+  // Slug нигде не показывается пользователю - короткий случайный суффикс
+  // проще и быстрее, чем перебор "-2", "-3"... через отдельные запросы к базе.
+  // Коллизия практически исключена, а если всё же случится - её поймает
+  // retry по P2002 в createAndVerify.
+  private generateSlugCandidate(title: string): string {
+    const base = slugify(title) || 'task';
+    return `${base}-${randomBytes(SLUG_SUFFIX_BYTES).toString('hex')}`;
   }
 
   private isSlugUniqueConflict(error: unknown): boolean {
+    return this.isUniqueConstraintConflict(error, 'slug');
+  }
+
+  private isUniqueConstraintConflict(error: unknown, field: string): boolean {
     if (
       !(error instanceof Prisma.PrismaClientKnownRequestError) ||
       error.code !== 'P2002'
@@ -314,60 +365,9 @@ export class ProgrammingTasksService {
     }
     if (Array.isArray(target)) {
       return target.some(
-        (field) => typeof field === 'string' && field.includes('slug'),
+        (candidate) => typeof candidate === 'string' && candidate.includes(field),
       );
     }
-    return typeof target === 'string' && target.includes('slug');
-  }
-
-  private slugify(value: string): string {
-    const cyrillic = 'абвгдеёзийклмнопрстуфхцчшщъыьэюя';
-    const latin = [
-      'a',
-      'b',
-      'v',
-      'g',
-      'd',
-      'e',
-      'yo',
-      'z',
-      'i',
-      'y',
-      'k',
-      'l',
-      'm',
-      'n',
-      'o',
-      'p',
-      'r',
-      's',
-      't',
-      'u',
-      'f',
-      'h',
-      'ts',
-      'ch',
-      'sh',
-      'sch',
-      '',
-      'y',
-      '',
-      'e',
-      'yu',
-      'ya',
-    ];
-    const transliterated = [...value.toLowerCase()]
-      .map((character) => {
-        const index = cyrillic.indexOf(character);
-        return index >= 0 ? latin[index] : character;
-      })
-      .join('');
-
-    return transliterated
-      .normalize('NFKD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 100);
+    return typeof target === 'string' && target.includes(field);
   }
 }

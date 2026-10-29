@@ -43,6 +43,10 @@ model ProgrammingTask {
   variants ProgrammingTaskVariant[]
   sessions Session[]
 
+  // Счётчик optimistic locking для title/description/difficulty - растёт
+  // только атомарным increment в updateDetails, не завязан на время.
+  version Int @default(0)
+
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
@@ -92,7 +96,9 @@ model ProgrammingTaskCase {
   position       Int
   name           String
   input          Json
-  expectedOutput Json?
+  // Json, не Json?: ожидаемый результат может быть JSON null (например,
+  // Python None), но колонка всегда хранит значение, а не SQL NULL.
+  expectedOutput Json
 
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)

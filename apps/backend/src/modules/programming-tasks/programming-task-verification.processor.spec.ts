@@ -45,6 +45,7 @@ describe('ProgrammingTaskVerificationProcessor', () => {
         ],
       }),
       completeVariantVerification: vi.fn().mockResolvedValue({ count: 1 }),
+      recordVerificationNote: vi.fn().mockResolvedValue({ count: 1 }),
     } as unknown as Mocked<ProgrammingTasksRepository>;
     coderunner = {
       execute: vi.fn().mockResolvedValue({
@@ -102,6 +103,26 @@ describe('ProgrammingTaskVerificationProcessor', () => {
     expect(coderunner.execute).toHaveBeenCalledTimes(2);
   });
 
+  it('прерывает попытку и фиксирует причину, если сессии заняты дольше 30с', async () => {
+    vi.useFakeTimers();
+    sessionExecutionsQueue.getJobCounts.mockResolvedValue({ waiting: 1, active: 1 });
+
+    const processing = processor.process(job);
+    const rejection = expect(processing).rejects.toThrow(
+      'Session code execution queue is busy',
+    );
+    await vi.advanceTimersByTimeAsync(30_000);
+    await rejection;
+
+    expect(repository.recordVerificationNote).toHaveBeenCalledWith(
+      'variant-id',
+      revision,
+      expect.stringContaining('Session code execution queue is busy'),
+    );
+    expect(coderunner.execute).not.toHaveBeenCalled();
+    expect(repository.completeVariantVerification).not.toHaveBeenCalled();
+  });
+
   it('останавливается на несовпадении и публикует FAILED', async () => {
     coderunner.execute.mockResolvedValueOnce({
       stdout: '5',
@@ -139,15 +160,18 @@ describe('ProgrammingTaskVerificationProcessor', () => {
     expect(repository.completeVariantVerification).not.toHaveBeenCalled();
   });
 
-  it('после последнего инфраструктурного retry сохраняет FAILED', async () => {
-    await processor.onFailed(job, new Error('Coderunner is unavailable'));
+  it('после последнего инфраструктурного retry не трогает статус варианта', () => {
+    processor.onFailed(job, new Error('Coderunner is unavailable'));
 
-    expect(repository.completeVariantVerification).toHaveBeenCalledOnce();
-    const verification =
-      repository.completeVariantVerification.mock.calls[0]?.[2];
-    expect(verification?.status).toBe(ProgrammingTaskVariantStatus.FAILED);
-    expect(verification?.lastVerificationError).toContain(
-      'Coderunner is unavailable',
+    expect(repository.completeVariantVerification).not.toHaveBeenCalled();
+  });
+
+  it('не трогает статус, если job упала раньше последней попытки', () => {
+    processor.onFailed(
+      { ...job, attemptsMade: 1 } as Job<ProgrammingTaskVerificationJob>,
+      new Error('Coderunner is unavailable'),
     );
+
+    expect(repository.completeVariantVerification).not.toHaveBeenCalled();
   });
 });

@@ -198,7 +198,7 @@ function EditTaskForm(props: EditTaskFormProps) {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
   const [difficulty, setDifficulty] = useState(task.difficulty);
-  const [taskUpdatedAt, setTaskUpdatedAt] = useState(task.updatedAt);
+  const [taskVersion, setTaskVersion] = useState(task.version);
   const [variants, setVariants] = useState<EditableVariant[]>(task.variants);
   const [selectedVariantId, setSelectedVariantId] = useState(task.variants[0]?.id ?? "");
   const [drafts, setDrafts] = useState(() => createDrafts(task));
@@ -231,7 +231,7 @@ function EditTaskForm(props: EditTaskFormProps) {
       setTitle(task.title);
       setDescription(task.description);
       setDifficulty(task.difficulty);
-      setTaskUpdatedAt(task.updatedAt);
+      setTaskVersion(task.version);
     }
 
     setDrafts((current) =>
@@ -441,7 +441,7 @@ function EditTaskForm(props: EditTaskFormProps) {
     setSubmitSuccess("");
     try {
       const updatedTask = await programmingTaskApi.updateDetails(task.id, {
-        expectedUpdatedAt: taskUpdatedAt,
+        expectedVersion: taskVersion,
         title,
         description,
         difficulty,
@@ -449,7 +449,7 @@ function EditTaskForm(props: EditTaskFormProps) {
       setTitle(updatedTask.title);
       setDescription(updatedTask.description);
       setDifficulty(updatedTask.difficulty);
-      setTaskUpdatedAt(updatedTask.updatedAt);
+      setTaskVersion(updatedTask.version);
       setIsDetailsDirty(false);
       setSubmitSuccess(t("detailsSaved"));
       await queryClient.invalidateQueries({ queryKey: ["programming-task-bank"] });
@@ -495,12 +495,9 @@ function EditTaskForm(props: EditTaskFormProps) {
     setSubmitError("");
     setSubmitSuccess("");
     try {
-      const language = isAddingVariant ? newLanguage : selectedVariant?.language;
-      if (!language) {
-        return;
-      }
-      const input = {
-        language,
+      // Язык варианта неизменяем: reverify никогда не отправляет language,
+      // он выбирается только при добавлении совсем нового варианта.
+      const variantInput = {
         starterCode: selectedDraft.starterCode,
         harnessCode: selectedDraft.harnessCode,
         referenceSolution: selectedDraft.referenceSolution,
@@ -509,10 +506,13 @@ function EditTaskForm(props: EditTaskFormProps) {
       let result: CreateProgrammingTaskResponse;
       if (isAddingVariant) {
         result = pendingNewVariantId
-          ? await programmingTaskApi.reverify(task.id, pendingNewVariantId, input)
-          : await programmingTaskApi.addVariant(task.id, input);
+          ? await programmingTaskApi.reverify(task.id, pendingNewVariantId, variantInput)
+          : await programmingTaskApi.addVariant(task.id, {
+            ...variantInput,
+            language: newLanguage as ProgrammingTaskLanguage,
+          });
       } else if (selectedVariant) {
-        result = await programmingTaskApi.reverify(task.id, selectedVariant.id, input);
+        result = await programmingTaskApi.reverify(task.id, selectedVariant.id, variantInput);
       } else {
         return;
       }
@@ -583,7 +583,8 @@ function EditTaskForm(props: EditTaskFormProps) {
       await queryClient.invalidateQueries({ queryKey: ["programming-task-edit", task.id] });
     } catch (error) {
       setSubmitSuccess("");
-      setSubmitError(getHttpMessage(error) || t("editError"));
+      const localError = error instanceof Error ? error.message : "";
+      setSubmitError(getHttpMessage(error) || localError || t("editError"));
     } finally {
       setIsSubmitting(false);
     }

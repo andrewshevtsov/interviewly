@@ -4,7 +4,7 @@ import {
   Processor,
   WorkerHost,
 } from '@nestjs/bullmq';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import type { Job, Queue } from 'bullmq';
 import { isDeepStrictEqual } from 'node:util';
 import { ProgrammingTaskVariantStatus } from '../../prisma/generated/enums.ts';
@@ -14,6 +14,7 @@ import {
   PROGRAMMING_TASK_VERIFICATION_CONCURRENCY,
   PROGRAMMING_TASK_VERIFICATIONS_QUEUE,
   SESSION_QUEUE_IDLE_POLL_INTERVAL_MS,
+  SESSION_QUEUE_WAIT_TIMEOUT_MS,
 } from './programming-task-verification.constants.ts';
 import type { ProgrammingTaskVerificationJob } from './programming-task-verification.types.ts';
 import { ProgrammingTasksRepository } from './programming-tasks.repository.ts';
@@ -23,6 +24,10 @@ import { ProgrammingTasksRepository } from './programming-tasks.repository.ts';
   concurrency: PROGRAMMING_TASK_VERIFICATION_CONCURRENCY,
 })
 export class ProgrammingTaskVerificationProcessor extends WorkerHost {
+  private readonly logger = new Logger(
+    ProgrammingTaskVerificationProcessor.name,
+  );
+
   constructor(
     private readonly repository: ProgrammingTasksRepository,
     private readonly coderunner: CoderunnerClientService,
@@ -47,7 +52,7 @@ export class ProgrammingTaskVerificationProcessor extends WorkerHost {
       return;
     }
 
-    const verificationError = await this.verify(variant);
+    const verificationError = await this.verify(variant, revision);
     await this.repository.completeVariantVerification(variant.id, revision, {
       status: verificationError
         ? ProgrammingTaskVariantStatus.FAILED
@@ -58,22 +63,21 @@ export class ProgrammingTaskVerificationProcessor extends WorkerHost {
   }
 
   @OnWorkerEvent('failed')
-  async onFailed(
+  onFailed(
     job: Job<ProgrammingTaskVerificationJob> | undefined,
     error: Error,
-  ): Promise<void> {
+  ): void {
     if (!job || job.attemptsMade < (job.opts.attempts ?? 1)) {
       return;
     }
 
-    await this.repository.completeVariantVerification(
-      job.data.variantId,
-      new Date(job.data.revision),
-      {
-        status: ProgrammingTaskVariantStatus.FAILED,
-        verifiedAt: null,
-        lastVerificationError: `Verification could not be completed: ${error.message}`,
-      },
+    // Сюда попадают только исключения coderunner/инфраструктуры - настоящее
+    // несовпадение теста обрабатывается синхронно внутри process() и не бросает.
+    // Вариант остаётся VERIFYING: ProgrammingTaskVerificationRecoveryService
+    // поставит его в очередь повторно, когда сервис снова станет доступен -
+    // это не провал задачи, и помечать его FAILED здесь нельзя.
+    this.logger.warn(
+      `Verification for variant ${job.data.variantId} failed after ${String(job.attemptsMade)} attempts: ${error.message}`,
     );
   }
 
@@ -83,13 +87,14 @@ export class ProgrammingTaskVerificationProcessor extends WorkerHost {
         ReturnType<ProgrammingTasksRepository['findVariantForVerification']>
       >
     >,
+    revision: Date,
   ): Promise<string | null> {
     const language = variant.language.toLowerCase() as
       'python' | 'javascript' | 'typescript';
     const code = `${variant.referenceSolution}\n${variant.harnessCode}`;
 
     for (const [index, testCase] of variant.testCases.entries()) {
-      await this.waitForSessionQueue();
+      await this.waitForSessionQueue(variant.id, revision);
       const execution = await this.coderunner.execute({
         language,
         code,
@@ -110,8 +115,18 @@ export class ProgrammingTaskVerificationProcessor extends WorkerHost {
     return null;
   }
 
-  /** Не даёт фоновой admin-проверке конкурировать с ожидающим кодом сессий. */
-  private async waitForSessionQueue(): Promise<void> {
+  /**
+   * Не даёт фоновой admin-проверке конкурировать с ожидающим кодом сессий.
+   * Ждёт не дольше SESSION_QUEUE_WAIT_TIMEOUT_MS: при истечении дедлайна
+   * фиксирует причину в lastVerificationError (статус остаётся VERIFYING) и
+   * бросает исключение, которое уводит job в обычный retry с backoff.
+   */
+  private async waitForSessionQueue(
+    variantId: string,
+    revision: Date,
+  ): Promise<void> {
+    const deadline = Date.now() + SESSION_QUEUE_WAIT_TIMEOUT_MS;
+
     while (true) {
       const counts = await this.sessionExecutionsQueue.getJobCounts(
         'waiting',
@@ -119,6 +134,23 @@ export class ProgrammingTaskVerificationProcessor extends WorkerHost {
       );
       if ((counts.waiting ?? 0) === 0 && (counts.active ?? 0) === 0) {
         return;
+      }
+
+      if (Date.now() >= deadline) {
+        const message =
+          'Session code execution queue is busy; verification will retry automatically.';
+        try {
+          await this.repository.recordVerificationNote(
+            variantId,
+            revision,
+            message,
+          );
+        } catch (error) {
+          this.logger.warn(
+            `Could not record session-queue-busy note for variant ${variantId}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+        throw new Error(message);
       }
 
       await new Promise((resolve) =>

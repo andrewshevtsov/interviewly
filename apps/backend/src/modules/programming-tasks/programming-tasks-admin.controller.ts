@@ -20,6 +20,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator.ts';
 import { AdminGuard } from '../auth/guards/admin.guard.ts';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.ts';
 import { CreateProgrammingTaskDto } from './dto/create-programming-task.dto.ts';
+import { ReverifyProgrammingTaskVariantDto } from './dto/reverify-programming-task-variant.dto.ts';
 import { UpdateProgrammingTaskDetailsDto } from './dto/update-programming-task-details.dto.ts';
 import { UpsertProgrammingTaskVariantDto } from './dto/upsert-programming-task-variant.dto.ts';
 import { ProgrammingTasksService } from './programming-tasks.service.ts';
@@ -61,7 +62,7 @@ export class ProgrammingTasksAdminController {
   updateAndVerify(
     @Param('taskId', new ParseUUIDPipe()) taskId: string,
     @Param('variantId', new ParseUUIDPipe()) variantId: string,
-    @Body() dto: UpsertProgrammingTaskVariantDto,
+    @Body() dto: ReverifyProgrammingTaskVariantDto,
   ) {
     return this.service.updateAndVerify(taskId, variantId, dto);
   }

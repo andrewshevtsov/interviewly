@@ -11,13 +11,6 @@ import { VERIFICATION_RECOVERY_BATCH_SIZE } from './programming-task-verificatio
 export class ProgrammingTasksRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  findBySlug(slug: string) {
-    return this.prisma.programmingTask.findUnique({
-      where: { slug },
-      select: { id: true },
-    });
-  }
-
   findById(id: string) {
     return this.prisma.programmingTask.findUnique({
       where: { id },
@@ -32,8 +25,18 @@ export class ProgrammingTasksRepository {
     });
   }
 
+  // Soft-delete: задача и её варианты/тесты остаются в базе, просто пропадают
+  // из findAvailable/findActiveForSession - можно восстановить, в отличие от
+  // настоящего DELETE.
   delete(id: string) {
-    return this.prisma.programmingTask.delete({ where: { id } });
+    return this.prisma.programmingTask.update({
+      where: { id },
+      data: { isActive: false },
+    });
+  }
+
+  deleteVariant(id: string) {
+    return this.prisma.programmingTaskVariant.delete({ where: { id } });
   }
 
   createWithVariant(data: Prisma.ProgrammingTaskCreateInput) {
@@ -121,6 +124,19 @@ export class ProgrammingTasksRepository {
     });
   }
 
+  // Фиксирует причину временной задержки без смены статуса: вариант остаётся
+  // VERIFYING, чтобы его подхватили собственный retry job или recovery-сервис.
+  recordVerificationNote(id: string, revision: Date, note: string) {
+    return this.prisma.programmingTaskVariant.updateMany({
+      where: {
+        id,
+        status: ProgrammingTaskVariantStatus.VERIFYING,
+        updatedAt: revision,
+      },
+      data: { lastVerificationError: note },
+    });
+  }
+
   findVariantForTask(taskId: string, variantId: string) {
     return this.prisma.programmingTaskVariant.findFirst({
       where: { id: variantId, taskId },
@@ -137,7 +153,7 @@ export class ProgrammingTasksRepository {
         title: true,
         description: true,
         difficulty: true,
-        updatedAt: true,
+        version: true,
         variants: {
           orderBy: { language: 'asc' },
           select: {
@@ -166,18 +182,17 @@ export class ProgrammingTasksRepository {
 
   updateDetails(
     id: string,
-    expectedUpdatedAt: Date,
-    nextUpdatedAt: Date,
+    expectedVersion: number,
     data: Pick<
       Prisma.ProgrammingTaskUpdateInput,
       'title' | 'description' | 'difficulty'
     >,
   ) {
     return this.prisma.programmingTask.updateMany({
-      where: { id, updatedAt: expectedUpdatedAt },
+      where: { id, version: expectedVersion },
       data: {
         ...data,
-        updatedAt: nextUpdatedAt,
+        version: { increment: 1 },
       },
     });
   }
@@ -185,7 +200,6 @@ export class ProgrammingTasksRepository {
   updateForVerification(
     variantId: string,
     data: {
-      language: EditorLanguage;
       starterCode: string;
       harnessCode: string;
       referenceSolution: string;
@@ -200,7 +214,6 @@ export class ProgrammingTasksRepository {
     return this.prisma.programmingTaskVariant.update({
       where: { id: variantId },
       data: {
-        language: data.language,
         starterCode: data.starterCode,
         harnessCode: data.harnessCode,
         referenceSolution: data.referenceSolution,

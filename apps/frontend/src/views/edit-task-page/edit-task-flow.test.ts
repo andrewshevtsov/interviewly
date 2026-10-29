@@ -45,7 +45,7 @@ function buildTask(overrides: Partial<ProgrammingTaskEditItem> = {}): Programmin
     title: "Sum",
     description: "Return sum.",
     difficulty: "EASY",
-    updatedAt: "2026-10-28T12:00:00.000Z",
+    version: 1,
     variants: [buildVariant()],
     ...overrides,
   };

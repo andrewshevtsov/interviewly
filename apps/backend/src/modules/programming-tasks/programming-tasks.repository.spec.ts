@@ -75,32 +75,67 @@ describe('ProgrammingTasksRepository visibility', () => {
 });
 
 describe('ProgrammingTasksRepository writes', () => {
-  it('обновляет детали только при совпадении expected updatedAt', async () => {
+  it('удаляет задачу мягко - isActive: false, а не настоящий DELETE', async () => {
+    const update = vi.fn().mockResolvedValue({ id: 'task-id', isActive: false });
+    const deleteMock = vi.fn();
+    const repository = new ProgrammingTasksRepository({
+      programmingTask: { update, delete: deleteMock },
+    } as unknown as PrismaService);
+
+    await repository.delete('task-id');
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'task-id' },
+      data: { isActive: false },
+    });
+    expect(deleteMock).not.toHaveBeenCalled();
+  });
+
+  it('фиксирует причину задержки, не трогая статус варианта', async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const repository = new ProgrammingTasksRepository({
+      programmingTaskVariant: { updateMany },
+    } as unknown as PrismaService);
+    const revision = new Date('2026-10-28T12:00:00.000Z');
+
+    await repository.recordVerificationNote(
+      'variant-id',
+      revision,
+      'Session code execution queue is busy; verification will retry automatically.',
+    );
+
+    expect(updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'variant-id',
+        status: ProgrammingTaskVariantStatus.VERIFYING,
+        updatedAt: revision,
+      },
+      data: {
+        lastVerificationError:
+          'Session code execution queue is busy; verification will retry automatically.',
+      },
+    });
+  });
+
+  it('обновляет детали только при совпадении expected version и атомарно увеличивает её', async () => {
     const updateMany = vi.fn().mockResolvedValue({ count: 1 });
     const repository = new ProgrammingTasksRepository({
       programmingTask: { updateMany },
     } as unknown as PrismaService);
-    const expectedUpdatedAt = new Date('2026-10-28T12:00:00.000Z');
-    const nextUpdatedAt = new Date('2026-10-28T12:00:00.001Z');
 
-    await repository.updateDetails(
-      'task-id',
-      expectedUpdatedAt,
-      nextUpdatedAt,
-      {
-        title: 'Updated',
-        description: 'Updated description',
-        difficulty: 'MEDIUM',
-      },
-    );
+    await repository.updateDetails('task-id', 3, {
+      title: 'Updated',
+      description: 'Updated description',
+      difficulty: 'MEDIUM',
+    });
 
     expect(updateMany).toHaveBeenCalledWith({
-      where: { id: 'task-id', updatedAt: expectedUpdatedAt },
+      where: { id: 'task-id', version: 3 },
       data: {
         title: 'Updated',
         description: 'Updated description',
         difficulty: 'MEDIUM',
-        updatedAt: nextUpdatedAt,
+        version: { increment: 1 },
       },
     });
   });
@@ -117,7 +152,6 @@ describe('ProgrammingTasksRepository writes', () => {
     } as unknown as PrismaService);
 
     await repository.updateForVerification('variant-id', {
-      language: EditorLanguage.JAVASCRIPT,
       starterCode: 'function solve() {}',
       harnessCode: 'console.log(solve(input));',
       referenceSolution: 'function solve() { return 1; }',
@@ -128,5 +162,29 @@ describe('ProgrammingTasksRepository writes', () => {
 
     expect(updateVariant).toHaveBeenCalledOnce();
     expect(updateTask).not.toHaveBeenCalled();
+  });
+
+  it('при сохранении варианта не меняет его язык', async () => {
+    const updateVariant = vi.fn().mockResolvedValue({
+      id: 'variant-id',
+      updatedAt: new Date(),
+    });
+    const repository = new ProgrammingTasksRepository({
+      programmingTaskVariant: { update: updateVariant },
+    } as unknown as PrismaService);
+
+    await repository.updateForVerification('variant-id', {
+      starterCode: 'function solve() {}',
+      harnessCode: 'console.log(solve(input));',
+      referenceSolution: 'function solve() { return 1; }',
+      testCases: [
+        { position: 0, name: 'Case 1', input: [], expectedOutput: 1 },
+      ],
+    });
+
+    const call = updateVariant.mock.calls[0]?.[0] as
+      | { data: Record<string, unknown> }
+      | undefined;
+    expect(call?.data).not.toHaveProperty('language');
   });
 });

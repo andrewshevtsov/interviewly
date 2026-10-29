@@ -12,7 +12,6 @@ import { ProgrammingTasksAdminController } from './programming-tasks-admin.contr
 import { ProgrammingTasksController } from './programming-tasks.controller.ts';
 import type { ProgrammingTasksService } from './programming-tasks.service.ts';
 
-const revision = new Date('2026-10-28T12:00:00.000Z');
 const admin: JwtPayload = {
   sub: 'admin-id',
   email: 'admin@interviewly.test',
@@ -78,7 +77,7 @@ describe('Programming task controllers', () => {
 
   it('вызывает нужные методы полного admin-флоу', async () => {
     await adminController.updateDetails('task-id', {
-      expectedUpdatedAt: revision.toISOString(),
+      expectedVersion: 0,
       title: input.title,
       description: input.description,
       difficulty: input.difficulty,
