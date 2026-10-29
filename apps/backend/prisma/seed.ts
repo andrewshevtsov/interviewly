@@ -1,12 +1,14 @@
 import * as bcrypt from 'bcrypt';
 import { createPrismaAdapter } from '../src/prisma/prisma-client-adapter';
 import { PrismaClient } from '../src/prisma/generated/client';
+import { ProgrammingTaskVariantStatus } from '../src/prisma/generated/enums';
 import usersSeedData from './seed-data/users';
 import sessionsSeedData from './seed-data/sessions';
 import participantsSeedData from './seed-data/session-participants';
 import profilesSeedData from './seed-data/profiles';
 import feedbackSeedData from './seed-data/feedback';
 import programmingTasksSeedData from './seed-data/programming-tasks';
+import harnessTemplatesSeedData from './seed-data/programming-task-harness-templates';
 
 // Тот же фактор, что и в AuthService, чтобы сид-хеши были неотличимы
 // от реальных регистраций.
@@ -20,6 +22,14 @@ async function main() {
   console.log('Starting database seed...');
 
   const userIdByEmail = new Map<string, string>();
+
+  for (const template of harnessTemplatesSeedData) {
+    await prisma.programmingTaskHarnessTemplate.upsert({
+      where: { language: template.language },
+      update: template,
+      create: template,
+    });
+  }
 
   for (const eachTask of programmingTasksSeedData) {
     const { id, variants, testCases, ...taskData } = eachTask;
@@ -35,27 +45,39 @@ async function main() {
       });
 
       for (const variant of variants) {
-        await transaction.programmingTaskVariant.upsert({
+        const savedVariant = await transaction.programmingTaskVariant.upsert({
           where: {
             taskId_language: {
               taskId: task.id,
               language: variant.language,
             },
           },
-          update: variant,
-          create: { taskId: task.id, ...variant },
+          update: {
+            ...variant,
+            status: ProgrammingTaskVariantStatus.VERIFIED,
+            verifiedAt: new Date(),
+            lastVerificationError: null,
+          },
+          create: {
+            taskId: task.id,
+            ...variant,
+            status: ProgrammingTaskVariantStatus.VERIFIED,
+            verifiedAt: new Date(),
+          },
+        });
+
+        // Seed-задачи используют одинаковые JSON-кейсы для всех языков, но в
+        // базе каждый набор принадлежит конкретному языковому варианту.
+        await transaction.programmingTaskCase.deleteMany({
+          where: { variantId: savedVariant.id },
+        });
+        await transaction.programmingTaskCase.createMany({
+          data: testCases.map((testCase) => ({
+            variantId: savedVariant.id,
+            ...testCase,
+          })),
         });
       }
-
-      await transaction.programmingTaskCase.deleteMany({
-        where: { taskId: task.id },
-      });
-      await transaction.programmingTaskCase.createMany({
-        data: testCases.map((testCase) => ({
-          taskId: task.id,
-          ...testCase,
-        })),
-      });
     });
   }
 

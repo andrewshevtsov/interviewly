@@ -2,42 +2,15 @@ import {
   EditorLanguage,
   ProgrammingTaskDifficulty,
 } from '../../src/prisma/generated/enums';
+import {
+  JAVASCRIPT_SOLVE_HARNESS as javascriptSolveHarness,
+  PYTHON_SOLVE_HARNESS as pythonSolveHarness,
+  TYPESCRIPT_SOLVE_HARNESS as typescriptSolveHarness,
+} from './programming-task-harness-templates';
 
 // Harness хранится рядом со стартовым кодом, потому что контракт вызова зависит
 // от языка. При исполнении coderunner добавит его после кода кандидата и передаст
 // конкретный test case в stdin как JSON.
-const javascriptSolveHarness = `(() => {
-  const __interviewlyFs = require('fs');
-  const __interviewlyInput = JSON.parse(__interviewlyFs.readFileSync(0, 'utf8'));
-  const __interviewlyResult = solve(__interviewlyInput);
-  process.stdout.write(JSON.stringify(__interviewlyResult));
-})();`;
-
-const typescriptSolveHarness = `declare const require: (name: string) => {
-  readFileSync(fd: number, encoding: string): string;
-};
-declare const process: { stdout: { write(value: string): void } };
-
-(() => {
-  const __interviewlyFs = require('fs');
-  const __interviewlyInput = JSON.parse(__interviewlyFs.readFileSync(0, 'utf8')) as unknown;
-  const __interviewlyResult = solve(__interviewlyInput as never);
-  process.stdout.write(JSON.stringify(__interviewlyResult));
-})();`;
-
-const pythonSolveHarness = `def __interviewly_run():
-    import json as __interviewly_json
-    import sys as __interviewly_sys
-
-    __interviewly_input = __interviewly_json.load(__interviewly_sys.stdin)
-    __interviewly_result = solve(__interviewly_input)
-    __interviewly_sys.stdout.write(
-        __interviewly_json.dumps(__interviewly_result, ensure_ascii=False)
-    )
-
-
-__interviewly_run()`;
-
 const javascriptDequeHarness = `(() => {
   const __interviewlyFs = require('fs');
   const __interviewlyInput = JSON.parse(__interviewlyFs.readFileSync(0, 'utf8'));
@@ -144,6 +117,9 @@ export default [
         starterCode: `function solve(params) {
   // Напишите решение здесь
 }`,
+        referenceSolution: `function solve(params) {
+  return params.numbers.reduce((sum, value) => sum + value, 0);
+}`,
         harnessCode: javascriptSolveHarness,
       },
       {
@@ -156,6 +132,13 @@ function solve(params: SumParams): number {
   // Напишите решение здесь
   return 0;
 }`,
+        referenceSolution: `type SumParams = {
+  numbers: number[];
+};
+
+function solve(params: SumParams): number {
+  return params.numbers.reduce((sum, value) => sum + value, 0);
+}`,
         harnessCode: typescriptSolveHarness,
       },
       {
@@ -163,6 +146,8 @@ function solve(params: SumParams): number {
         starterCode: `def solve(params):
     # Напишите решение здесь
     return 0`,
+        referenceSolution: `def solve(params):
+    return sum(params['numbers'])`,
         harnessCode: pythonSolveHarness,
       },
     ],
@@ -201,6 +186,9 @@ function solve(params: SumParams): number {
         starterCode: `function solve(params) {
   // Напишите решение здесь
 }`,
+        referenceSolution: `function solve(params) {
+  return [...params.numbers].sort((left, right) => left - right);
+}`,
         harnessCode: javascriptSolveHarness,
       },
       {
@@ -213,6 +201,13 @@ function solve(params: SortParams): number[] {
   // Напишите решение здесь
   return [];
 }`,
+        referenceSolution: `type SortParams = {
+  numbers: number[];
+};
+
+function solve(params: SortParams): number[] {
+  return [...params.numbers].sort((left, right) => left - right);
+}`,
         harnessCode: typescriptSolveHarness,
       },
       {
@@ -220,6 +215,8 @@ function solve(params: SortParams): number[] {
         starterCode: `def solve(params):
     # Напишите решение здесь
     return []`,
+        referenceSolution: `def solve(params):
+    return sorted(params['numbers'])`,
         harnessCode: pythonSolveHarness,
       },
     ],
@@ -265,6 +262,17 @@ function solve(params: SortParams): number[] {
   size() {}
   isEmpty() {}
 }`,
+        referenceSolution: `class Deque {
+  constructor() { this.items = []; }
+  pushFront(value) { this.items.unshift(value); }
+  pushBack(value) { this.items.push(value); }
+  popFront() { return this.items.shift() ?? null; }
+  popBack() { return this.items.pop() ?? null; }
+  peekFront() { return this.items[0] ?? null; }
+  peekBack() { return this.items.at(-1) ?? null; }
+  size() { return this.items.length; }
+  isEmpty() { return this.items.length === 0; }
+}`,
         harnessCode: javascriptDequeHarness,
       },
       {
@@ -278,6 +286,17 @@ function solve(params: SortParams): number[] {
   peekBack(): T | null { return null; }
   size(): number { return 0; }
   isEmpty(): boolean { return true; }
+}`,
+        referenceSolution: `class Deque<T> {
+  private readonly items: T[] = [];
+  pushFront(value: T): void { this.items.unshift(value); }
+  pushBack(value: T): void { this.items.push(value); }
+  popFront(): T | null { return this.items.shift() ?? null; }
+  popBack(): T | null { return this.items.pop() ?? null; }
+  peekFront(): T | null { return this.items[0] ?? null; }
+  peekBack(): T | null { return this.items.at(-1) ?? null; }
+  size(): number { return this.items.length; }
+  isEmpty(): boolean { return this.items.length === 0; }
 }`,
         harnessCode: typescriptDequeHarness,
       },
@@ -307,6 +326,33 @@ function solve(params: SortParams): number[] {
 
     def is_empty(self):
         return True`,
+        referenceSolution: `class Deque:
+    def __init__(self):
+        self.items = []
+
+    def push_front(self, value):
+        self.items.insert(0, value)
+
+    def push_back(self, value):
+        self.items.append(value)
+
+    def pop_front(self):
+        return self.items.pop(0) if self.items else None
+
+    def pop_back(self):
+        return self.items.pop() if self.items else None
+
+    def peek_front(self):
+        return self.items[0] if self.items else None
+
+    def peek_back(self):
+        return self.items[-1] if self.items else None
+
+    def size(self):
+        return len(self.items)
+
+    def is_empty(self):
+        return len(self.items) == 0`,
         harnessCode: pythonDequeHarness,
       },
     ],
