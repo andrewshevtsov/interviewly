@@ -1,9 +1,9 @@
-import type { ProgrammingTaskLanguage } from "@/entities/programming-task";
+import {
+  TASK_LANGUAGES,
+  type ProgrammingTaskLanguage,
+} from "@/entities/programming-task";
 
 const MIN_LANGUAGES_FOR_NEXT = 2;
-
-/** Языки, для которых можно создать варианты задачи. */
-export const TASK_LANGUAGES: ProgrammingTaskLanguage[] = ["PYTHON", "JAVASCRIPT", "TYPESCRIPT"];
 
 /**
  * Возвращает языки, для которых вариант ещё не был успешно проверен.

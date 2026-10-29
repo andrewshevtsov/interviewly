@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 
 import {
   programmingTaskApi,
+  TASK_LANGUAGES,
+  type CreateProgrammingTaskResponse,
   type ProgrammingTaskDifficulty,
   type ProgrammingTaskEditItem,
   type ProgrammingTaskLanguage,
@@ -49,7 +51,6 @@ import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { LocalizedLink } from "@/shared/ui/localized-link";
 import { Textarea } from "@/shared/ui/textarea";
-import { TASK_LANGUAGES } from "@/views/create-task-page/create-task-flow";
 
 const DIFFICULTIES: ProgrammingTaskDifficulty[] = ["EASY", "MEDIUM", "HARD"];
 const LANGUAGE_KEYS = {
@@ -240,9 +241,6 @@ function EditTaskForm(props: EditTaskFormProps) {
     setSelectedVariantId((current) =>
       reconcileSelectedVariantId({ currentSelectedVariantId: current, variants: task.variants }),
     );
-    // Синхронизация нужна только при получении нового snapshot с сервера.
-    // Dirty-state намеренно читается из рендера, в котором изменился task.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task]);
 
   useEffect(() => {
@@ -327,7 +325,10 @@ function EditTaskForm(props: EditTaskFormProps) {
     setSubmitError("");
   }
 
-  /** Выбирает язык нового варианта и загружает его стандартный Harness. */
+  /**
+   * Выбирает язык нового варианта и загружает его стандартный Harness.
+   * @param {ProgrammingTaskLanguage} language - Язык нового варианта.
+   */
   async function selectNewLanguage(language: ProgrammingTaskLanguage): Promise<void> {
     if (pendingNewVariantId && language !== newLanguage) {
       return;
@@ -351,7 +352,10 @@ function EditTaskForm(props: EditTaskFormProps) {
     }
   }
 
-  /** Переключает существующую реализацию или открывает форму неиспользованного стека. */
+  /**
+   * Переключает существующую реализацию или открывает форму неиспользованного стека.
+   * @param {ProgrammingTaskLanguage} language - Выбранный язык реализации.
+   */
   function selectImplementationLanguage(language: ProgrammingTaskLanguage): void {
     const existingVariant = variants.find((variant) => variant.language === language);
     if (existingVariant) {
@@ -467,7 +471,7 @@ function EditTaskForm(props: EditTaskFormProps) {
    */
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    if (step !== IMPLEMENTATION_STEP || !selectedDraft) {
+    if (step !== IMPLEMENTATION_STEP || !selectedDraft || (!isAddingVariant && !selectedVariant)) {
       return;
     }
 
@@ -491,9 +495,10 @@ function EditTaskForm(props: EditTaskFormProps) {
     setSubmitError("");
     setSubmitSuccess("");
     try {
-      const language: ProgrammingTaskLanguage = isAddingVariant
-        ? (newLanguage as ProgrammingTaskLanguage)
-        : selectedVariant!.language;
+      const language = isAddingVariant ? newLanguage : selectedVariant?.language;
+      if (!language) {
+        return;
+      }
       const input = {
         language,
         starterCode: selectedDraft.starterCode,
@@ -501,11 +506,16 @@ function EditTaskForm(props: EditTaskFormProps) {
         referenceSolution: selectedDraft.referenceSolution,
         testCases,
       };
-      let result = isAddingVariant
-        ? pendingNewVariantId
+      let result: CreateProgrammingTaskResponse;
+      if (isAddingVariant) {
+        result = pendingNewVariantId
           ? await programmingTaskApi.reverify(task.id, pendingNewVariantId, input)
-          : await programmingTaskApi.addVariant(task.id, input)
-        : await programmingTaskApi.reverify(task.id, selectedVariant!.id, input);
+          : await programmingTaskApi.addVariant(task.id, input);
+      } else if (selectedVariant) {
+        result = await programmingTaskApi.reverify(task.id, selectedVariant.id, input);
+      } else {
+        return;
+      }
       markVariantSaved(result.variantId, isAddingVariant);
 
       if (result.status === "VERIFYING") {
@@ -529,13 +539,13 @@ function EditTaskForm(props: EditTaskFormProps) {
         } else {
           setVariants((current) =>
             current.map((variant) =>
-              variant.id === selectedVariant!.id
+              variant.id === result.variantId
                 ? {
-                    ...variant,
-                    status: "FAILED",
-                    verifiedAt: null,
-                    lastVerificationError: result.verificationError,
-                  }
+                  ...variant,
+                  status: "FAILED",
+                  verifiedAt: null,
+                  lastVerificationError: result.verificationError,
+                }
                 : variant,
             ),
           );
@@ -723,45 +733,49 @@ function EditTaskForm(props: EditTaskFormProps) {
                   className="h-11 w-full justify-between bg-background px-3 font-normal"
                   aria-invalid={showLanguageError || undefined}
                 >
-                  {isAddingVariant ? (
-                    newLanguage ? (
-                      <span className="flex items-center gap-2">
-                        <span className="font-mono text-xs uppercase tracking-wide">
-                          {t(LANGUAGE_KEYS[newLanguage])}
-                        </span>
-                        <span
-                          className={
-                            pendingNewVariantId
-                              ? "text-xs text-destructive"
-                              : "text-xs text-muted-foreground"
-                          }
-                        >
-                          {pendingNewVariantId ? t("statusFailed") : t("statusNotImplemented")}
-                        </span>
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">{t("selectStackPlaceholder")}</span>
+                  {isAddingVariant
+                    ? (
+                      newLanguage
+                        ? (
+                          <span className="flex items-center gap-2">
+                            <span className="font-mono text-xs uppercase tracking-wide">
+                              {t(LANGUAGE_KEYS[newLanguage])}
+                            </span>
+                            <span
+                              className={
+                                pendingNewVariantId
+                                  ? "text-xs text-destructive"
+                                  : "text-xs text-muted-foreground"
+                              }
+                            >
+                              {pendingNewVariantId ? t("statusFailed") : t("statusNotImplemented")}
+                            </span>
+                          </span>
+                        )
+                        : (
+                          <span className="text-muted-foreground">{t("selectStackPlaceholder")}</span>
+                        )
                     )
-                  ) : (
-                    selectedVariant && (
-                      <span className="flex items-center gap-2">
-                        <span className="font-mono text-xs uppercase tracking-wide">
-                          {t(LANGUAGE_KEYS[selectedVariant.language])}
+                    : (
+                      selectedVariant && (
+                        <span className="flex items-center gap-2">
+                          <span className="font-mono text-xs uppercase tracking-wide">
+                            {t(LANGUAGE_KEYS[selectedVariant.language])}
+                          </span>
+                          <span
+                            className={
+                              selectedVariant.status === "VERIFIED"
+                                ? "text-xs text-success"
+                                : selectedVariant.status === "FAILED"
+                                  ? "text-xs text-destructive"
+                                  : "text-xs text-muted-foreground"
+                            }
+                          >
+                            {t(STATUS_KEYS[selectedVariant.status])}
+                          </span>
                         </span>
-                        <span
-                          className={
-                            selectedVariant.status === "VERIFIED"
-                              ? "text-xs text-success"
-                              : selectedVariant.status === "FAILED"
-                                ? "text-xs text-destructive"
-                                : "text-xs text-muted-foreground"
-                          }
-                        >
-                          {t(STATUS_KEYS[selectedVariant.status])}
-                        </span>
-                      </span>
-                    )
-                  )}
+                      )
+                    )}
                   <ChevronDown className="size-4 text-muted-foreground" aria-hidden />
                 </Button>
               </DropdownMenuTrigger>

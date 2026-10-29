@@ -2,6 +2,7 @@ import { CircleHelp } from "lucide-react";
 
 import { Label } from "@/shared/ui/label";
 
+/** Свойства лейбла поля со всплывающей подсказкой. */
 interface FieldLabelWithTooltipProps {
   /** Идентификатор связанного поля. */
   htmlFor?: string;
@@ -11,7 +12,11 @@ interface FieldLabelWithTooltipProps {
   hint: string;
 }
 
-/** Единый лейбл поля с подсказкой, доступной по hover и keyboard focus. */
+/**
+ * Единый лейбл поля с подсказкой, доступной по hover и keyboard focus.
+ * @param {FieldLabelWithTooltipProps} props - Название, подсказка и связанное поле.
+ * @returns {import("react").ReactNode} Лейбл со значком подсказки.
+ */
 export function FieldLabelWithTooltip(props: FieldLabelWithTooltipProps) {
   return (
     <div className="flex items-center gap-1.5">

@@ -25,7 +25,7 @@ const variantInput = {
   referenceSolution: createInput.referenceSolution,
   testCases: createInput.testCases,
 };
-const updatedAt = "2026-10-28T12:00:00.000Z";
+const UPDATED_AT = "2026-10-28T12:00:00.000Z";
 const verificationResponse: CreateProgrammingTaskResponse = {
   id: "task-id",
   slug: "sum",
@@ -46,7 +46,7 @@ describe("programmingTaskApi admin flow", () => {
       title: "Sum",
       description: "Return sum.",
       difficulty: "EASY",
-      updatedAt,
+      updatedAt: UPDATED_AT,
       variants: [
         {
           id: "variant-id",
@@ -110,14 +110,15 @@ describe("programmingTaskApi admin flow", () => {
 
   it("сохраняет первый шаг без запуска endpoint верификации", async () => {
     const details = {
-      expectedUpdatedAt: updatedAt,
+      expectedUpdatedAt: UPDATED_AT,
       title: "Updated sum",
       description: "Return all numbers.",
       difficulty: "MEDIUM" as const,
     };
+    const response = { id: "task-id", slug: "sum", ...details, updatedAt: UPDATED_AT };
     const patch = vi
       .spyOn(httpClient, "patch")
-      .mockResolvedValue({ data: { id: "task-id", slug: "sum", ...details, updatedAt } } as never);
+      .mockResolvedValue({ data: response } as never);
 
     await programmingTaskApi.updateDetails("task-id", details);
 
@@ -131,7 +132,7 @@ describe("programmingTaskApi admin flow", () => {
       title: "Sum",
       description: "Return sum.",
       difficulty: "EASY",
-      updatedAt,
+      updatedAt: UPDATED_AT,
       variants: [],
     };
     const get = vi.spyOn(httpClient, "get").mockResolvedValue({ data: task } as never);
