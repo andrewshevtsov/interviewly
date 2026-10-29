@@ -109,14 +109,14 @@ describe('SessionsService', () => {
           {
             starterCode: 'function solve(params) {}',
             harnessCode: 'solve(input);',
-          },
-        ],
-        testCases: [
-          {
-            position: 0,
-            name: 'Пример',
-            input: { numbers: [1, 2] },
-            expectedOutput: 3,
+            testCases: [
+              {
+                position: 0,
+                name: 'Пример',
+                input: { numbers: [1, 2] },
+                expectedOutput: 3,
+              },
+            ],
           },
         ],
       } as never);

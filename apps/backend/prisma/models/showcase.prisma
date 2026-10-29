@@ -32,7 +32,7 @@ model ShowcaseResponse {
   rejectionReason String?
   reviewedAt      DateTime? @db.Timestamptz(3)
   // Отказ только из-за времени: пауза перед повторным откликом не действует.
-  timeMismatch Boolean @default(false)
+  timeMismatch    Boolean   @default(false)
 
   // Когда владелец / автор отклика последний раз получал его в списке: события новее этого момента дают значок «Мои отклики».
   ownerSeenAt     DateTime? @db.Timestamptz(3)

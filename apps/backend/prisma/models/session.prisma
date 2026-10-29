@@ -47,44 +47,44 @@ model Session {
   owner   User   @relation(fields: [ownerId], references: [id])
 
   // Название задаёт владелец при создании; у старых сессий его нет.
-  title           String?
+  title                   String?
   // Условие задачи: его видит модель, когда кандидат просит AI-подсказку
-  task            String?
+  task                    String?
   // Задача из банка; null означает пользовательское условие из поля task.
-  programmingTaskId String?          @db.Uuid
-  programmingTask   ProgrammingTask? @relation(fields: [programmingTaskId], references: [id], onDelete: SetNull)
+  programmingTaskId       String?          @db.Uuid
+  programmingTask         ProgrammingTask? @relation(fields: [programmingTaskId], references: [id], onDelete: SetNull)
   // Неизменяемая копия условия, языкового варианта и тест-кейсов на момент
   // создания сессии. Она сохраняет воспроизводимость после изменения банка.
   programmingTaskSnapshot Json?
   // Временно (AI_HINTS_DEMO_CONTEXT): номер демо-задачи, которую интервьюер
   // показал в комнате. Удалить вместе с демо-задачами.
-  demoTaskIndex   Int?
+  demoTaskIndex           Int?
   // Интервьюер открыл редактор кода, комната в режиме лайв-кодинга
-  editorOpen      Boolean       @default(false)
-  editorLanguage  EditorLanguage @default(TYPESCRIPT)
-  type            SessionType   @default(BUSINESS)
-  access          SessionAccess @default(INVITE)
+  editorOpen              Boolean          @default(false)
+  editorLanguage          EditorLanguage   @default(TYPESCRIPT)
+  type                    SessionType      @default(BUSINESS)
+  access                  SessionAccess    @default(INVITE)
   // Для access=PASSWORD непустой хеш обязателен: это дополнительно защищено
   // CHECK-ограничением Session_password_required в начальной миграции.
-  passwordHash    String?
-  status          SessionStatus @default(READY)
-  statusUpdatedAt DateTime      @default(now()) @db.Timestamptz(3)
-  scheduledAt     DateTime?     @db.Timestamptz(3)
-  startedAt       DateTime?     @db.Timestamptz(3)
-  endedAt         DateTime?     @db.Timestamptz(3)
-  livekitRoomName String        @unique
+  passwordHash            String?
+  status                  SessionStatus    @default(READY)
+  statusUpdatedAt         DateTime         @default(now()) @db.Timestamptz(3)
+  scheduledAt             DateTime?        @db.Timestamptz(3)
+  startedAt               DateTime?        @db.Timestamptz(3)
+  endedAt                 DateTime?        @db.Timestamptz(3)
+  livekitRoomName         String           @unique
   // Отмена до начала: кто отменил и почему видит второй участник.
-  cancelledById   String?       @db.Uuid
-  cancelledBy     User?         @relation("SessionCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
-  cancelReason    String?
-  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
-  updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
+  cancelledById           String?          @db.Uuid
+  cancelledBy             User?            @relation("SessionCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+  cancelReason            String?
+  createdAt               DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime         @updatedAt @db.Timestamptz(3)
 
-  participants   SessionParticipant[]
-  feedback       Feedback[]
-  accessRequests SessionAccessRequest[]
-  document       SessionDocument?
-  hints          SessionHint[]
+  participants     SessionParticipant[]
+  feedback         Feedback[]
+  accessRequests   SessionAccessRequest[]
+  document         SessionDocument?
+  hints            SessionHint[]
   // Отклик витрины, из которого создана сессия.
   showcaseResponse ShowcaseResponse?
 

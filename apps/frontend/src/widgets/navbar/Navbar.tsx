@@ -21,7 +21,7 @@ interface NavLink {
   /**
    * Link label shown in the navbar.
    */
-  labelKey: "showcase" | "leaderboard" | "history";
+  labelKey: "showcase" | "taskBank" | "leaderboard" | "history";
 
   /**
    * Target href.
@@ -31,6 +31,7 @@ interface NavLink {
 
 const NAV_LINKS: NavLink[] = [
   { labelKey: "showcase", href: "/showcase" },
+  { labelKey: "taskBank", href: "/tasks" },
   { labelKey: "leaderboard", href: "/leaderboard" },
   { labelKey: "history", href: "/sessions" },
 ];
@@ -82,7 +83,12 @@ export function Navbar() {
             </Button>
           )}
           {isAuthenticated && (
-            <Button asChild variant="ghost" size="icon" className={cn(PATHNAME === localizedProfileHref && "text-primary")}>
+            <Button
+              asChild
+              variant="ghost"
+              size="icon"
+              className={cn(PATHNAME === localizedProfileHref && "text-primary")}
+            >
               <LocalizedLink
                 href="/profile"
                 aria-label={t("profile")}

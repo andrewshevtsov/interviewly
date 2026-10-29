@@ -1,0 +1,9 @@
+export const PROGRAMMING_TASK_VERIFICATIONS_QUEUE =
+  'programming-task-verifications';
+export const VERIFY_PROGRAMMING_TASK_VARIANT_JOB =
+  'verify-programming-task-variant';
+export const PROGRAMMING_TASK_VERIFICATION_CONCURRENCY = 1;
+export const SESSION_QUEUE_IDLE_POLL_INTERVAL_MS = 250;
+export const VERIFICATION_RECOVERY_INTERVAL_MS = 60_000;
+export const VERIFICATION_STALE_AFTER_MS = 5 * 60_000;
+export const VERIFICATION_RECOVERY_BATCH_SIZE = 100;

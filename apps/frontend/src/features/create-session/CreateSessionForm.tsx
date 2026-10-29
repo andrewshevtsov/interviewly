@@ -10,7 +10,6 @@ import { Check, ChevronDown } from "lucide-react";
 import { getLocalizedHref } from "@/shared/i18n";
 import { useLocale, useTranslations } from "@/shared/i18n-context";
 import { Button } from "@/shared/ui/button";
-import { Badge } from "@/shared/ui/badge";
 import { Card } from "@/shared/ui/card";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Input } from "@/shared/ui/input";
@@ -28,7 +27,8 @@ import {
   type EditorLanguage,
   type NewSessionDraft,
 } from "@/entities/session";
-import { programmingTaskApi, type ProgrammingTaskDifficulty } from "@/entities/programming-task";
+import { programmingTaskApi } from "@/entities/programming-task";
+import { ProgrammingTaskDifficultyBadge } from "@/entities/programming-task/ProgrammingTaskDifficultyBadge";
 
 // Совпадают с ограничениями CreateSessionDto на бэкенде.
 const MIN_PASSWORD_LENGTH = 4;
@@ -243,38 +243,6 @@ export function CreateSessionForm(props: CreateSessionFormProps) {
     createMutation.mutate({ title, editorLanguage, ...selectedTask, ...access });
   }
 
-  /**
-   * Возвращает локализованную подпись сложности задачи.
-   * @param {ProgrammingTaskDifficulty} difficulty - Стабильный enum сложности.
-   * @returns {string} Подпись на текущем языке интерфейса.
-   */
-  function difficultyLabel(difficulty: ProgrammingTaskDifficulty): string {
-    const labels = {
-      EASY: t("difficultyEasy"),
-      MEDIUM: t("difficultyMedium"),
-      HARD: t("difficultyHard"),
-    };
-
-    return labels[difficulty];
-  }
-
-  /**
-   * Возвращает цвет бейджа сложности.
-   * @param {ProgrammingTaskDifficulty} difficulty - Уровень задачи.
-   * @returns {"success" | "warning" | "destructive"} Вариант Badge.
-   */
-  function difficultyBadgeVariant(
-    difficulty: ProgrammingTaskDifficulty,
-  ): "success" | "warning" | "destructive" {
-    const variants = {
-      EASY: "success",
-      MEDIUM: "warning",
-      HARD: "destructive",
-    } as const;
-
-    return variants[difficulty];
-  }
-
   const languageOptions: FormDropdownOption[] = [
     { value: "PYTHON", label: t("languagePython") },
     { value: "JAVASCRIPT", label: t("languageJavaScript") },
@@ -286,12 +254,10 @@ export function CreateSessionForm(props: CreateSessionFormProps) {
       label: (
         <>
           <span className="truncate">{taskOption.title}</span>
-          <Badge
-            variant={difficultyBadgeVariant(taskOption.difficulty)}
-            className="ml-auto shrink-0 uppercase"
-          >
-            {difficultyLabel(taskOption.difficulty)}
-          </Badge>
+          <ProgrammingTaskDifficultyBadge
+            difficulty={taskOption.difficulty}
+            className="ml-auto shrink-0"
+          />
         </>
       ),
     })) ?? [];

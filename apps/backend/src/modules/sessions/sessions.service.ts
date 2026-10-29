@@ -102,7 +102,7 @@ export class SessionsService {
               language: dto.editorLanguage,
               starterCode: bankTaskVariant.starterCode,
               harnessCode: bankTaskVariant.harnessCode,
-              testCases: bankTask.testCases.map((testCase) => ({
+              testCases: bankTaskVariant.testCases.map((testCase) => ({
                 position: testCase.position,
                 name: testCase.name,
                 input: testCase.input,

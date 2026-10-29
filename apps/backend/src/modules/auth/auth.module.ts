@@ -6,13 +6,14 @@ import { AuthDevController } from './auth-dev.controller.ts';
 import { AuthService } from './auth.service.ts';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.ts';
 import { DevOnlyGuard } from './guards/dev-only.guard.ts';
+import { AdminGuard } from './guards/admin.guard.ts';
 
 @Module({
   // Секреты и TTL передаются per-call в AuthService/JwtAuthGuard, поэтому
   // здесь регистрируем JwtModule без глобальной конфигурации.
   imports: [UsersModule, JwtModule.register({})],
   controllers: [AuthController, AuthDevController],
-  providers: [AuthService, JwtAuthGuard, DevOnlyGuard],
-  exports: [AuthService, JwtAuthGuard, JwtModule],
+  providers: [AuthService, JwtAuthGuard, DevOnlyGuard, AdminGuard],
+  exports: [AuthService, JwtAuthGuard, AdminGuard, JwtModule],
 })
 export class AuthModule {}

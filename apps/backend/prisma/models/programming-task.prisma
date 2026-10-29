@@ -6,8 +6,30 @@ enum ProgrammingTaskDifficulty {
   HARD
 }
 
-// Переиспользуемая задача из банка. Условие и тест-кейсы не зависят от языка,
-// а стартовый код хранится отдельно для каждого поддерживаемого языка.
+enum ProgrammingTaskVariantStatus {
+  DRAFT
+  VERIFYING
+  VERIFIED
+  FAILED
+}
+
+// Редактируемый без деплоя стандартный Harness для языка. При создании
+// варианта задачи его код копируется в ProgrammingTaskVariant.harnessCode.
+model ProgrammingTaskHarnessTemplate {
+  id       String         @id @default(uuid()) @db.Uuid
+  language EditorLanguage @unique
+  code     String
+  version  Int            @default(1)
+  isActive Boolean        @default(true)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([isActive])
+}
+
+// Переиспользуемая задача из банка. Условие общее, а исполняемые данные
+// (стартовый код, harness и тест-кейсы) принадлежат языковым вариантам.
 model ProgrammingTask {
   id          String                    @id @default(uuid()) @db.Uuid
   slug        String                    @unique
@@ -15,15 +37,17 @@ model ProgrammingTask {
   description String
   difficulty  ProgrammingTaskDifficulty
   isActive    Boolean                   @default(true)
+  createdById String?                   @db.Uuid
+  createdBy   User?                     @relation("ProgrammingTaskCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
-  variants  ProgrammingTaskVariant[]
-  testCases ProgrammingTaskCase[]
-  sessions  Session[]
+  variants ProgrammingTaskVariant[]
+  sessions Session[]
 
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
   @@index([isActive])
+  @@index([createdById])
 }
 
 // Языковая версия задачи. Наличие варианта означает, что задачу можно выбрать
@@ -33,26 +57,37 @@ model ProgrammingTaskVariant {
   taskId String          @db.Uuid
   task   ProgrammingTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
-  language    EditorLanguage
-  starterCode String
+  language          EditorLanguage
+  starterCode       String
+  // Проверенное авторское решение используется для валидации тест-кейсов.
+  referenceSolution String
   // Системная обвязка добавляется к коду кандидата только при исполнении:
   // читает JSON из stdin, вызывает решение и печатает результат как JSON.
-  harnessCode String
+  harnessCode       String
+  createdById       String?        @db.Uuid
+  createdBy         User?          @relation("ProgrammingTaskVariantCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  status                ProgrammingTaskVariantStatus @default(DRAFT)
+  verifiedAt            DateTime?                    @db.Timestamptz(3)
+  lastVerificationError String?
+
+  testCases ProgrammingTaskCase[]
 
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
   @@unique([taskId, language])
   @@index([language])
+  @@index([status])
+  @@index([createdById])
 }
 
-// Один статичный набор входных данных и ожидаемый результат. JSON позволяет
-// передавать в solve(params) объекты, массивы и примитивы без привязки к числу
-// аргументов функции.
+// Один статичный набор входных данных и ожидаемый результат для конкретного
+// языка. JSON позволяет передавать объекты, массивы и примитивы.
 model ProgrammingTaskCase {
-  id     String          @id @default(uuid()) @db.Uuid
-  taskId String          @db.Uuid
-  task   ProgrammingTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  id        String                 @id @default(uuid()) @db.Uuid
+  variantId String                 @db.Uuid
+  variant   ProgrammingTaskVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
   position       Int
   name           String
@@ -62,5 +97,5 @@ model ProgrammingTaskCase {
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
-  @@unique([taskId, position])
+  @@unique([variantId, position])
 }
