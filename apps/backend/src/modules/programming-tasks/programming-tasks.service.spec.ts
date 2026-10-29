@@ -35,6 +35,9 @@ describe('ProgrammingTasksService', () => {
   beforeEach(() => {
     repository = {
       findActiveHarnessTemplate: vi.fn(),
+      delete: vi.fn(),
+      deleteVariant: vi.fn(),
+      completeVariantVerification: vi.fn(),
     } as unknown as Mocked<ProgrammingTasksRepository>;
     queue = { add: vi.fn().mockResolvedValue({}) } as unknown as Mocked<
       Queue<ProgrammingTaskVerificationJob>
@@ -61,31 +64,20 @@ describe('ProgrammingTasksService', () => {
   });
 
   it('сохраняет основные данные задачи отдельно от верификации', async () => {
-    repository.findForEditing = vi.fn().mockResolvedValue({
-      id: 'task-id',
-      slug: 'sum',
-      title: 'Sum',
-      description: 'Return sum.',
-      difficulty: ProgrammingTaskDifficulty.EASY,
-      updatedAt: revision,
-      variants: [],
-    });
+    repository.findById = vi.fn().mockResolvedValue({ id: 'task-id', slug: 'sum' });
     repository.updateDetails = vi.fn().mockResolvedValue({ count: 1 });
 
+    // Обрезка пробелов теперь делает DTO (@Transform) до вызова сервиса -
+    // сюда приходят уже готовые значения, сервис их не трогает.
     const result = await service.updateDetails('task-id', {
-      expectedUpdatedAt: revision.toISOString(),
-      title: '  Updated sum  ',
-      description: '  Return all numbers.  ',
+      expectedVersion: 3,
+      title: 'Updated sum',
+      description: 'Return all numbers.',
       difficulty: ProgrammingTaskDifficulty.MEDIUM,
     });
 
     expect(queue.add).not.toHaveBeenCalled();
-    expect(repository.updateDetails).toHaveBeenCalledOnce();
-    const updateCall = repository.updateDetails.mock.calls[0];
-    expect(updateCall?.[0]).toBe('task-id');
-    expect(updateCall?.[1]).toEqual(revision);
-    expect(updateCall?.[2]).toBeInstanceOf(Date);
-    expect(updateCall?.[3]).toEqual({
+    expect(repository.updateDetails).toHaveBeenCalledWith('task-id', 3, {
       title: 'Updated sum',
       description: 'Return all numbers.',
       difficulty: ProgrammingTaskDifficulty.MEDIUM,
@@ -93,25 +85,17 @@ describe('ProgrammingTasksService', () => {
     expect(result).toMatchObject({
       id: 'task-id',
       title: 'Updated sum',
+      version: 4,
     });
-    expect(result.updatedAt).toBeInstanceOf(Date);
   });
 
   it('возвращает конфликт при сохранении устаревшей версии деталей', async () => {
-    repository.findForEditing = vi.fn().mockResolvedValue({
-      id: 'task-id',
-      slug: 'sum',
-      title: 'Changed by another admin',
-      description: 'Changed description',
-      difficulty: ProgrammingTaskDifficulty.MEDIUM,
-      updatedAt: new Date(revision.getTime() + 1_000),
-      variants: [],
-    });
+    repository.findById = vi.fn().mockResolvedValue({ id: 'task-id', slug: 'sum' });
     repository.updateDetails = vi.fn().mockResolvedValue({ count: 0 });
 
     await expect(
       service.updateDetails('task-id', {
-        expectedUpdatedAt: revision.toISOString(),
+        expectedVersion: 3,
         title: 'My edit',
         description: 'My description',
         difficulty: ProgrammingTaskDifficulty.EASY,
@@ -119,8 +103,7 @@ describe('ProgrammingTasksService', () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
-  it('создаёт задачу и сразу возвращает VERIFYING после постановки job', async () => {
-    repository.findBySlug = vi.fn().mockResolvedValue(null);
+  it('создаёт задачу со случайным slug и сразу возвращает VERIFYING после постановки job', async () => {
     repository.createWithVariant = vi.fn().mockResolvedValue({
       id: 'task-id',
       slug: 'sum',
@@ -140,6 +123,10 @@ describe('ProgrammingTasksService', () => {
       status: ProgrammingTaskVariantStatus.VERIFYING,
       verificationError: null,
     });
+    // slug выводится из title и короткого случайного hex-суффикса - без
+    // похода в базу (не сохраняет "-2", "-3" последовательным перебором).
+    const createCall = repository.createWithVariant.mock.calls[0]?.[0] as { slug: string };
+    expect(createCall.slug).toMatch(/^sum-[0-9a-f]{6}$/);
     expect(queue.add).toHaveBeenCalledWith(
       'verify-programming-task-variant',
       { variantId: 'variant-id', revision: revision.toISOString() },
@@ -150,12 +137,35 @@ describe('ProgrammingTasksService', () => {
     );
   });
 
-  it('повторяет создание со следующим slug при конкурентном P2002', async () => {
-    repository.findBySlug = vi
-      .fn()
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ id: 'concurrent-task-id' })
-      .mockResolvedValueOnce(null);
+  it('сохраняет null во входных и ожидаемых данных как Prisma.JsonNull', async () => {
+    repository.createWithVariant = vi.fn().mockResolvedValue({
+      id: 'task-id',
+      slug: 'sum',
+      variants: [
+        {
+          id: 'variant-id',
+          status: ProgrammingTaskVariantStatus.VERIFYING,
+          updatedAt: revision,
+        },
+      ],
+    });
+
+    await service.createAndVerify('author-id', {
+      ...input,
+      testCases: [{ name: 'Case 1', input: null, expectedOutput: null }],
+    });
+
+    const createCall = repository.createWithVariant.mock.calls[0]?.[0];
+    const testCases = (
+      createCall?.variants as {
+        create: { testCases: { create: Array<{ input: unknown; expectedOutput: unknown }> } };
+      }
+    ).create.testCases.create;
+    expect(testCases[0]?.input).toBe(Prisma.JsonNull);
+    expect(testCases[0]?.expectedOutput).toBe(Prisma.JsonNull);
+  });
+
+  it('повторяет создание с новым случайным slug при конкурентном P2002', async () => {
     repository.createWithVariant = vi
       .fn()
       .mockRejectedValueOnce(
@@ -167,7 +177,7 @@ describe('ProgrammingTasksService', () => {
       )
       .mockResolvedValueOnce({
         id: 'task-id',
-        slug: 'sum-2',
+        slug: 'sum-deadbeef',
         variants: [
           {
             id: 'variant-id',
@@ -181,16 +191,15 @@ describe('ProgrammingTasksService', () => {
       service.createAndVerify('author-id', input),
     ).resolves.toMatchObject({
       id: 'task-id',
-      slug: 'sum-2',
+      slug: 'sum-deadbeef',
     });
     expect(repository.createWithVariant).toHaveBeenCalledTimes(2);
-    expect(repository.createWithVariant.mock.calls[1]?.[0]).toMatchObject({
-      slug: 'sum-2',
-    });
+    const firstAttempt = repository.createWithVariant.mock.calls[0]?.[0] as { slug: string };
+    const secondAttempt = repository.createWithVariant.mock.calls[1]?.[0] as { slug: string };
+    expect(firstAttempt.slug).not.toBe(secondAttempt.slug);
   });
 
-  it('помечает вариант FAILED, если очередь недоступна', async () => {
-    repository.findBySlug = vi.fn().mockResolvedValue(null);
+  it('откатывает только что созданную задачу, если очередь недоступна', async () => {
     repository.createWithVariant = vi.fn().mockResolvedValue({
       id: 'task-id',
       slug: 'sum',
@@ -202,19 +211,57 @@ describe('ProgrammingTasksService', () => {
         },
       ],
     });
-    repository.completeVariantVerification = vi
-      .fn()
-      .mockResolvedValue({ count: 1 });
+    repository.delete = vi.fn().mockResolvedValue({ id: 'task-id' });
     queue.add.mockRejectedValue(new Error('Redis unavailable'));
 
     await expect(
       service.createAndVerify('author-id', input),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
-    expect(repository.completeVariantVerification).toHaveBeenCalledWith(
-      'variant-id',
-      revision,
-      expect.objectContaining({ status: ProgrammingTaskVariantStatus.FAILED }),
-    );
+    expect(repository.delete).toHaveBeenCalledWith('task-id');
+    expect(repository.completeVariantVerification).not.toHaveBeenCalled();
+  });
+
+  it('откатывает только что созданный вариант, если очередь недоступна при добавлении языка', async () => {
+    repository.findById = vi
+      .fn()
+      .mockResolvedValue({ id: 'task-id', slug: 'sum' });
+    repository.findVariantByLanguage = vi.fn().mockResolvedValue(null);
+    repository.createVariantForTask = vi.fn().mockResolvedValue({
+      id: 'python-variant-id',
+      status: ProgrammingTaskVariantStatus.VERIFYING,
+      updatedAt: revision,
+    });
+    repository.deleteVariant = vi
+      .fn()
+      .mockResolvedValue({ id: 'python-variant-id' });
+    queue.add.mockRejectedValue(new Error('Redis unavailable'));
+
+    await expect(
+      service.addVariantAndVerify('task-id', 'author-id', {
+        ...input,
+        language: EditorLanguage.PYTHON,
+      }),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(repository.deleteVariant).toHaveBeenCalledWith('python-variant-id');
+  });
+
+  it('не удаляет и не переводит в FAILED существующий вариант, если очередь недоступна при повторной проверке', async () => {
+    repository.findVariantForTask = vi.fn().mockResolvedValue({
+      id: 'variant-id',
+      task: { id: 'task-id', slug: 'sum' },
+    });
+    repository.updateForVerification = vi.fn().mockResolvedValue({
+      id: 'variant-id',
+      updatedAt: revision,
+    });
+    queue.add.mockRejectedValue(new Error('Redis unavailable'));
+
+    await expect(
+      service.updateAndVerify('task-id', 'variant-id', input),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(repository.delete).not.toHaveBeenCalled();
+    expect(repository.deleteVariant).not.toHaveBeenCalled();
+    expect(repository.completeVariantVerification).not.toHaveBeenCalled();
   });
 
   it('добавляет новый язык в отдельную job', async () => {
@@ -256,6 +303,30 @@ describe('ProgrammingTasksService', () => {
     expect(queue.add).not.toHaveBeenCalled();
   });
 
+  it('превращает гонку двух параллельных добавлений одного языка в 409', async () => {
+    repository.findById = vi
+      .fn()
+      .mockResolvedValue({ id: 'task-id', slug: 'sum' });
+    // Предварительная проверка прошла (языка ещё нет), но параллельный запрос
+    // успел создать вариант первым - реальное ограничение БД срабатывает позже.
+    repository.findVariantByLanguage = vi.fn().mockResolvedValue(null);
+    repository.createVariantForTask = vi
+      .fn()
+      .mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+          code: 'P2002',
+          clientVersion: 'test',
+          meta: { target: ['taskId', 'language'] },
+        }),
+      );
+
+    await expect(
+      service.addVariantAndVerify('task-id', 'author-id', input),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(queue.add).not.toHaveBeenCalled();
+    expect(repository.deleteVariant).not.toHaveBeenCalled();
+  });
+
   it('обновляет тот же вариант и ставит новую редакцию в очередь', async () => {
     repository.findVariantForTask = vi.fn().mockResolvedValue({
       id: 'variant-id',
@@ -289,5 +360,23 @@ describe('ProgrammingTasksService', () => {
       service.updateAndVerify('task-id', 'foreign-variant-id', input),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it('не передаёт язык при повторной проверке - он неизменяем', async () => {
+    repository.findVariantForTask = vi.fn().mockResolvedValue({
+      id: 'variant-id',
+      task: { id: 'task-id', slug: 'sum' },
+    });
+    repository.updateForVerification = vi.fn().mockResolvedValue({
+      id: 'variant-id',
+      updatedAt: revision,
+    });
+
+    // dto содержит language (как и реальное тело PUT-запроса до валидации),
+    // но сервис не должен передавать его дальше в repository.
+    await service.updateAndVerify('task-id', 'variant-id', input);
+
+    const data = repository.updateForVerification.mock.calls[0]?.[1];
+    expect(data).not.toHaveProperty('language');
   });
 });

@@ -25,7 +25,14 @@ const variantInput = {
   referenceSolution: createInput.referenceSolution,
   testCases: createInput.testCases,
 };
-const UPDATED_AT = "2026-10-28T12:00:00.000Z";
+// Язык варианта неизменяем - reverify его вообще не принимает.
+const reverifyInput = {
+  starterCode: createInput.starterCode,
+  harnessCode: createInput.harnessCode,
+  referenceSolution: createInput.referenceSolution,
+  testCases: createInput.testCases,
+};
+const TASK_VERSION = 1;
 const verificationResponse: CreateProgrammingTaskResponse = {
   id: "task-id",
   slug: "sum",
@@ -36,6 +43,7 @@ const verificationResponse: CreateProgrammingTaskResponse = {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 describe("programmingTaskApi admin flow", () => {
@@ -46,7 +54,7 @@ describe("programmingTaskApi admin flow", () => {
       title: "Sum",
       description: "Return sum.",
       difficulty: "EASY",
-      updatedAt: UPDATED_AT,
+      version: TASK_VERSION,
       variants: [
         {
           id: "variant-id",
@@ -72,6 +80,42 @@ describe("programmingTaskApi admin flow", () => {
     });
   });
 
+  it("по истечении ожидания бросает последнюю известную причину задержки", async () => {
+    const pendingTask: ProgrammingTaskEditItem = {
+      id: "task-id",
+      slug: "sum",
+      title: "Sum",
+      description: "Return sum.",
+      difficulty: "EASY",
+      version: TASK_VERSION,
+      variants: [
+        {
+          id: "variant-id",
+          language: "JAVASCRIPT",
+          starterCode: createInput.starterCode,
+          harnessCode: createInput.harnessCode,
+          referenceSolution: createInput.referenceSolution,
+          status: "VERIFYING",
+          verifiedAt: null,
+          lastVerificationError:
+            "Session code execution queue is busy; verification will retry automatically.",
+          testCases: [],
+        },
+      ],
+    };
+    vi.spyOn(httpClient, "get").mockResolvedValue({ data: pendingTask } as never);
+    vi.useFakeTimers();
+
+    // Таймаут (700мс) короче интервала опроса (750мс) - цикл должен успеть
+    // ровно одну итерацию (запрос + лог причины), затем выйти по дедлайну.
+    const waiting = programmingTaskApi.waitForVerification("task-id", "variant-id", 700);
+    const rejection = expect(waiting).rejects.toThrow(
+      "Session code execution queue is busy",
+    );
+    await vi.advanceTimersByTimeAsync(2_000);
+    await rejection;
+  });
+
   it("создаёт задачу через общий endpoint", async () => {
     const post = vi
       .spyOn(httpClient, "post")
@@ -81,17 +125,19 @@ describe("programmingTaskApi admin flow", () => {
     expect(post).toHaveBeenCalledWith("/programming-tasks", createInput);
   });
 
-  it("повторно проверяет конкретный вариант, не создавая новый", async () => {
+  it("повторно проверяет конкретный вариант, не создавая новый и не меняя язык", async () => {
     const put = vi
       .spyOn(httpClient, "put")
       .mockResolvedValue({ data: verificationResponse } as never);
 
-    await programmingTaskApi.reverify("task-id", "variant-id", variantInput);
+    await programmingTaskApi.reverify("task-id", "variant-id", reverifyInput);
 
     expect(put).toHaveBeenCalledWith(
       "/programming-tasks/task-id/variants/variant-id",
-      variantInput,
+      reverifyInput,
     );
+    const body = put.mock.calls[0]?.[1];
+    expect(body).not.toHaveProperty("language");
   });
 
   it("добавляет следующий язык к существующей задаче", async () => {
@@ -110,12 +156,12 @@ describe("programmingTaskApi admin flow", () => {
 
   it("сохраняет первый шаг без запуска endpoint верификации", async () => {
     const details = {
-      expectedUpdatedAt: UPDATED_AT,
+      expectedVersion: TASK_VERSION,
       title: "Updated sum",
       description: "Return all numbers.",
       difficulty: "MEDIUM" as const,
     };
-    const response = { id: "task-id", slug: "sum", ...details, updatedAt: UPDATED_AT };
+    const response = { id: "task-id", slug: "sum", ...details, version: TASK_VERSION + 1 };
     const patch = vi
       .spyOn(httpClient, "patch")
       .mockResolvedValue({ data: response } as never);
@@ -132,7 +178,7 @@ describe("programmingTaskApi admin flow", () => {
       title: "Sum",
       description: "Return sum.",
       difficulty: "EASY",
-      updatedAt: UPDATED_AT,
+      version: TASK_VERSION,
       variants: [],
     };
     const get = vi.spyOn(httpClient, "get").mockResolvedValue({ data: task } as never);

@@ -208,8 +208,9 @@ export function CreateTaskPage() {
     setSubmitError("");
     setSubmitSuccess("");
     try {
+      // Язык варианта неизменяем: при повторной проверке (reverify) он уже
+      // зафиксирован тем же вариантом, что провалил проверку, и в запрос не входит.
       const variantInput = {
-        language,
         starterCode,
         harnessCode: harnesses[language] ?? "",
         referenceSolution,
@@ -225,12 +226,13 @@ export function CreateTaskPage() {
           variantInput,
         )
         : createdTaskId
-          ? await programmingTaskApi.addVariant(createdTaskId, variantInput)
+          ? await programmingTaskApi.addVariant(createdTaskId, { ...variantInput, language })
           : await programmingTaskApi.create({
             title,
             description,
             difficulty,
             ...variantInput,
+            language,
           });
 
       setCreatedTaskId(result.id);
@@ -270,8 +272,9 @@ export function CreateTaskPage() {
       setCreatedVariant({ taskId: result.id, variantId: result.variantId });
     } catch (error) {
       const backendMessage = getHttpMessage(error);
+      const localError = error instanceof Error ? error.message : "";
       setSubmitSuccess("");
-      setSubmitError(backendMessage || t("createError"));
+      setSubmitError(backendMessage || localError || t("createError"));
     } finally {
       setIsSubmitting(false);
     }

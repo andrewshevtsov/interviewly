@@ -44,8 +44,8 @@ export interface CreateProgrammingTaskInput {
 
 /** Общие поля задачи, сохраняемые без запуска верификации. */
 export interface UpdateProgrammingTaskDetailsInput {
-  /** Версия задачи, загруженная перед редактированием. */
-  expectedUpdatedAt: string;
+  /** Версия задачи (optimistic locking), загруженная перед редактированием. */
+  expectedVersion: number;
   /** Название задачи. */
   title: string;
   /** Условие задачи. */
@@ -59,6 +59,9 @@ export type ProgrammingTaskVariantInput = Omit<
   CreateProgrammingTaskInput,
   "title" | "description" | "difficulty"
 >;
+
+/** Поля повторной проверки варианта: язык неизменяем и в запрос не входит. */
+export type ReverifyProgrammingTaskVariantInput = Omit<ProgrammingTaskVariantInput, "language">;
 
 /** Результат постановки языкового варианта в очередь проверки. */
 export interface CreateProgrammingTaskResponse {
@@ -101,7 +104,7 @@ export interface ProgrammingTaskBankItem extends ProgrammingTaskListItem {
 /** Полные данные задачи, доступные администратору для редактирования. */
 export interface ProgrammingTaskEditItem extends ProgrammingTaskListItem {
   /** Версия общих данных для optimistic locking. */
-  updatedAt: string;
+  version: number;
   /** Все языковые варианты, включая ещё не прошедшие проверку. */
   variants: Array<{
     /** Идентификатор варианта. */
@@ -143,7 +146,7 @@ interface HarnessTemplateResponse {
 /** Канонические общие поля задачи после сохранения на backend. */
 type UpdateProgrammingTaskDetailsResponse = ProgrammingTaskListItem & {
   /** Новая версия общих данных для optimistic locking. */
-  updatedAt: string;
+  version: number;
 };
 
 /** API банка задач. */
@@ -162,6 +165,7 @@ export const programmingTaskApi = {
     timeoutMs = VERIFICATION_TIMEOUT_MS,
   ): Promise<CreateProgrammingTaskResponse> {
     const deadline = Date.now() + timeoutMs;
+    let lastKnownError: string | null = null;
 
     while (Date.now() < deadline) {
       const task = await this.getForEditing(taskId);
@@ -178,11 +182,14 @@ export const programmingTaskApi = {
           verificationError: variant.lastVerificationError,
         };
       }
+      // Вариант ещё VERIFYING, но backend мог уже записать причину задержки
+      // (например, сервис запуска кода временно занят сессиями).
+      lastKnownError = variant.lastVerificationError;
 
       await new Promise((resolve) => setTimeout(resolve, VERIFICATION_POLL_INTERVAL_MS));
     }
 
-    throw new Error("Programming task verification timed out");
+    throw new Error(lastKnownError ?? "Programming task verification timed out");
   },
 
   /**
@@ -250,13 +257,13 @@ export const programmingTaskApi = {
    * Обновляет ранее не прошедший проверку вариант без создания дубля.
    * @param {string} taskId - Идентификатор задачи.
    * @param {string} variantId - Идентификатор языкового варианта.
-   * @param {ProgrammingTaskVariantInput} input - Исправленные поля реализации.
+   * @param {ReverifyProgrammingTaskVariantInput} input - Исправленные поля реализации.
    * @returns {Promise<CreateProgrammingTaskResponse>} Результат повторной проверки.
    */
   reverify(
     taskId: string,
     variantId: string,
-    input: ProgrammingTaskVariantInput,
+    input: ReverifyProgrammingTaskVariantInput,
   ): Promise<CreateProgrammingTaskResponse> {
     return httpClient
       .put<CreateProgrammingTaskResponse>(

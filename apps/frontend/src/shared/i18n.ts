@@ -123,11 +123,11 @@ export const messages = {
     deleteTaskTitle: { ru: "удалить задачу?", en: "delete task?" },
     deleteTaskDescription: {
       ru:
-        "Задача, все её языковые варианты и скрытые тесты будут удалены без " +
-        "возможности восстановления. Уже созданные сессии сохранят снимок задачи.",
+        "Задача пропадёт из банка задач и больше не будет доступна для создания " +
+        "новых сессий. Уже созданные сессии сохранят снимок задачи.",
       en:
-        "The task, all its language variants, and hidden tests will be permanently " +
-        "deleted. Existing sessions will retain their task snapshot.",
+        "The task will disappear from the task bank and won't be available for new " +
+        "sessions anymore. Existing sessions will retain their task snapshot.",
     },
     deleteTaskCancel: { ru: "не удалять", en: "keep task" },
     deletingTask: { ru: "удаляем...", en: "deleting..." },
