@@ -21,7 +21,11 @@ interface ProgrammingTaskDifficultyBadgeProps extends Omit<
   difficulty: ProgrammingTaskDifficulty;
 }
 
-/** Отображает сложность одинаково в банке задач и формах выбора задачи. */
+/**
+ * Отображает сложность одинаково в банке задач и формах выбора задачи.
+ * @param {ProgrammingTaskDifficultyBadgeProps} props - Сложность и свойства бейджа.
+ * @returns {import("react").ReactNode} Локализованный бейдж сложности.
+ */
 export function ProgrammingTaskDifficultyBadge(props: ProgrammingTaskDifficultyBadgeProps) {
   const { difficulty, className, ...badgeProps } = props;
   const t = useTranslations("common");

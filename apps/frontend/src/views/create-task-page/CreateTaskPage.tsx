@@ -6,6 +6,7 @@ import { Check, ChevronDown, Plus, Trash2 } from "lucide-react";
 
 import {
   programmingTaskApi,
+  TASK_LANGUAGES,
   type ProgrammingTaskDifficulty,
   type ProgrammingTaskLanguage,
 } from "@/entities/programming-task";
@@ -25,7 +26,7 @@ import {
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Textarea } from "@/shared/ui/textarea";
-import { canAddAnotherLanguage, TASK_LANGUAGES } from "./create-task-flow";
+import { canAddAnotherLanguage } from "./create-task-flow";
 
 const LANGUAGE_KEYS = {
   PYTHON: "python",
@@ -38,12 +39,20 @@ const IMPLEMENTATION_STEP = 2;
 const TEST_CASE_INDEX_OFFSET = 1;
 const MIN_TEST_CASE_COUNT = 1;
 
+/** Редактируемые значения одного скрытого тест-кейса. */
 interface TestCaseDraft {
+  /** Локальный идентификатор строки формы. */
   id: number;
+  /** JSON-вход в текстовом виде. */
   input: string;
+  /** Ожидаемый JSON-результат в текстовом виде. */
   expectedOutput: string;
 }
 
+/**
+ * Создаёт начальный пустой тест-кейс.
+ * @returns {TestCaseDraft[]} Массив с одной строкой тест-кейса.
+ */
 function createInitialTestCases(): TestCaseDraft[] {
   return [{ id: 0, input: "", expectedOutput: "" }];
 }
@@ -115,7 +124,11 @@ export function CreateTaskPage() {
     setTestCases((current) => current.filter((testCase) => testCase.id !== id));
   }
 
-  /** Обновляет контролируемые значения одного тест-кейса. */
+  /**
+   * Обновляет контролируемые значения одного тест-кейса.
+   * @param {number} id - Локальный идентификатор тест-кейса.
+   * @param {Partial<Omit<TestCaseDraft, "id">>} patch - Изменённые поля тест-кейса.
+   */
   function updateTestCase(id: number, patch: Partial<Omit<TestCaseDraft, "id">>): void {
     setTestCases((current) =>
       current.map((testCase) => (testCase.id === id ? { ...testCase, ...patch } : testCase)),
@@ -174,7 +187,12 @@ export function CreateTaskPage() {
       return;
     }
 
-    let parsedTestCases: Array<{ input: unknown; expectedOutput: unknown }>;
+    let parsedTestCases: Array<{
+      /** Распарсенный JSON-вход. */
+      input: unknown;
+      /** Распарсенный ожидаемый JSON-результат. */
+      expectedOutput: unknown;
+    }>;
     try {
       parsedTestCases = testCases.map((testCase) => ({
         input: JSON.parse(testCase.input) as unknown,
@@ -202,18 +220,18 @@ export function CreateTaskPage() {
       };
       let result = createdVariant
         ? await programmingTaskApi.reverify(
-            createdVariant.taskId,
-            createdVariant.variantId,
-            variantInput,
-          )
+          createdVariant.taskId,
+          createdVariant.variantId,
+          variantInput,
+        )
         : createdTaskId
           ? await programmingTaskApi.addVariant(createdTaskId, variantInput)
           : await programmingTaskApi.create({
-              title,
-              description,
-              difficulty,
-              ...variantInput,
-            });
+            title,
+            description,
+            difficulty,
+            ...variantInput,
+          });
 
       setCreatedTaskId(result.id);
       setCreatedVariant({ taskId: result.id, variantId: result.variantId });
@@ -382,24 +400,26 @@ export function CreateTaskPage() {
                   className="h-11 w-full justify-between bg-background px-3 font-normal"
                   aria-invalid={showLanguageError || undefined}
                 >
-                  {language ? (
-                    <span className="flex items-center gap-2">
-                      <span className="font-mono text-xs uppercase tracking-wide">
-                        {t(LANGUAGE_KEYS[language])}
+                  {language
+                    ? (
+                      <span className="flex items-center gap-2">
+                        <span className="font-mono text-xs uppercase tracking-wide">
+                          {t(LANGUAGE_KEYS[language])}
+                        </span>
+                        <span
+                          className={
+                            createdVariant
+                              ? "text-xs text-destructive"
+                              : "text-xs text-muted-foreground"
+                          }
+                        >
+                          {createdVariant ? t("statusFailed") : t("statusNotImplemented")}
+                        </span>
                       </span>
-                      <span
-                        className={
-                          createdVariant
-                            ? "text-xs text-destructive"
-                            : "text-xs text-muted-foreground"
-                        }
-                      >
-                        {createdVariant ? t("statusFailed") : t("statusNotImplemented")}
-                      </span>
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">{t("selectStackPlaceholder")}</span>
-                  )}
+                    )
+                    : (
+                      <span className="text-muted-foreground">{t("selectStackPlaceholder")}</span>
+                    )}
                   <ChevronDown className="size-4 text-muted-foreground" aria-hidden />
                 </Button>
               </DropdownMenuTrigger>

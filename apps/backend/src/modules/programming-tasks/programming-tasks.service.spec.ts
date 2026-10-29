@@ -80,21 +80,21 @@ describe('ProgrammingTasksService', () => {
     });
 
     expect(queue.add).not.toHaveBeenCalled();
-    expect(repository.updateDetails).toHaveBeenCalledWith(
-      'task-id',
-      revision,
-      expect.any(Date),
-      {
-        title: 'Updated sum',
-        description: 'Return all numbers.',
-        difficulty: ProgrammingTaskDifficulty.MEDIUM,
-      },
-    );
+    expect(repository.updateDetails).toHaveBeenCalledOnce();
+    const updateCall = repository.updateDetails.mock.calls[0];
+    expect(updateCall?.[0]).toBe('task-id');
+    expect(updateCall?.[1]).toEqual(revision);
+    expect(updateCall?.[2]).toBeInstanceOf(Date);
+    expect(updateCall?.[3]).toEqual({
+      title: 'Updated sum',
+      description: 'Return all numbers.',
+      difficulty: ProgrammingTaskDifficulty.MEDIUM,
+    });
     expect(result).toMatchObject({
       id: 'task-id',
       title: 'Updated sum',
-      updatedAt: expect.any(Date),
     });
+    expect(result.updatedAt).toBeInstanceOf(Date);
   });
 
   it('возвращает конфликт при сохранении устаревшей версии деталей', async () => {

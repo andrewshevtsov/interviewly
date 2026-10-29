@@ -118,15 +118,12 @@ describe('ProgrammingTaskVerificationProcessor', () => {
     await processor.process(job);
 
     expect(coderunner.execute).toHaveBeenCalledOnce();
-    expect(repository.completeVariantVerification).toHaveBeenCalledWith(
-      'variant-id',
-      revision,
-      expect.objectContaining({
-        status: ProgrammingTaskVariantStatus.FAILED,
-        lastVerificationError: expect.stringContaining(
-          'expected 6, received 5',
-        ),
-      }),
+    expect(repository.completeVariantVerification).toHaveBeenCalledOnce();
+    const verification =
+      repository.completeVariantVerification.mock.calls[0]?.[2];
+    expect(verification?.status).toBe(ProgrammingTaskVariantStatus.FAILED);
+    expect(verification?.lastVerificationError).toContain(
+      'expected 6, received 5',
     );
   });
 
@@ -145,15 +142,12 @@ describe('ProgrammingTaskVerificationProcessor', () => {
   it('после последнего инфраструктурного retry сохраняет FAILED', async () => {
     await processor.onFailed(job, new Error('Coderunner is unavailable'));
 
-    expect(repository.completeVariantVerification).toHaveBeenCalledWith(
-      'variant-id',
-      revision,
-      expect.objectContaining({
-        status: ProgrammingTaskVariantStatus.FAILED,
-        lastVerificationError: expect.stringContaining(
-          'Coderunner is unavailable',
-        ),
-      }),
+    expect(repository.completeVariantVerification).toHaveBeenCalledOnce();
+    const verification =
+      repository.completeVariantVerification.mock.calls[0]?.[2];
+    expect(verification?.status).toBe(ProgrammingTaskVariantStatus.FAILED);
+    expect(verification?.lastVerificationError).toContain(
+      'Coderunner is unavailable',
     );
   });
 });

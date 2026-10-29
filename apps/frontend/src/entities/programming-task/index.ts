@@ -6,6 +6,12 @@ export type ProgrammingTaskDifficulty = "EASY" | "MEDIUM" | "HARD";
 /** Язык, для которого у задачи есть стартовый код. */
 export type ProgrammingTaskLanguage = "PYTHON" | "JAVASCRIPT" | "TYPESCRIPT";
 
+/** Языки, для которых приложение поддерживает варианты задач. */
+export const TASK_LANGUAGES: ProgrammingTaskLanguage[] = ["PYTHON", "JAVASCRIPT", "TYPESCRIPT"];
+
+const VERIFICATION_TIMEOUT_MS = 120_000;
+const VERIFICATION_POLL_INTERVAL_MS = 750;
+
 /** Статус проверки языкового варианта. */
 export type ProgrammingTaskVariantStatus = "DRAFT" | "VERIFYING" | "VERIFIED" | "FAILED";
 
@@ -134,16 +140,26 @@ interface HarnessTemplateResponse {
   harnessCode: string;
 }
 
+/** Канонические общие поля задачи после сохранения на backend. */
+type UpdateProgrammingTaskDetailsResponse = ProgrammingTaskListItem & {
+  /** Новая версия общих данных для optimistic locking. */
+  updatedAt: string;
+};
+
 /** API банка задач. */
 export const programmingTaskApi = {
   /**
    * Ожидает завершения фоновой проверки отдельного языкового варианта.
    * Каждый запрос статуса короткий и не удерживает соединение с Code Runner.
+   * @param {string} taskId - Идентификатор общей задачи.
+   * @param {string} variantId - Идентификатор проверяемого варианта.
+   * @param {number} timeoutMs - Максимальное время ожидания финального статуса.
+   * @returns {Promise<CreateProgrammingTaskResponse>} Финальный результат проверки.
    */
   async waitForVerification(
     taskId: string,
     variantId: string,
-    timeoutMs = 120_000,
+    timeoutMs = VERIFICATION_TIMEOUT_MS,
   ): Promise<CreateProgrammingTaskResponse> {
     const deadline = Date.now() + timeoutMs;
 
@@ -163,7 +179,7 @@ export const programmingTaskApi = {
         };
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 750));
+      await new Promise((resolve) => setTimeout(resolve, VERIFICATION_POLL_INTERVAL_MS));
     }
 
     throw new Error("Programming task verification timed out");
@@ -187,9 +203,9 @@ export const programmingTaskApi = {
   updateDetails(
     id: string,
     input: UpdateProgrammingTaskDetailsInput,
-  ): Promise<ProgrammingTaskListItem & { updatedAt: string }> {
+  ): Promise<UpdateProgrammingTaskDetailsResponse> {
     return httpClient
-      .patch<ProgrammingTaskListItem & { updatedAt: string }>(`/programming-tasks/${id}`, input)
+      .patch<UpdateProgrammingTaskDetailsResponse>(`/programming-tasks/${id}`, input)
       .then((response) => response.data);
   },
 
