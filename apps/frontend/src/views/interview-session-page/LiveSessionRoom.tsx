@@ -2,7 +2,7 @@
 
 // Слой views: живая комната - получает LiveKit-токен и подключается к SFU. Всё внутри
 // <LiveKitRoom> видит комнату через контекст; уход со страницы отключает от неё
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LiveKitRoom, RoomAudioRenderer } from "@livekit/components-react";
 import { ConnectionError, DisconnectReason } from "livekit-client";
@@ -170,29 +170,35 @@ export function LiveSessionRoom(props: LiveSessionRoomProps) {
   /**
    * LiveKitRoom сообщает сюда и об ошибках подключения, и об ошибках захвата камеры/микрофона;
    * сессию обрывают только первые - без камеры пользователь остаётся в комнате.
+   * Колбэк стабилен: LiveKitRoom переподключается при смене `onError`, это обрывает
+   * идущую попытку и приводит к ложной ошибке "Client initiated disconnect".
    * @param {Error} error - Ошибка LiveKit (подключение или захват медиа).
    * @returns {void}
    */
-  function handleRoomError(error: Error): void {
+  const handleRoomError = useCallback((error: Error): void => {
     if (error instanceof ConnectionError) {
       setConnectionFailed(true);
     } else {
       setMediaUnavailable(true);
     }
-  }
+  }, []);
 
   /**
    * Владелец завершил сессию и закрыл комнату: вместо отключённой комнаты показываем
    * "интервью завершено" и перечитываем состояние, чтобы шлюз сразу увёл на экран фидбека.
+   * Стабилен по той же причине, что и {@link handleRoomError}.
    * @param {DisconnectReason} [reason] - Причина отключения от комнаты.
    * @returns {void}
    */
-  function handleDisconnected(reason?: DisconnectReason): void {
-    if (reason === DisconnectReason.ROOM_DELETED) {
-      setRoomDeleted(true);
-      void queryClient.invalidateQueries({ queryKey: ["sessions", sessionId, "me"] });
-    }
-  }
+  const handleDisconnected = useCallback(
+    (reason?: DisconnectReason): void => {
+      if (reason === DisconnectReason.ROOM_DELETED) {
+        setRoomDeleted(true);
+        void queryClient.invalidateQueries({ queryKey: ["sessions", sessionId, "me"] });
+      }
+    },
+    [queryClient, sessionId],
+  );
 
   /**
    * Выпускает LiveKit-токен для этой сессии
