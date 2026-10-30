@@ -2,10 +2,10 @@
 
 // Слой views: живая комната - получает LiveKit-токен и подключается к SFU. Всё внутри
 // <LiveKitRoom> видит комнату через контекст; уход со страницы отключает от неё
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { LiveKitRoom, RoomAudioRenderer } from "@livekit/components-react";
-import { ConnectionError, DisconnectReason } from "livekit-client";
+import { LiveKitRoom, RoomAudioRenderer, useConnectionState } from "@livekit/components-react";
+import { ConnectionError, ConnectionState, DisconnectReason } from "livekit-client";
 
 import { SessionCodeEditor } from "@/widgets/session-code-editor";
 import { SessionHeader } from "@/widgets/session-header";
@@ -89,6 +89,10 @@ function RoomWorkspace(props: RoomWorkspaceProps) {
     mediaUnavailable,
   } = props;
   const t = useTranslations("session");
+  const connectionState = useConnectionState();
+  const isReconnecting =
+    connectionState === ConnectionState.Reconnecting ||
+    connectionState === ConnectionState.SignalReconnecting;
   useEditorOpenSync(sessionId);
 
   /**
@@ -115,6 +119,11 @@ function RoomWorkspace(props: RoomWorkspaceProps) {
         isInterviewer={!isCandidate}
         editorOpen={editorOpen}
       />
+      {isReconnecting && (
+        <p className="border-b border-border px-6 py-2 text-sm text-muted-foreground">
+          {t("reconnecting")}
+        </p>
+      )}
       {mediaUnavailable && (
         <p className="border-b border-border px-6 py-2 text-sm text-muted-foreground">
           {t("mediaUnavailable")}
@@ -164,12 +173,15 @@ export function LiveSessionRoom(props: LiveSessionRoomProps) {
   const [connectionFailed, setConnectionFailed] = useState(false);
   const [mediaUnavailable, setMediaUnavailable] = useState(false);
   const [roomDeleted, setRoomDeleted] = useState(false);
+  const wasConnected = useRef(false);
   const queryClient = useQueryClient();
   const t = useTranslations("session");
 
   /**
    * LiveKitRoom сообщает сюда и об ошибках подключения, и об ошибках захвата камеры/микрофона;
-   * сессию обрывают только первые - без камеры пользователь остаётся в комнате.
+   * сессию обрывают только первые - без камеры пользователь остаётся в комнате. После первого
+   * успешного подключения ошибку игнорируем: LiveKit сам переподключается, а итог придёт
+   * в {@link handleDisconnected}.
    * Колбэк стабилен: LiveKitRoom переподключается при смене `onError`, это обрывает
    * идущую попытку и приводит к ложной ошибке "Client initiated disconnect".
    * @param {Error} error - Ошибка LiveKit (подключение или захват медиа).
@@ -177,7 +189,9 @@ export function LiveSessionRoom(props: LiveSessionRoomProps) {
    */
   const handleRoomError = useCallback((error: Error): void => {
     if (error instanceof ConnectionError) {
-      setConnectionFailed(true);
+      if (!wasConnected.current) {
+        setConnectionFailed(true);
+      }
     } else {
       setMediaUnavailable(true);
     }
@@ -186,6 +200,8 @@ export function LiveSessionRoom(props: LiveSessionRoomProps) {
   /**
    * Владелец завершил сессию и закрыл комнату: вместо отключённой комнаты показываем
    * "интервью завершено" и перечитываем состояние, чтобы шлюз сразу увёл на экран фидбека.
+   * Любой другой обрыв после успешного подключения (LiveKit перестал переподключаться)
+   * показывает ошибку подключения.
    * Стабилен по той же причине, что и {@link handleRoomError}.
    * @param {DisconnectReason} [reason] - Причина отключения от комнаты.
    * @returns {void}
@@ -195,10 +211,20 @@ export function LiveSessionRoom(props: LiveSessionRoomProps) {
       if (reason === DisconnectReason.ROOM_DELETED) {
         setRoomDeleted(true);
         void queryClient.invalidateQueries({ queryKey: ["sessions", sessionId, "me"] });
+      } else if (wasConnected.current && reason !== DisconnectReason.CLIENT_INITIATED) {
+        setConnectionFailed(true);
       }
     },
     [queryClient, sessionId],
   );
+
+  /**
+   * Запоминает, что подключение состоялось: после этого ошибки не роняют комнату сразу.
+   * @returns {void}
+   */
+  const handleConnected = useCallback((): void => {
+    wasConnected.current = true;
+  }, []);
 
   /**
    * Выпускает LiveKit-токен для этой сессии
@@ -236,6 +262,7 @@ export function LiveSessionRoom(props: LiveSessionRoomProps) {
       connect
       video
       audio
+      onConnected={handleConnected}
       onError={handleRoomError}
       onDisconnected={handleDisconnected}
       className="flex h-screen flex-col"

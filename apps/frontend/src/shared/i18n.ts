@@ -849,6 +849,7 @@ export const messages = {
       ru: "Не удалось подключиться к комнате. Обновите страницу.",
       en: "Couldn't connect to the room. Reload the page.",
     },
+    reconnecting: { ru: "Связь потеряна, переподключаемся…", en: "Connection lost, reconnecting…" },
     mediaUnavailable: {
       ru: "Нет доступа к камере или микрофону — проверьте разрешения браузера. Вы в комнате без них.",
       en: "No access to the camera or microphone — check the browser permissions. You're in the room without them.",
