@@ -10,7 +10,13 @@ describe('TelegramBotService', () => {
   let telegram: Mocked<TelegramService>;
 
   beforeEach(() => {
-    telegram = { sendMessage: vi.fn(), setWebhook: vi.fn() } as unknown as Mocked<TelegramService>;
+    telegram = {
+      sendMessage: vi.fn(),
+      setWebhook: vi.fn(),
+      getMe: vi.fn().mockResolvedValue({ id: 1, username: 'interviewly_bot', first_name: 'Interviewly' }),
+      deleteWebhook: vi.fn(),
+      getUpdates: vi.fn().mockResolvedValue([]),
+    } as unknown as Mocked<TelegramService>;
   });
 
   describe('isValidSecret', () => {
@@ -55,19 +61,24 @@ describe('TelegramBotService', () => {
   });
 
   describe('onApplicationBootstrap', () => {
-    it('регистрирует webhook, если заданы URL и секрет', async () => {
+    it('логирует бота и регистрирует webhook, если заданы URL и секрет', async () => {
       const bot = new TelegramBotService(
         makeConfig({ TELEGRAM_WEBHOOK_SECRET: 's', TELEGRAM_WEBHOOK_URL: 'https://x.ngrok/telegram/webhook' }),
         telegram,
       );
       await bot.onApplicationBootstrap();
+      expect(telegram.getMe).toHaveBeenCalled();
       expect(telegram.setWebhook).toHaveBeenCalledWith('https://x.ngrok/telegram/webhook', 's');
+      expect(telegram.deleteWebhook).not.toHaveBeenCalled();
     });
 
-    it('ничего не делает без URL и не падает при ошибке Telegram', async () => {
+    it('без webhook URL снимает webhook и не падает при ошибке getMe', async () => {
+      telegram.getMe.mockRejectedValue(new Error('bad token'));
       await new TelegramBotService(makeConfig({ TELEGRAM_WEBHOOK_SECRET: 's' }), telegram).onApplicationBootstrap();
       expect(telegram.setWebhook).not.toHaveBeenCalled();
+      expect(telegram.deleteWebhook).not.toHaveBeenCalled();
 
+      telegram.getMe.mockResolvedValue({ id: 1, first_name: 'Bot' });
       telegram.setWebhook.mockRejectedValue(new Error('boom'));
       const bot = new TelegramBotService(
         makeConfig({ TELEGRAM_WEBHOOK_SECRET: 's', TELEGRAM_WEBHOOK_URL: 'https://x' }),
