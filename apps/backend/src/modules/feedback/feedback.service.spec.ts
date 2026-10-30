@@ -12,6 +12,7 @@ const FEEDBACK_ID = '55555555-5555-5555-5555-555555555555';
 function createMockRepository(): Mocked<FeedbackRepository> {
   return {
     isSessionParticipant: vi.fn(),
+    wasHeld: vi.fn(),
     findUnique: vi.fn(),
     create: vi.fn(),
     findById: vi.fn(),
@@ -27,6 +28,7 @@ describe('FeedbackService', () => {
 
   beforeEach(() => {
     repository = createMockRepository();
+    repository.wasHeld.mockResolvedValue(true);
     service = new FeedbackService(repository);
   });
 
@@ -61,6 +63,14 @@ describe('FeedbackService', () => {
       repository.isSessionParticipant.mockImplementation((_sessionId, userId) => Promise.resolve(userId !== AUTHOR_ID));
 
       await expect(service.create(SESSION_ID, AUTHOR_ID, dto)).rejects.toBeInstanceOf(ForbiddenException);
+      expect(repository.create).not.toHaveBeenCalled();
+    });
+
+    it('отклоняет отзыв по сессии, которая не состоялась (никто не пришёл к собеседнику)', async () => {
+      repository.isSessionParticipant.mockResolvedValue(true);
+      repository.wasHeld.mockResolvedValue(false);
+
+      await expect(service.create(SESSION_ID, AUTHOR_ID, dto)).rejects.toBeInstanceOf(ConflictException);
       expect(repository.create).not.toHaveBeenCalled();
     });
 
@@ -185,6 +195,14 @@ describe('FeedbackService', () => {
   });
 
   describe('findEligibleTargets', () => {
+    it('не предлагает адресатов, если сессия не состоялась', async () => {
+      repository.isSessionParticipant.mockResolvedValue(true);
+      repository.wasHeld.mockResolvedValue(false);
+
+      await expect(service.findEligibleTargets(SESSION_ID, AUTHOR_ID)).resolves.toEqual([]);
+      expect(repository.findOtherParticipants).not.toHaveBeenCalled();
+    });
+
     it('возвращает остальных участников сессии в отображаемом виде', async () => {
       repository.isSessionParticipant.mockResolvedValue(true);
       repository.findOtherParticipants.mockResolvedValue([

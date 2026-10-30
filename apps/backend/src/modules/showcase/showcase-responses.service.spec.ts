@@ -89,6 +89,7 @@ describe('ShowcaseResponsesService', () => {
       create: vi.fn(),
       findForReview: vi.fn(),
       decide: vi.fn(),
+      addMessage: vi.fn(),
       attachSession: vi.fn(),
       findIncoming: vi.fn(),
       findOutgoing: vi.fn(),
@@ -391,12 +392,18 @@ describe('ShowcaseResponsesService', () => {
     it('владелец отклоняет отклик с причиной', async () => {
       const result = await service.reject('owner', 'resp', { reason: 'reason' });
 
-      expect(repository.decide).toHaveBeenCalledWith('resp', {
-        status: 'REJECTED',
-        rejectionReason: 'reason',
-        timeMismatch: false,
-      });
+      expect(repository.decide).toHaveBeenCalledWith(
+        'resp',
+        { status: 'REJECTED', rejectionReason: 'reason', timeMismatch: false },
+        tx,
+      );
       expect(result.rejectionReason).toBe('reason');
+    });
+
+    it('кладёт причину отказа в чат от имени владельца', async () => {
+      await service.reject('owner', 'resp', { reason: 'reason' });
+
+      expect(repository.addMessage).toHaveBeenCalledWith({ responseId: 'resp', senderId: 'owner', text: 'reason' }, tx);
     });
 
     it('после отказа уведомляет откликнувшегося', async () => {
@@ -411,6 +418,7 @@ describe('ShowcaseResponsesService', () => {
       expect(repository.decide).toHaveBeenCalledWith(
         'resp',
         expect.objectContaining({ timeMismatch: true }),
+        tx,
       );
     });
 
@@ -517,7 +525,7 @@ describe('ShowcaseResponsesService', () => {
           responder: {
             firstName: 'Ivan',
             lastName: 'Petrov',
-            profile: { role: 'Backend', level: 'senior', stack: ['NestJS'], bio: 'bio' },
+            profile: { id: 'card-1', role: 'Backend', level: 'senior', stack: ['NestJS'], bio: 'bio' },
           },
         },
       ]);
@@ -530,7 +538,7 @@ describe('ShowcaseResponsesService', () => {
         role: 'INTERVIEWER',
         ownerRole: 'CANDIDATE',
         scheduledAt: SLOT,
-        responder: { name: 'Ivan Petrov', title: 'Backend', level: 'senior', stack: ['NestJS'] },
+        responder: { cardId: 'card-1', name: 'Ivan Petrov', title: 'Backend', level: 'senior', stack: ['NestJS'] },
         sessionStatus: 'SCHEDULED',
       });
       expect(JSON.stringify(item)).not.toMatch(/email|telegram/i);
@@ -543,7 +551,7 @@ describe('ShowcaseResponsesService', () => {
 
       const [item] = await service.findIncoming('owner');
 
-      expect(item?.responder).toEqual({ name: 'Clara', title: null, level: null, stack: [], bio: null });
+      expect(item?.responder).toEqual({ cardId: null, name: 'Clara', title: null, level: null, stack: [], bio: null });
     });
 
     it('исходящие: после отказа отдают причину и время повтора; если отказ из-за времени, повтор сразу', async () => {

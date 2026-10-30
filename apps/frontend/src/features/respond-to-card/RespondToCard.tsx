@@ -40,6 +40,11 @@ import {
 import { useCurrentUser } from "@/entities/user";
 
 /**
+ * Карточка, на которую можно откликнуться: с витрины или из истории откликов.
+ */
+export type RespondTarget = Pick<Participant, "id" | "name" | "myResponse">;
+
+/**
  * Вариант выбора роли в форме отклика.
  */
 interface RoleOption {
@@ -92,7 +97,7 @@ interface RespondFormProps {
   /**
    * Карточка, на которую откликаемся.
    */
-  participant: Participant;
+  participant: RespondTarget;
 
   /**
    * Закрывает окно.
@@ -260,7 +265,7 @@ export interface RespondToCardProps {
   /**
    * Карточка, на которую можно откликнуться.
    */
-  participant: Participant;
+  participant: RespondTarget;
 }
 
 /**

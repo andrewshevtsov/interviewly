@@ -16,6 +16,11 @@ const MIN_LEAD_HOURS = 3;
 const MAX_LEAD_DAYS = 30;
 
 /**
+ * Статусы сессии, пока встреча по отклику считается действующей.
+ */
+const ACTIVE_MEETING_STATUSES = ["SCHEDULED", "READY", "ACTIVE"];
+
+/**
  * Минимальная длина причины отказа (после обрезки пробелов).
  */
 export const REASON_MIN_LENGTH = 30;
@@ -108,4 +113,43 @@ export function isReasonLengthValid(reason: string): boolean {
   const length = reason.trim().length;
 
   return length >= REASON_MIN_LENGTH && length <= REASON_MAX_LENGTH;
+}
+
+/**
+ * Отклик из истории, по которому решается, можно ли откликнуться снова.
+ */
+interface RespondAgainSubject {
+  /**
+   * Статус отклика.
+   */
+  status: string;
+
+  /**
+   * Статус созданной сессии.
+   */
+  sessionStatus: string | null;
+
+  /**
+   * Конец паузы после отказа (только у исходящих).
+   */
+  canRetryAt?: string | null;
+}
+
+/**
+ * Можно ли предложить откликнуться снова из истории откликов: отклик уже решён, нет действующей
+ * встречи и не идёт пауза после отказа. Остальное (например, свой более новый отклик) проверит backend.
+ * @param {RespondAgainSubject} response - Отклик из списка входящих или исходящих.
+ * @param {Date} now - Текущий момент.
+ * @returns {boolean} `true`, если можно показывать кнопку отклика.
+ */
+export function canRespondAgain(response: RespondAgainSubject, now: Date): boolean {
+  if (response.status === "PENDING") {
+    return false;
+  }
+
+  if (response.status === "ACCEPTED") {
+    return response.sessionStatus === null || !ACTIVE_MEETING_STATUSES.includes(response.sessionStatus);
+  }
+
+  return !response.canRetryAt || new Date(response.canRetryAt).getTime() <= now.getTime();
 }
