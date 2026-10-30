@@ -29,6 +29,8 @@ export class ShowcaseResponseResult {
 
 /** Кто откликнулся: без контактов, только то, что нужно для решения */
 export class ShowcaseResponderSummary {
+  /** Карточка откликнувшегося (профиль): по ней можно откликнуться на него в ответ; без профиля - `null` */
+  cardId!: string | null;
   name!: string;
   /** Должность из профиля */
   title!: string | null;

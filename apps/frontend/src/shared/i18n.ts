@@ -820,7 +820,6 @@ export const messages = {
     comingSoon: { ru: "в разработке", en: "coming soon" },
     hintsUsedLabel: { ru: "подсказок", en: "hints used" },
     scoreOutOf: { ru: "из", en: "out of" },
-    recording: { ru: "запись", en: "recording" },
     endSession: { ru: "завершить", en: "end session" },
     endingSession: { ru: "завершаем…", en: "ending…" },
     endSessionError: { ru: "не удалось завершить", en: "couldn't end session" },

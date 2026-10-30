@@ -15,7 +15,7 @@ type Db = Prisma.TransactionClient;
 const responderSelect = {
   firstName: true,
   lastName: true,
-  profile: { select: { role: true, level: true, stack: true, bio: true } },
+  profile: { select: { id: true, role: true, level: true, stack: true, bio: true } },
 } satisfies Prisma.UserSelect;
 
 const cardOwnerSelect = {
@@ -162,6 +162,11 @@ export class ShowcaseResponsesRepository {
       data: { ...data, reviewedAt: new Date() },
     });
     return count === 0 ? null : db.showcaseResponse.findUnique({ where: { id } });
+  }
+
+  /** Первое сообщение в чате по отклику: причина отказа от имени владельца карточки */
+  async addMessage(data: { responseId: string; senderId: string; text: string }, db: Db = this.prisma): Promise<void> {
+    await db.showcaseMessage.create({ data });
   }
 
   attachSession(id: string, sessionId: string, db: Db = this.prisma): Promise<ShowcaseResponse> {

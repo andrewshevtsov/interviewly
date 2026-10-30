@@ -21,6 +21,15 @@ export class FeedbackRepository {
     return participant !== null;
   }
 
+  /** Интервью состоялось: в комнате одновременно побывали двое, тогда у сессии появляется `startedAt` */
+  async wasHeld(sessionId: string): Promise<boolean> {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      select: { startedAt: true },
+    });
+    return session?.startedAt != null;
+  }
+
   findUnique(sessionId: string, authorId: string, targetUserId: string) {
     return this.prisma.feedback.findUnique({
       where: { sessionId_authorId_targetUserId: { sessionId, authorId, targetUserId } },
@@ -53,7 +62,7 @@ export class FeedbackRepository {
 
   findOtherParticipants(sessionId: string, excludeUserId: string) {
     return this.prisma.sessionParticipant.findMany({
-      where: { sessionId, userId: { not: excludeUserId } },
+      where: { sessionId, userId: { not: excludeUserId }, joinedAt: { not: null } },
       select: { user: { select: { id: true, firstName: true, lastName: true } } },
     });
   }

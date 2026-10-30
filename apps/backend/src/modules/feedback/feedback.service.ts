@@ -22,6 +22,10 @@ export class FeedbackService {
       throw new BadRequestException('Target user did not participate in this session');
     }
 
+    if (!(await this.feedbackRepository.wasHeld(sessionId))) {
+      throw new ConflictException('Feedback is available only for sessions that took place with two participants');
+    }
+
     const existing = await this.feedbackRepository.findUnique(sessionId, authorId, dto.targetUserId);
     if (existing) {
       throw new ConflictException('Feedback for this participant already exists, use update instead');
@@ -66,6 +70,10 @@ export class FeedbackService {
     const requesterParticipated = await this.feedbackRepository.isSessionParticipant(sessionId, requesterId);
     if (!requesterParticipated) {
       throw new ForbiddenException('You did not participate in this session');
+    }
+
+    if (!(await this.feedbackRepository.wasHeld(sessionId))) {
+      return [];
     }
 
     const others = await this.feedbackRepository.findOtherParticipants(sessionId, requesterId);
