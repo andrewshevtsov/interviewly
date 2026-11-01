@@ -87,6 +87,7 @@ FRONTEND_URL=https://<ваш-статический-домен-из-шага-2> 
 JWT_ACCESS_SECRET=dev-access-secret-change-me JWT_ACCESS_EXPIRES_IN=15m \
 JWT_REFRESH_SECRET=dev-refresh-secret-change-me JWT_REFRESH_EXPIRES_IN=7d \
 TELEGRAM_BOT_TOKEN=<токен-dev-бота-из-BotFather> \
+TG_PROXY=<user:pass@host:port-если-нужен> \
 TELEGRAM_WEBHOOK_SECRET=<любая-случайная-строка> \
 TELEGRAM_WEBHOOK_URL=https://<домен-бэкенд-туннеля-из-шага-3>/telegram/webhook \
 pnpm --filter backend run start:dev
