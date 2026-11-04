@@ -171,9 +171,15 @@ if [ ! -d "${DEPLOY_PATH}/.git" ]; then
   git clone --branch "${GIT_REF}" "${auth_url}" "${DEPLOY_PATH}"
 else
   git -C "${DEPLOY_PATH}" remote set-url origin "${auth_url}"
-  git -C "${DEPLOY_PATH}" fetch origin "${GIT_REF}"
   # Деплой-клон = origin; -f сбрасывает ручные правки (scp и т.п.), иначе checkout падает.
-  git -C "${DEPLOY_PATH}" checkout -f -B "${GIT_REF}" "origin/${GIT_REF}"
+  if git -C "${DEPLOY_PATH}" ls-remote --exit-code --tags origin "refs/tags/${GIT_REF}" >/dev/null 2>&1; then
+    # Релиз: GIT_REF - тег (vX.Y.Z), клон остаётся в detached HEAD.
+    git -C "${DEPLOY_PATH}" fetch origin "+refs/tags/${GIT_REF}:refs/tags/${GIT_REF}"
+    git -C "${DEPLOY_PATH}" checkout -f --detach "refs/tags/${GIT_REF}"
+  else
+    git -C "${DEPLOY_PATH}" fetch origin "${GIT_REF}"
+    git -C "${DEPLOY_PATH}" checkout -f -B "${GIT_REF}" "origin/${GIT_REF}"
+  fi
   git -C "${DEPLOY_PATH}" clean -fd
 fi
 
