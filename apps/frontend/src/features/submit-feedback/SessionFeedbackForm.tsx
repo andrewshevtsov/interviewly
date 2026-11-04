@@ -2,7 +2,7 @@
 
 // Слой features: форма обратной связи по завершённой сессии - кому она адресована,
 // оценка 0-10 и комментарий. Отправляет реальный POST /sessions/:sessionId/feedback.
-import { useState, type SubmitEvent } from "react";
+import { useEffect, useState, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
@@ -66,6 +66,14 @@ export function SessionFeedbackForm(props: SessionFeedbackFormProps) {
     retry: false,
   });
 
+  const hasNoTargets = participantsQuery.isSuccess && participantsQuery.data.length === 0;
+
+  useEffect(() => {
+    if (hasNoTargets) {
+      router.replace(getLocalizedHref("/sessions", locale));
+    }
+  }, [hasNoTargets, router, locale]);
+
   /**
    * Submits the feedback for the current session.
    * @param {CreateFeedbackInput} input - The feedback fields.
@@ -106,6 +114,10 @@ export function SessionFeedbackForm(props: SessionFeedbackFormProps) {
     submitMutation.mutate({ targetUserId, score, comment });
   }
 
+  if (hasNoTargets) {
+    return null;
+  }
+
   return (
     <Card className="p-8">
       <form className="space-y-6" onSubmit={handleSubmit}>
@@ -134,8 +146,7 @@ export function SessionFeedbackForm(props: SessionFeedbackFormProps) {
 
         <div className="space-y-2">
           <Label>
-            {t("scoreLabel")}: <span className="text-primary">{score}</span> /{" "}
-            {MAX_SESSION_SCORE}
+            {t("scoreLabel")}: <span className="text-primary">{score}</span> / {MAX_SESSION_SCORE}
           </Label>
           <div className="grid grid-cols-11 gap-1.5">
             {SCORE_OPTIONS.map((option) => (

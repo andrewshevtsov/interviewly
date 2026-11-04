@@ -4,7 +4,9 @@
 [docs/notifications.md](../notifications.md).
 
 Схема: бот шлёт уведомления через очередь (Redis), привязка и вход идут через Telegram Login Widget
-(нужен домен, поэтому ngrok), `/start` боту обрабатывает webhook (нужен публичный HTTPS на backend).
+(нужен домен, поэтому ngrok). `/start` обрабатывает webhook (если задан `TELEGRAM_WEBHOOK_URL`) или
+long polling без ngrok. Если `api.telegram.org` недоступен — задайте `TG_PROXY=user:pass@host:port`
+в `.env` (исходящий HTTP CONNECT-прокси).
 
 ## 1. Разовая подготовка
 
@@ -47,11 +49,14 @@ FRONTEND_URL=https://<фронт-домен> \
 JWT_ACCESS_SECRET=dev-access-secret-change-me JWT_ACCESS_EXPIRES_IN=15m \
 JWT_REFRESH_SECRET=dev-refresh-secret-change-me JWT_REFRESH_EXPIRES_IN=7d \
 TELEGRAM_BOT_TOKEN=<токен-бота> \
+TG_PROXY=<user:pass@host:port-если-нужен> \
 TELEGRAM_WEBHOOK_SECRET=<любая-случайная-строка> \
 TELEGRAM_WEBHOOK_URL=https://<домен-туннеля-backend>/telegram/webhook \
 pnpm --filter @app/backend run start:dev
 ```
-В логе должно быть `Telegram webhook set to ...`. Redis по умолчанию `localhost:6379`, SMTP - Mailpit.
+В логе должно быть `Telegram bot ready: @...` и `Telegram webhook set to ...`.
+Без `TELEGRAM_WEBHOOK_URL` backend сам поднимет long polling — `/start` всё равно ответит.
+Redis по умолчанию `localhost:6379`, SMTP - Mailpit.
 
 **Вкладка 4 - frontend**:
 ```bash

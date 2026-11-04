@@ -1,10 +1,21 @@
-import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi, type Mocked } from 'vitest';
-import { SessionParticipantRole, SessionStatus } from '../../prisma/generated/enums.ts';
+import {
+  EditorLanguage,
+  ProgrammingTaskDifficulty,
+  SessionAccess,
+  SessionParticipantRole,
+  SessionStatus,
+} from '../../prisma/generated/enums.ts';
 import type { LivekitService } from '../../infrastructure/livekit/livekit.service.ts';
 import type { JwtPayload } from '../auth/auth.types.ts';
 import type { NotificationsService } from '../notifications/notifications.service.ts';
 import type { MetricsService } from '../../infrastructure/metrics/metrics.service.ts';
+import type { ProgrammingTasksService } from '../programming-tasks/programming-tasks.service.ts';
 import { SessionsService } from './sessions.service.ts';
 import type { SessionsRepository } from './sessions.repository.ts';
 
@@ -13,7 +24,11 @@ const OWNER_ID = '22222222-2222-2222-2222-222222222222';
 const INTERVIEWER_ID = '33333333-3333-3333-3333-333333333333';
 const CANDIDATE_ID = '44444444-4444-4444-4444-444444444444';
 
-const owner: JwtPayload = { sub: OWNER_ID, email: 'owner@test', isAdmin: false };
+const owner: JwtPayload = {
+  sub: OWNER_ID,
+  email: 'owner@test',
+  isAdmin: false,
+};
 const session = {
   id: SESSION_ID,
   ownerId: OWNER_ID,
@@ -45,6 +60,7 @@ describe('SessionsService', () => {
   let notifications: Mocked<NotificationsService>;
   let metrics: Mocked<MetricsService>;
   let service: SessionsService;
+  let programmingTasks: Mocked<ProgrammingTasksService>;
 
   beforeEach(() => {
     repository = createMockRepository();
@@ -58,23 +74,148 @@ describe('SessionsService', () => {
       notifySessionCancelled: vi.fn(),
     } as unknown as Mocked<NotificationsService>;
     metrics = { countEvent: vi.fn() } as unknown as Mocked<MetricsService>;
-    service = new SessionsService(repository, livekit, notifications, metrics);
+    programmingTasks = {
+      findActiveForSession: vi.fn(),
+    } as unknown as Mocked<ProgrammingTasksService>;
+    service = new SessionsService(
+      repository,
+      livekit,
+      notifications,
+      metrics,
+      programmingTasks,
+    );
     repository.findById.mockResolvedValue(session as never);
+  });
+
+  describe('create', () => {
+    it('требует выбрать задачу из банка или передать своё условие', async () => {
+      await expect(
+        service.create(OWNER_ID, {
+          editorLanguage: EditorLanguage.TYPESCRIPT,
+          access: SessionAccess.OPEN,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(repository.create).not.toHaveBeenCalled();
+    });
+
+    it('проверяет языковой вариант и сохраняет snapshot задачи из банка', async () => {
+      programmingTasks.findActiveForSession.mockResolvedValue({
+        id: '55555555-5555-4555-8555-555555555555',
+        slug: 'sum-all-numbers',
+        title: 'Сумма всех чисел',
+        description: 'Сложите числа.',
+        difficulty: ProgrammingTaskDifficulty.EASY,
+        variants: [
+          {
+            starterCode: 'function solve(params) {}',
+            harnessCode: 'solve(input);',
+            testCases: [
+              {
+                position: 0,
+                name: 'Пример',
+                input: { numbers: [1, 2] },
+                expectedOutput: 3,
+              },
+            ],
+          },
+        ],
+      } as never);
+      repository.create.mockResolvedValue(session as never);
+
+      await service.create(OWNER_ID, {
+        programmingTaskId: '55555555-5555-4555-8555-555555555555',
+        editorLanguage: EditorLanguage.JAVASCRIPT,
+        access: SessionAccess.OPEN,
+      });
+
+      expect(programmingTasks.findActiveForSession).toHaveBeenCalledWith(
+        '55555555-5555-4555-8555-555555555555',
+        EditorLanguage.JAVASCRIPT,
+      );
+      expect(repository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          task: 'Сложите числа.',
+          programmingTask: {
+            connect: { id: '55555555-5555-4555-8555-555555555555' },
+          },
+        }),
+      );
+      const [createData] = repository.create.mock.calls[0]!;
+      expect(createData.programmingTaskSnapshot).toMatchObject({
+        slug: 'sum-all-numbers',
+        language: EditorLanguage.JAVASCRIPT,
+      });
+    });
+  });
+
+  describe('getDocumentStarterCode', () => {
+    it('возвращает описание и стаб из snapshot JavaScript-задачи', async () => {
+      repository.findById.mockResolvedValue({
+        ...session,
+        programmingTaskSnapshot: {
+          description: 'Найдите сумму всех чисел.',
+          language: EditorLanguage.JAVASCRIPT,
+          starterCode: 'function solve(params) {}',
+        },
+      } as never);
+
+      await expect(service.getDocumentStarterCode(SESSION_ID)).resolves.toBe(
+        '// Найдите сумму всех чисел.\n\nfunction solve(params) {}',
+      );
+    });
+
+    it('комментирует каждую строку описания Python-задачи', async () => {
+      repository.findById.mockResolvedValue({
+        ...session,
+        programmingTaskSnapshot: {
+          description: 'Отсортируйте массив.\nВерните новый массив.',
+          language: EditorLanguage.PYTHON,
+          starterCode: 'def solve(params):\n    pass',
+        },
+      } as never);
+
+      await expect(service.getDocumentStarterCode(SESSION_ID)).resolves.toBe(
+        '# Отсортируйте массив.\n# Верните новый массив.\n\ndef solve(params):\n    pass',
+      );
+    });
+
+    it('возвращает null для своей задачи', async () => {
+      repository.findById.mockResolvedValue({
+        ...session,
+        programmingTaskSnapshot: null,
+      } as never);
+
+      await expect(
+        service.getDocumentStarterCode(SESSION_ID),
+      ).resolves.toBeNull();
+    });
   });
 
   describe('transferOwnership', () => {
     it('передаёт владение другому интервьюеру сессии', async () => {
-      repository.findParticipant.mockResolvedValue({ role: SessionParticipantRole.INTERVIEWER } as never);
-      repository.updateOwner.mockResolvedValue({ ...session, ownerId: INTERVIEWER_ID } as never);
+      repository.findParticipant.mockResolvedValue({
+        role: SessionParticipantRole.INTERVIEWER,
+      } as never);
+      repository.updateOwner.mockResolvedValue({
+        ...session,
+        ownerId: INTERVIEWER_ID,
+      } as never);
 
-      const result = await service.transferOwnership(SESSION_ID, owner, { userId: INTERVIEWER_ID });
+      const result = await service.transferOwnership(SESSION_ID, owner, {
+        userId: INTERVIEWER_ID,
+      });
 
-      expect(repository.updateOwner).toHaveBeenCalledWith(SESSION_ID, INTERVIEWER_ID);
+      expect(repository.updateOwner).toHaveBeenCalledWith(
+        SESSION_ID,
+        INTERVIEWER_ID,
+      );
       expect(result.ownerId).toBe(INTERVIEWER_ID);
     });
 
     it('не даёт передать владение кандидату', async () => {
-      repository.findParticipant.mockResolvedValue({ role: SessionParticipantRole.CANDIDATE } as never);
+      repository.findParticipant.mockResolvedValue({
+        role: SessionParticipantRole.CANDIDATE,
+      } as never);
 
       await expect(
         service.transferOwnership(SESSION_ID, owner, { userId: CANDIDATE_ID }),
@@ -86,27 +227,49 @@ describe('SessionsService', () => {
       repository.findParticipant.mockResolvedValue(null);
 
       await expect(
-        service.transferOwnership(SESSION_ID, owner, { userId: INTERVIEWER_ID }),
+        service.transferOwnership(SESSION_ID, owner, {
+          userId: INTERVIEWER_ID,
+        }),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('запрещает передачу всем, кроме владельца и админа', async () => {
-      const interviewer: JwtPayload = { sub: INTERVIEWER_ID, email: 'i@test', isAdmin: false };
+      const interviewer: JwtPayload = {
+        sub: INTERVIEWER_ID,
+        email: 'i@test',
+        isAdmin: false,
+      };
 
       await expect(
-        service.transferOwnership(SESSION_ID, interviewer, { userId: INTERVIEWER_ID }),
+        service.transferOwnership(SESSION_ID, interviewer, {
+          userId: INTERVIEWER_ID,
+        }),
       ).rejects.toBeInstanceOf(ForbiddenException);
       expect(repository.updateOwner).not.toHaveBeenCalled();
     });
 
     it('разрешает передачу админу', async () => {
-      const admin: JwtPayload = { sub: CANDIDATE_ID, email: 'a@test', isAdmin: true };
-      repository.findParticipant.mockResolvedValue({ role: SessionParticipantRole.INTERVIEWER } as never);
-      repository.updateOwner.mockResolvedValue({ ...session, ownerId: INTERVIEWER_ID } as never);
+      const admin: JwtPayload = {
+        sub: CANDIDATE_ID,
+        email: 'a@test',
+        isAdmin: true,
+      };
+      repository.findParticipant.mockResolvedValue({
+        role: SessionParticipantRole.INTERVIEWER,
+      } as never);
+      repository.updateOwner.mockResolvedValue({
+        ...session,
+        ownerId: INTERVIEWER_ID,
+      } as never);
 
-      await service.transferOwnership(SESSION_ID, admin, { userId: INTERVIEWER_ID });
+      await service.transferOwnership(SESSION_ID, admin, {
+        userId: INTERVIEWER_ID,
+      });
 
-      expect(repository.updateOwner).toHaveBeenCalledWith(SESSION_ID, INTERVIEWER_ID);
+      expect(repository.updateOwner).toHaveBeenCalledWith(
+        SESSION_ID,
+        INTERVIEWER_ID,
+      );
     });
 
     it('отклоняет передачу самому себе', async () => {
@@ -116,32 +279,55 @@ describe('SessionsService', () => {
     });
 
     it('запрещает передачу в завершённой сессии', async () => {
-      repository.findById.mockResolvedValue({ ...session, status: SessionStatus.COMPLETED } as never);
+      repository.findById.mockResolvedValue({
+        ...session,
+        status: SessionStatus.COMPLETED,
+      } as never);
 
       await expect(
-        service.transferOwnership(SESSION_ID, owner, { userId: INTERVIEWER_ID }),
+        service.transferOwnership(SESSION_ID, owner, {
+          userId: INTERVIEWER_ID,
+        }),
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
   });
 
   describe('cancel', () => {
     const scheduled = { ...session, status: SessionStatus.SCHEDULED };
-    const candidate: JwtPayload = { sub: CANDIDATE_ID, email: 'c@test', isAdmin: false };
-    const stranger: JwtPayload = { sub: '55555555-5555-5555-5555-555555555555', email: 's@test', isAdmin: false };
+    const candidate: JwtPayload = {
+      sub: CANDIDATE_ID,
+      email: 'c@test',
+      isAdmin: false,
+    };
+    const stranger: JwtPayload = {
+      sub: '55555555-5555-5555-5555-555555555555',
+      email: 's@test',
+      isAdmin: false,
+    };
 
     beforeEach(() => {
       repository.findById.mockResolvedValue(scheduled as never);
       repository.findParticipant.mockResolvedValue(null);
-      repository.cancel.mockResolvedValue({ ...scheduled, status: SessionStatus.CANCELLED } as never);
+      repository.cancel.mockResolvedValue({
+        ...scheduled,
+        status: SessionStatus.CANCELLED,
+      } as never);
     });
 
     it('участник отменяет интервью до начала и оставляет причину', async () => {
-      repository.findParticipant.mockResolvedValue({ role: SessionParticipantRole.CANDIDATE } as never);
+      repository.findParticipant.mockResolvedValue({
+        role: SessionParticipantRole.CANDIDATE,
+      } as never);
 
-      const result = await service.cancel(SESSION_ID, candidate, { reason: 'Заболел' });
+      const result = await service.cancel(SESSION_ID, candidate, {
+        reason: 'Заболел',
+      });
 
       const [, params] = repository.cancel.mock.calls[0] ?? [];
-      expect(params).toMatchObject({ cancelledById: CANDIDATE_ID, reason: 'Заболел' });
+      expect(params).toMatchObject({
+        cancelledById: CANDIDATE_ID,
+        reason: 'Заболел',
+      });
       expect(params?.at).toBeInstanceOf(Date);
       expect(result.status).toBe(SessionStatus.CANCELLED);
       expect(livekit.deleteRoom).toHaveBeenCalledWith(SESSION_ID);
@@ -150,24 +336,36 @@ describe('SessionsService', () => {
     it('снимает напоминание и уведомляет второго участника об отмене', async () => {
       await service.cancel(SESSION_ID, owner, { reason: 'Не смогу' });
 
-      expect(notifications.cancelSessionReminder).toHaveBeenCalledWith(SESSION_ID);
-      expect(notifications.notifySessionCancelled).toHaveBeenCalledWith(SESSION_ID, OWNER_ID);
+      expect(notifications.cancelSessionReminder).toHaveBeenCalledWith(
+        SESSION_ID,
+      );
+      expect(notifications.notifySessionCancelled).toHaveBeenCalledWith(
+        SESSION_ID,
+        OWNER_ID,
+      );
     });
 
     it('владелец и admin тоже могут отменить', async () => {
-      await expect(service.cancel(SESSION_ID, owner, {})).resolves.toBeDefined();
+      await expect(
+        service.cancel(SESSION_ID, owner, {}),
+      ).resolves.toBeDefined();
       await expect(
         service.cancel(SESSION_ID, { ...stranger, isAdmin: true }, {}),
       ).resolves.toBeDefined();
     });
 
     it('запрещает отмену постороннему', async () => {
-      await expect(service.cancel(SESSION_ID, stranger, {})).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(
+        service.cancel(SESSION_ID, stranger, {}),
+      ).rejects.toBeInstanceOf(ForbiddenException);
       expect(repository.cancel).not.toHaveBeenCalled();
     });
 
     it('повторная отмена ничего не меняет', async () => {
-      repository.findById.mockResolvedValue({ ...scheduled, status: SessionStatus.CANCELLED } as never);
+      repository.findById.mockResolvedValue({
+        ...scheduled,
+        status: SessionStatus.CANCELLED,
+      } as never);
 
       await service.cancel(SESSION_ID, owner, {});
 
@@ -175,26 +373,33 @@ describe('SessionsService', () => {
       expect(notifications.notifySessionCancelled).not.toHaveBeenCalled();
     });
 
-    it.each([SessionStatus.ACTIVE, SessionStatus.COMPLETED, SessionStatus.EXPIRED])(
-      'не отменяет сессию в статусе %s',
-      async (status) => {
-        repository.findById.mockResolvedValue({ ...scheduled, status } as never);
+    it.each([
+      SessionStatus.ACTIVE,
+      SessionStatus.COMPLETED,
+      SessionStatus.EXPIRED,
+    ])('не отменяет сессию в статусе %s', async (status) => {
+      repository.findById.mockResolvedValue({ ...scheduled, status } as never);
 
-        await expect(service.cancel(SESSION_ID, owner, {})).rejects.toBeInstanceOf(ConflictException);
-      },
-    );
+      await expect(
+        service.cancel(SESSION_ID, owner, {}),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
 
     it('отвечает 409, если интервью началось между проверкой и отменой', async () => {
       repository.cancel.mockResolvedValue(null);
 
-      await expect(service.cancel(SESSION_ID, owner, {})).rejects.toBeInstanceOf(ConflictException);
+      await expect(
+        service.cancel(SESSION_ID, owner, {}),
+      ).rejects.toBeInstanceOf(ConflictException);
       expect(livekit.deleteRoom).not.toHaveBeenCalled();
     });
   });
 
   describe('join', () => {
     it('считает вход в комнату', async () => {
-      repository.findParticipant.mockResolvedValue({ role: SessionParticipantRole.CANDIDATE } as never);
+      repository.findParticipant.mockResolvedValue({
+        role: SessionParticipantRole.CANDIDATE,
+      } as never);
       repository.findActiveParticipations.mockResolvedValue([] as never);
 
       await service.join(SESSION_ID, CANDIDATE_ID, {});
@@ -210,7 +415,11 @@ describe('SessionsService', () => {
       const scheduledAt = new Date('2026-10-12T11:00:00.000Z');
 
       await service.createMatchSession(
-        { interviewerId: INTERVIEWER_ID, candidateId: CANDIDATE_ID, scheduledAt },
+        {
+          interviewerId: INTERVIEWER_ID,
+          candidateId: CANDIDATE_ID,
+          scheduledAt,
+        },
         tx,
       );
 
@@ -224,8 +433,16 @@ describe('SessionsService', () => {
         owner: { connect: { id: INTERVIEWER_ID } },
       });
       expect(data?.participants?.create).toEqual([
-        { userId: INTERVIEWER_ID, role: SessionParticipantRole.INTERVIEWER, joinedAt: null },
-        { userId: CANDIDATE_ID, role: SessionParticipantRole.CANDIDATE, joinedAt: null },
+        {
+          userId: INTERVIEWER_ID,
+          role: SessionParticipantRole.INTERVIEWER,
+          joinedAt: null,
+        },
+        {
+          userId: CANDIDATE_ID,
+          role: SessionParticipantRole.CANDIDATE,
+          joinedAt: null,
+        },
       ]);
       expect(data?.livekitRoomName).toBe(data?.id);
     });
@@ -233,25 +450,44 @@ describe('SessionsService', () => {
 
   describe('end', () => {
     it('завершает сессию и закрывает LiveKit-комнату', async () => {
-      repository.complete.mockResolvedValue({ ...session, status: SessionStatus.COMPLETED } as never);
+      repository.complete.mockResolvedValue({
+        ...session,
+        status: SessionStatus.COMPLETED,
+      } as never);
 
       const result = await service.end(SESSION_ID, owner);
 
-      expect(repository.complete).toHaveBeenCalledWith(SESSION_ID, expect.any(Date));
+      expect(repository.complete).toHaveBeenCalledWith(
+        SESSION_ID,
+        expect.any(Date),
+      );
       expect(livekit.deleteRoom).toHaveBeenCalledWith(SESSION_ID);
       expect(result.status).toBe(SessionStatus.COMPLETED);
     });
 
     it('запрещает завершение всем, кроме владельца и админа', async () => {
-      const interviewer: JwtPayload = { sub: INTERVIEWER_ID, email: 'i@test', isAdmin: false };
+      const interviewer: JwtPayload = {
+        sub: INTERVIEWER_ID,
+        email: 'i@test',
+        isAdmin: false,
+      };
 
-      await expect(service.end(SESSION_ID, interviewer)).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(service.end(SESSION_ID, interviewer)).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
       expect(repository.complete).not.toHaveBeenCalled();
     });
 
     it('разрешает завершение админу', async () => {
-      const admin: JwtPayload = { sub: CANDIDATE_ID, email: 'a@test', isAdmin: true };
-      repository.complete.mockResolvedValue({ ...session, status: SessionStatus.COMPLETED } as never);
+      const admin: JwtPayload = {
+        sub: CANDIDATE_ID,
+        email: 'a@test',
+        isAdmin: true,
+      };
+      repository.complete.mockResolvedValue({
+        ...session,
+        status: SessionStatus.COMPLETED,
+      } as never);
 
       await service.end(SESSION_ID, admin);
 
@@ -259,7 +495,10 @@ describe('SessionsService', () => {
     });
 
     it('повторное завершение ничего не меняет', async () => {
-      repository.findById.mockResolvedValue({ ...session, status: SessionStatus.COMPLETED } as never);
+      repository.findById.mockResolvedValue({
+        ...session,
+        status: SessionStatus.COMPLETED,
+      } as never);
 
       const result = await service.end(SESSION_ID, owner);
 
@@ -269,18 +508,32 @@ describe('SessionsService', () => {
     });
 
     it('не завершает отменённую сессию', async () => {
-      repository.findById.mockResolvedValue({ ...session, status: SessionStatus.CANCELLED } as never);
+      repository.findById.mockResolvedValue({
+        ...session,
+        status: SessionStatus.CANCELLED,
+      } as never);
 
-      await expect(service.end(SESSION_ID, owner)).rejects.toBeInstanceOf(ConflictException);
+      await expect(service.end(SESSION_ID, owner)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
     });
   });
 
   describe('createLivekitToken', () => {
     beforeEach(() => {
-      repository.findById.mockResolvedValue({ ...session, status: SessionStatus.READY } as never);
-      repository.findParticipant.mockResolvedValue({ role: SessionParticipantRole.CANDIDATE } as never);
+      repository.findById.mockResolvedValue({
+        ...session,
+        status: SessionStatus.READY,
+      } as never);
+      repository.findParticipant.mockResolvedValue({
+        role: SessionParticipantRole.CANDIDATE,
+      } as never);
       repository.findActiveParticipations.mockResolvedValue([]);
-      repository.findUserById.mockResolvedValue({ firstName: 'Clara', lastName: null, email: 'c@test' } as never);
+      repository.findUserById.mockResolvedValue({
+        firstName: 'Clara',
+        lastName: null,
+        email: 'c@test',
+      } as never);
     });
 
     it('не начинает интервью, пока в комнате один участник', async () => {
@@ -296,11 +549,17 @@ describe('SessionsService', () => {
 
       await service.createLivekitToken(SESSION_ID, CANDIDATE_ID);
 
-      expect(repository.markStarted).toHaveBeenCalledWith(SESSION_ID, expect.any(Date));
+      expect(repository.markStarted).toHaveBeenCalledWith(
+        SESSION_ID,
+        expect.any(Date),
+      );
     });
 
     it('не переписывает время начала при повторном входе', async () => {
-      repository.findById.mockResolvedValue({ ...session, startedAt: new Date() } as never);
+      repository.findById.mockResolvedValue({
+        ...session,
+        startedAt: new Date(),
+      } as never);
 
       await service.createLivekitToken(SESSION_ID, CANDIDATE_ID);
 
@@ -329,10 +588,19 @@ describe('SessionsService', () => {
 
       const [item] = await service.findHistory(CANDIDATE_ID);
 
-      expect(repository.findCompletedForUser).toHaveBeenCalledWith(CANDIDATE_ID);
-      expect(item).toMatchObject({ id: SESSION_ID, type: 'MOCK', startedAt, endedAt });
+      expect(repository.findCompletedForUser).toHaveBeenCalledWith(
+        CANDIDATE_ID,
+      );
+      expect(item).toMatchObject({
+        id: SESSION_ID,
+        type: 'MOCK',
+        startedAt,
+        endedAt,
+      });
       expect(item?.myRole).toBe(SessionParticipantRole.CANDIDATE);
-      expect(item?.partners.map((partner) => partner.userId)).toEqual([OWNER_ID]);
+      expect(item?.partners.map((partner) => partner.userId)).toEqual([
+        OWNER_ID,
+      ]);
     });
   });
 });

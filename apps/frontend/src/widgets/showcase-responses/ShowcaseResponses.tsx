@@ -10,10 +10,16 @@ import { useAuthStore } from "@/shared/model/auth-store";
 import { CancelMeeting } from "@/features/cancel-meeting";
 import { IncomingResponses } from "@/features/manage-incoming-responses";
 import { OutgoingResponses } from "@/features/manage-outgoing-responses";
+import { RespondToCard, type RespondTarget } from "@/features/respond-to-card";
 import { ResponseChat } from "@/features/response-chat";
 import { TelegramHint } from "@/features/telegram-hint";
 import { UnreadResponsesBadge } from "@/features/unread-responses";
-import { useUnreadMessages, type IncomingResponse, type OutgoingResponse } from "@/entities/showcase-response";
+import {
+  canRespondAgain,
+  useUnreadMessages,
+  type IncomingResponse,
+  type OutgoingResponse,
+} from "@/entities/showcase-response";
 
 type Tab = "incoming" | "outgoing";
 
@@ -22,9 +28,29 @@ const TABS: Tab[] = ["incoming", "outgoing"];
 const SCREEN_POLL_INTERVAL_MS = 10_000;
 
 /**
- * Действия под откликом: чат и отмена назначенной встречи.
+ * Карточка для повторного отклика прямо из истории: у исходящих это карточка, на которую откликались,
+ * у входящих - карточка откликнувшегося. `null`, если откликнуться снова нельзя или карточки нет.
  * @param {IncomingResponse | OutgoingResponse} response - Отклик из любого из двух списков.
- * @returns {import('react').ReactNode} Кнопки чата и отмены или `null`, пока отклик не обработан.
+ * @returns {RespondTarget | null} Карточка для формы отклика.
+ */
+function getRespondTarget(response: IncomingResponse | OutgoingResponse): RespondTarget | null {
+  if (!canRespondAgain(response, new Date())) {
+    return null;
+  }
+
+  if ("card" in response) {
+    return { id: response.card.id, name: response.card.name, myResponse: null };
+  }
+
+  const { cardId, name } = response.responder;
+
+  return cardId ? { id: cardId, name, myResponse: null } : null;
+}
+
+/**
+ * Действия под откликом: чат, отмена назначенной встречи и повторный отклик.
+ * @param {IncomingResponse | OutgoingResponse} response - Отклик из любого из двух списков.
+ * @returns {import('react').ReactNode} Кнопки чата, отмены и отклика или `null`, пока отклик не обработан.
  */
 function renderDecidedActions(response: IncomingResponse | OutgoingResponse) {
   const hasChat = response.status === "ACCEPTED" || response.status === "REJECTED";
@@ -33,10 +59,13 @@ function renderDecidedActions(response: IncomingResponse | OutgoingResponse) {
     response.sessionId !== null &&
     (response.sessionStatus === "SCHEDULED" || response.sessionStatus === "READY");
 
+  const respondTarget = getRespondTarget(response);
+
   return (
     <>
       {hasChat && <ResponseChat responseId={response.id} />}
       {canCancelMeeting && response.sessionId && <CancelMeeting sessionId={response.sessionId} />}
+      {respondTarget && <RespondToCard participant={respondTarget} />}
     </>
   );
 }

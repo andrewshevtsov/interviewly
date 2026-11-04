@@ -12,6 +12,38 @@ const LEAVE_MESSAGE = "session:leave";
 
 let socket: Socket | null = null;
 
+/**
+ * Адрес socket.io-сервера, разобранный из `NEXT_PUBLIC_API_URL`.
+ */
+interface SocketEndpoint {
+  /**
+   * Origin бэкенда; `undefined` - тот же origin, что у страницы
+   */
+  origin: string | undefined;
+
+  /**
+   * Путь движка socket.io с учётом префикса бэкенда (`/api/socket.io`)
+   */
+  path: string;
+}
+
+/**
+ * Разбирает `NEXT_PUBLIC_API_URL` на origin и путь движка socket.io. Путь из URL нельзя отдавать
+ * `io()` как есть: клиент прочтёт `/api` как namespace и подключится на `/socket.io` фронтенда,
+ * а не бэкенда за префиксом `/api`.
+ * @returns {SocketEndpoint} Origin бэкенда и путь socket.io
+ */
+function getSocketEndpoint(): SocketEndpoint {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) {
+    return { origin: undefined, path: "/socket.io" };
+  }
+
+  const { origin, pathname } = new URL(apiUrl);
+
+  return { origin, path: `${pathname.replace(/\/$/, "")}/socket.io` };
+}
+
 // Подписчики каждой комнаты: выходим из комнаты только после отписки последнего
 const roomSubscribers = new Map<string, Set<symbol>>();
 
@@ -34,7 +66,9 @@ export function getRealtimeSocket(): Socket {
     return socket;
   }
 
-  const instance = io(process.env.NEXT_PUBLIC_API_URL, {
+  const { origin, path } = getSocketEndpoint();
+  const instance = io(origin, {
+    path,
     transports: ["websocket"],
     withCredentials: true,
     auth: provideToken,

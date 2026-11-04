@@ -141,10 +141,21 @@ export class ShowcaseResponsesService {
   ): Promise<ShowcaseResponseResult> {
     await this.requireReviewable(ownerId, responseId);
 
-    const decided = await this.repository.decide(responseId, {
-      status: ShowcaseResponseStatus.REJECTED,
-      rejectionReason: dto.reason,
-      timeMismatch: dto.timeMismatch ?? false,
+    // Причина отказа дублируется в чат, иначе после ответа собеседника владелец не видит своё сообщение
+    const decided = await this.repository.transaction(async (tx) => {
+      const result = await this.repository.decide(
+        responseId,
+        {
+          status: ShowcaseResponseStatus.REJECTED,
+          rejectionReason: dto.reason,
+          timeMismatch: dto.timeMismatch ?? false,
+        },
+        tx,
+      );
+      if (result) {
+        await this.repository.addMessage({ responseId, senderId: ownerId, text: dto.reason }, tx);
+      }
+      return result;
     });
     const rejected = this.requireDecided(decided);
 
@@ -307,6 +318,7 @@ export class ShowcaseResponsesService {
       ownerRole: oppositeRole(row.role),
       scheduledAt: row.scheduledAt,
       responder: {
+        cardId: responder.profile?.id ?? null,
         name: fullName(responder),
         title: responder.profile?.role ?? null,
         level: responder.profile?.level ?? null,

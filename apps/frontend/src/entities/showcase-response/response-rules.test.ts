@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  canRespondAgain,
   getSlotBounds,
   isReasonLengthValid,
   isSlotAllowed,
@@ -67,5 +68,24 @@ describe("isReasonLengthValid", () => {
 
   it("пробелы по краям не набирают длину, как и на backend", () => {
     expect(isReasonLengthValid(`${" ".repeat(60)}${"а".repeat(20)}${" ".repeat(60)}`)).toBe(false);
+  });
+});
+
+describe("canRespondAgain", () => {
+  const later = new Date(NOW.getTime() + HOUR_MS).toISOString();
+  const earlier = new Date(NOW.getTime() - HOUR_MS).toISOString();
+
+  it.each([
+    ["отклик ещё в ожидании", { status: "PENDING", sessionStatus: null }, false],
+    ["есть действующая встреча", { status: "ACCEPTED", sessionStatus: "SCHEDULED" }, false],
+    ["встречу отменили", { status: "ACCEPTED", sessionStatus: "CANCELLED" }, true],
+    ["встреча прошла", { status: "ACCEPTED", sessionStatus: "COMPLETED" }, true],
+    ["идёт пауза после отказа", { status: "REJECTED", sessionStatus: null, canRetryAt: later }, false],
+    ["пауза после отказа кончилась", { status: "REJECTED", sessionStatus: null, canRetryAt: earlier }, true],
+    ["отказ из-за времени", { status: "REJECTED", sessionStatus: null, canRetryAt: null }, true],
+    ["отклик отозван", { status: "CANCELLED", sessionStatus: null }, true],
+    ["время отклика прошло", { status: "EXPIRED", sessionStatus: null }, true],
+  ])("%s", (unusedName, response, expected) => {
+    expect(canRespondAgain(response, NOW)).toBe(expected);
   });
 });

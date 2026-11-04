@@ -80,7 +80,7 @@ GET /showcase/cards        JWT
 ```text
 POST /showcase/cards/:cardId/responses     { role, scheduledAt }
 GET  /showcase/responses/incoming[?status=PENDING|ACCEPTED|REJECTED|CANCELLED|EXPIRED]
-     → { id, status, role, ownerRole, scheduledAt, responder: { name, title, level, stack, bio },
+     → { id, status, role, ownerRole, scheduledAt, responder: { cardId, name, title, level, stack, bio },
          sessionId, rejectionReason, timeMismatch, ... }
 GET  /showcase/responses/outgoing
      → { id, status, role, scheduledAt, card, sessionId, rejectionReason, timeMismatch, canRetryAt, ... }
@@ -100,6 +100,8 @@ POST /showcase/responses/:id/cancel                               только �
 GET  /showcase/responses/:id/messages   → [{ id, text, createdAt, mine }]   последние 100 по порядку
 POST /showcase/responses/:id/messages   { text }                            1..1000 символов после trim
 ```
+
+Причина отказа попадает в чат первым сообщением от владельца карточки (в одной транзакции с отказом), поэтому переписка не теряет контекст.
 
 Читать и писать могут только автор отклика и владелец карточки (иначе 403); пока отклик в ожидании, отозван или просрочен - 409.
 Чат остаётся открытым и после отмены встречи.

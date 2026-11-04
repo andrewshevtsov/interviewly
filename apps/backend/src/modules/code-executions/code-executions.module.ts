@@ -8,6 +8,7 @@ import { CodeExecutionsProcessor } from './code-executions.processor.ts';
 import { CodeExecutionsService } from './code-executions.service.ts';
 import { CoderunnerClientService } from './coderunner-client.service.ts';
 import { CollaborationClientService } from './collaboration-client.service.ts';
+import { CodeExecutionLockService } from './code-execution-lock.service.ts';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { CollaborationClientService } from './collaboration-client.service.ts';
     CodeExecutionsProcessor,
     CoderunnerClientService,
     CollaborationClientService,
+    CodeExecutionLockService,
   ],
 })
 export class CodeExecutionsModule {}

@@ -74,9 +74,10 @@ Backend отправляет уведомления о матчах из [вит
 | Переменная | По умолчанию | Назначение |
 |------------|--------------|------------|
 | `TELEGRAM_BOT_TOKEN` | - (обязательна) | токен бота из @BotFather |
+| `TG_PROXY` | - | HTTP-прокси до Bot API (`user:pass@host:port`); если Telegram режется напрямую |
 | `TELEGRAM_API_URL` | `https://api.telegram.org` | менять только в тестах (заглушка API) |
 | `TELEGRAM_WEBHOOK_SECRET` | - | секрет webhook; без него `/telegram/webhook` отвечает 401 |
-| `TELEGRAM_WEBHOOK_URL` | - | публичный URL webhook; если задан, регистрируется при старте |
+| `TELEGRAM_WEBHOOK_URL` | - | публичный URL webhook; если задан — webhook, иначе long polling для `/start` |
 | `REDIS_URL` | `redis://localhost:6379` | очередь; в Docker `redis://redis:6379` задаёт compose |
 | `SMTP_HOST`, `SMTP_PORT` | `localhost`, `1025` | в разработке - Mailpit |
 | `SMTP_USER`, `SMTP_PASSWORD` | - | если SMTP требует авторизацию |

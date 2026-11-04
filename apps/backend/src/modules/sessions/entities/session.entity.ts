@@ -1,5 +1,6 @@
 import { Exclude } from 'class-transformer';
 import type {
+  Prisma,
   Session,
   SessionAccessRequest,
   SessionParticipant,
@@ -38,6 +39,12 @@ export class SessionEntity implements Session {
   ownerId!: string;
   title!: string | null;
   task!: string | null;
+  programmingTaskId!: string | null;
+
+  // Snapshot содержит harness и скрытые тест-кейсы, поэтому никогда не
+  // сериализуется в публичный ответ сессии.
+  @Exclude()
+  programmingTaskSnapshot!: Prisma.JsonValue | null;
   demoTaskIndex!: number | null;
   editorOpen!: boolean;
   editorLanguage!: EditorLanguage;

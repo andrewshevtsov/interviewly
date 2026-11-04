@@ -131,6 +131,11 @@ export interface ResponseResult {
  */
 export interface ResponderSummary {
   /**
+   * Карточка откликнувшегося: по ней можно откликнуться на него в ответ; без профиля - `null`.
+   */
+  cardId: string | null;
+
+  /**
    * Имя и фамилия.
    */
   name: string;
@@ -264,6 +269,7 @@ export interface OutgoingResponse extends ResponseBase {
 export { showcaseResponseApi, showcaseResponseKeys } from "./showcase-response-api";
 export { ResponseStatusBadge } from "./ResponseStatusBadge";
 export {
+  canRespondAgain,
   DATETIME_LOCAL_LENGTH,
   getSlotBounds,
   isReasonLengthValid,

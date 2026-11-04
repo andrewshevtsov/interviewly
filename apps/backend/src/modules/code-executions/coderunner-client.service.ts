@@ -5,10 +5,13 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type {
-  CodeExecutionJob,
-  ExecutionResult,
-} from './code-executions.types.ts';
+import type { ExecutionResult } from './code-executions.types.ts';
+
+interface CoderunnerExecutionInput {
+  language: 'python' | 'javascript' | 'typescript';
+  code: string;
+  stdin?: string;
+}
 
 @Injectable()
 export class CoderunnerClientService {
@@ -22,7 +25,7 @@ export class CoderunnerClientService {
     this.token = config.getOrThrow<string>('INTERNAL_SERVICE_TOKEN');
   }
 
-  async execute(job: CodeExecutionJob): Promise<ExecutionResult> {
+  async execute(job: CoderunnerExecutionInput): Promise<ExecutionResult> {
     let response: Response;
     try {
       response = await fetch(`${this.url}/execution`, {

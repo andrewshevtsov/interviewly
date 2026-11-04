@@ -35,8 +35,18 @@ interface SessionState {
   role: "INTERVIEWER" | "CANDIDATE" | null;
 }
 
+interface StarterCodeResponse {
+  code: string | null;
+}
+
 type ExecutionStatus =
-  "queued" | "running" | "success" | "error" | "queue_timeout" | "rejected";
+  | "queued"
+  | "running"
+  | "completed"
+  | "success"
+  | "error"
+  | "queue_timeout"
+  | "rejected";
 
 interface ExecutionPatch {
   id: string;
@@ -49,6 +59,7 @@ interface ExecutionPatch {
 const STATUS_ORDER: Record<ExecutionStatus, number> = {
   queued: 0,
   running: 1,
+  completed: 2,
   success: 2,
   error: 2,
   queue_timeout: 2,
@@ -85,6 +96,34 @@ function isExecutionPatch(
   );
 }
 
+function isStarterCodeResponse(value: unknown): value is StarterCodeResponse {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (typeof (value as Partial<StarterCodeResponse>).code === "string" ||
+      (value as Partial<StarterCodeResponse>).code === null)
+  );
+}
+
+async function loadStarterCode(sessionId: string): Promise<string | null> {
+  const response = await fetch(
+    `${backendUrl}/internal/sessions/${encodeURIComponent(sessionId)}/starter-code`,
+    {
+      headers: { "X-Internal-Service-Token": internalServiceToken },
+    },
+  );
+  if (!response.ok) {
+    throw new Error(`Backend returned ${response.status}`);
+  }
+
+  const payload: unknown = await response.json();
+  if (!isStarterCodeResponse(payload)) {
+    throw new Error("Backend returned an invalid starter code response");
+  }
+
+  return payload.code;
+}
+
 const server = new Server({
   port,
   stopOnSignals: false,
@@ -92,10 +131,10 @@ const server = new Server({
   maxDebounce: STORE_MAX_DEBOUNCE_MS,
   async onRequest({ request, response, instance }) {
     const url = new URL(request.url ?? "/", "http://collaboration.internal");
-    const match = url.pathname.match(
+    const executionMatch = url.pathname.match(
       /^\/internal\/sessions\/([0-9a-f-]+)\/executions\/([0-9a-f-]+)$/i,
     );
-    if (!match || request.method !== "PUT") {
+    if (!executionMatch || request.method !== "PUT") {
       return;
     }
     if (request.headers["x-internal-service-token"] !== internalServiceToken) {
@@ -106,8 +145,8 @@ const server = new Server({
 
     let statusCode = 204;
     try {
-      const sessionId = match[1]!;
-      const executionId = match[2]!;
+      const sessionId = executionMatch[1]!;
+      const executionId = executionMatch[2]!;
       const payload = await readJson(request);
       if (!isExecutionPatch(payload, executionId)) {
         statusCode = 400;
@@ -151,12 +190,18 @@ const server = new Server({
     response.end();
     return Promise.reject(null);
   },
-  // При создании серверного Y.Doc восстанавливаем последнее состояние из PostgreSQL;
-  // для новой сессии записи ещё нет, поэтому документ остаётся пустым.
+  // При создании серверного Y.Doc восстанавливаем последнее состояние из PostgreSQL.
+  // Новый документ один раз получает стаб выбранной задачи; сохранённое состояние,
+  // включая намеренно очищенный код, никогда не перезаписываем.
   async onLoadDocument({ document, documentName }) {
     const snapshot = await documentRepository.load(documentName);
     if (snapshot) {
       Y.applyUpdate(document, snapshot);
+    } else {
+      const starterCode = await loadStarterCode(documentName);
+      if (starterCode !== null) {
+        document.getText("code").insert(0, starterCode);
+      }
     }
 
     return document;

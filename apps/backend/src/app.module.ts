@@ -17,6 +17,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
 import { parseRedisUrl } from './modules/notifications/redis-connection.ts';
 import { CodeExecutionsModule } from './modules/code-executions/code-executions.module.ts';
+import { ProgrammingTasksModule } from './modules/programming-tasks/programming-tasks.module.ts';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { CodeExecutionsModule } from './modules/code-executions/code-executions.
     ShowcaseModule,
     TelegramBotModule,
     CodeExecutionsModule,
+    ProgrammingTasksModule,
   ],
   controllers: [],
   providers: [{ provide: APP_FILTER, useClass: SentryGlobalFilter }],
