@@ -89,31 +89,50 @@ RTC (UDP/TCP 7881/7882) идёт на публичный IP хоста (`node_ip
 
 ## CI/CD
 
+### CI (проверки)
+
 Пайплайн: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). Он запускается на pull request
-в `dev` и на push в `dev` (в том числе merge). Отдельные долгоживущие ветки `frontend` и `backend`
-не нужны.
+в `dev` и на push в `dev` (в том числе merge) и **ничего не выкатывает**. Отдельные долгоживущие
+ветки `frontend` и `backend` не нужны.
 
 На каждом запуске считается diff от базы pull request или от предыдущего коммита `dev` до `HEAD`.
 По изменённым путям выбирается приложение:
 
-| Пути                                                                            | Что запускается                                               |
-| ------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| `apps/frontend/**`                                                              | typecheck и eslint frontend, на push в `dev` — образ frontend |
-| `apps/backend/**`                                                               | typecheck и eslint backend, на push в `dev` — образ backend   |
-| `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `.npmrc`, `patches/**` | оба приложения                                                |
+| Пути                                                                            | Что запускается             |
+| ------------------------------------------------------------------------------- | --------------------------- |
+| `apps/frontend/**`                                                              | typecheck и eslint frontend |
+| `apps/backend/**`                                                               | typecheck и eslint backend  |
+| `apps/collaboration/**`                                                         | typecheck collaboration     |
+| `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `.npmrc`, `patches/**` | все приложения              |
 
 Проверки в CI: `pnpm --filter @app/frontend run typecheck`, eslint frontend без `--fix`,
-`pnpm --filter @app/backend run typecheck`, eslint backend без `--fix`.
+`pnpm --filter @app/backend run typecheck`, eslint backend без `--fix`,
+`pnpm --filter @app/collaboration run typecheck`.
 
-CD после успешных проверок собирает только затронутый Dockerfile и пушит образ в GHCR:
+### CD (выкладка на прод)
 
-- `ghcr.io/<owner>/interviewly-frontend:<sha>` и тег `dev`
-- `ghcr.io/<owner>/interviewly-backend:<sha>` и тег `dev`
+Прод выкатывается только по тегу релиза: [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml).
+Тег `vX.Y.Z` ставит workflow Release (см. [docs/releases.md](releases.md)), push тега запускает Deploy.
+Push в `dev` на сервер не попадает.
 
-Frontend build-args: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_COLLABORATION_URL`
+- **Автоматически:** push тега `v*` → Deploy.
+- **Откат или повторная выкладка:** Actions → Deploy → Run workflow, поле `tag` (например `v0.1.0`).
+  Миграции БД при откате не откатываются, а `db seed` выполняется при каждом старте backend.
+- Джобы работают в environment `production` (Settings → Environments). Подтверждение перед
+  выкладкой включается там же через Required reviewers; сейчас ревьюеров нет.
+- Параллельные выкладки выстраиваются в очередь (`concurrency: deploy`).
+
+Что делает workflow: `provision` синхронизирует сервер с тегом, затем `frontend-image` и
+`backend-image` собирают образы и пушат их в GHCR:
+
+- `ghcr.io/<owner>/interviewly-frontend:<tag>`
+- `ghcr.io/<owner>/interviewly-backend:<tag>`
+
+Frontend build-args: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_COLLABORATION_URL`,
+`NEXT_PUBLIC_TELEGRAM_BOT_USERNAME`, `NEXT_PUBLIC_SENTRY_DSN`
 (переменные репозитория `vars.*` или дефолты для `interviewly.top`).
 
-Затем по SSH скрипт [`infra/deploy/server.sh`](../infra/deploy/server.sh) готовит сервер и
+Клон на сервере после выкладки стоит в detached HEAD на теге. Скрипт [`infra/deploy/server.sh`](../infra/deploy/server.sh) готовит сервер и
 поднимает образ. Пустой сервер он приводит в рабочее состояние сам:
 
 - ставит `git`, `curl` и `ca-certificates`, если их нет (`apt`, `dnf` или `yum`);

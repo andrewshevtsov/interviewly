@@ -84,7 +84,7 @@ docker compose --profile errors up -d glitchtip glitchtip-postgres
 
 - DSN проекта `frontend` вшивается в бандл при сборке образа: переменная `NEXT_PUBLIC_SENTRY_DSN`
   (GitHub → Settings → Secrets and variables → Actions → **Variables**, передаётся в `build-args` в
-  `ci.yml`). DSN публичный по своей природе (его видит любой браузер), секретом не является. Пусто -
+  `deploy.yml`). DSN публичный по своей природе (его видит любой браузер), секретом не является. Пусто -
   ошибки не отправляются. После изменения переменной нужна новая сборка frontend.
 - Ловятся: ошибки в браузере, ошибки рендера на сервере Next.js (`instrumentation.ts`,
   `onRequestError`) и необработанные ошибки React (`app/global-error.tsx`).
