@@ -1,3 +1,10 @@
+# [0.2.0](https://github.com/andrewshevtsov/interviewly/compare/v0.1.1...v0.2.0) (2026-11-05)
+
+
+### Features
+
+* **BE-19:** Telegram OIDC login ([75b3397](https://github.com/andrewshevtsov/interviewly/commit/75b3397b360833e6b4e9b8b5e7acad7971bff35f))
+
 ## [0.1.1](https://github.com/andrewshevtsov/interviewly/compare/v0.1.0...v0.1.1) (2026-11-04)
 
 
