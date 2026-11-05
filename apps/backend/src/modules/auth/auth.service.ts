@@ -10,6 +10,7 @@ import { RegisterDto } from './dto/register.dto.ts';
 import { TelegramAuthDto } from './dto/telegram-auth.dto.ts';
 import { AuthTokens, JwtPayload, RefreshPayload } from './auth.types.ts';
 import { TELEGRAM_AUTH_MAX_AGE_SECONDS } from './auth.constants.ts';
+import type { TelegramProfile } from './telegram-oidc.service.ts';
 import { isTelegramAuthFresh, isValidTelegramAuth } from './utils/telegram-auth.util.ts';
 
 const SALT_ROUNDS = 12;
@@ -125,19 +126,29 @@ export class AuthService {
   async loginWithTelegram(dto: TelegramAuthDto): Promise<AuthTokens> {
     this.verifyTelegramPayload(dto);
 
-    const telegramId = String(dto.id);
-    const existingUser = await this.usersService.findByTelegramId(telegramId);
-    const user =
-      existingUser ??
-      (await this.usersService.createFromTelegram({
-        telegramId,
-        telegramUsername: dto.username,
-        firstName: dto.first_name,
-        lastName: dto.last_name,
-      }));
+    return this.loginWithTelegramProfile({
+      telegramId: String(dto.id),
+      username: dto.username,
+      firstName: dto.first_name,
+      lastName: dto.last_name,
+    });
+  }
+
+  /** Вход или регистрация по уже проверенному профилю Telegram (OIDC и виджет) */
+  async loginWithTelegramProfile(profile: TelegramProfile): Promise<AuthTokens> {
+    const existingUser = await this.usersService.findByTelegramId(profile.telegramId);
+    const user = existingUser ?? (await this.usersService.createFromTelegram(profile));
     if (!existingUser) this.metrics.countEvent('user_registered');
 
     return this.issueTokens(user);
+  }
+
+  /** Привязка по уже проверенному профилю Telegram: 409, если этот Telegram занят другим пользователем */
+  async linkTelegramProfile(userId: string, profile: TelegramProfile): Promise<void> {
+    await this.usersService.linkTelegram(userId, {
+      telegramId: profile.telegramId,
+      telegramUsername: profile.username,
+    });
   }
 
   /**
@@ -147,9 +158,10 @@ export class AuthService {
   async linkTelegram(userId: string, dto: TelegramAuthDto): Promise<void> {
     this.verifyTelegramPayload(dto);
 
-    await this.usersService.linkTelegram(userId, {
+    await this.linkTelegramProfile(userId, {
       telegramId: String(dto.id),
-      telegramUsername: dto.username,
+      username: dto.username,
+      firstName: dto.first_name,
     });
   }
 

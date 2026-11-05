@@ -21,6 +21,7 @@ import {
   REFRESH_TOKEN_COOKIE,
   legacyRefreshTokenCookieOptions,
   refreshTokenCookieOptions,
+  setRefreshTokenCookie,
 } from './auth.constants.ts';
 import { ApiBearerAuth, ApiProperty } from '@nestjs/swagger';
 
@@ -112,12 +113,7 @@ export class AuthController {
    * живёт свой обычный срок
    */
   private respondWithTokens(res: Response, tokens: AuthTokens): { accessToken: string } {
-    // Снести legacy Path=/auth, чтобы cookie-parser не читал старую куку первой.
-    res.clearCookie(REFRESH_TOKEN_COOKIE, legacyRefreshTokenCookieOptions());
-    res.cookie(REFRESH_TOKEN_COOKIE, tokens.refreshToken, {
-      ...refreshTokenCookieOptions(),
-      ...(tokens.rememberMe && { expires: tokens.refreshTokenExpiresAt }),
-    });
+    setRefreshTokenCookie(res, tokens);
     return { accessToken: tokens.accessToken };
   }
 }
