@@ -82,17 +82,13 @@ export function AuthCard(props: AuthCardProps) {
         {activeTab === "register" && <RegisterForm returnPath={returnPath} />}
       </div>
 
-      {Boolean(process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME) && (
-        <>
-          <div className="mt-6 flex items-center gap-4 text-xs uppercase text-muted-foreground">
-            <span className="h-px flex-1 bg-border" />
-            {t("or")}
-            <span className="h-px flex-1 bg-border" />
-          </div>
+      <div className="mt-6 flex items-center gap-4 text-xs uppercase text-muted-foreground">
+        <span className="h-px flex-1 bg-border" />
+        {t("or")}
+        <span className="h-px flex-1 bg-border" />
+      </div>
 
-          <TelegramLoginButton returnPath={returnPath} />
-        </>
-      )}
+      <TelegramLoginButton returnPath={returnPath} />
 
       <p className="mt-6 text-center text-xs text-muted-foreground">
         {t("agreementPrefix")}{" "}

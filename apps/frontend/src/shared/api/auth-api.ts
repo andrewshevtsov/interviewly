@@ -1,5 +1,7 @@
 // Слой shared: запросы к /auth. Refresh-токен сервер кладёт в httpOnly-куку -
 // в JSON-ответах он не встречается, поэтому здесь везде только accessToken.
+import type { AxiosResponse } from "axios";
+
 import { httpClient } from "./http-client";
 
 /**
@@ -48,49 +50,6 @@ export interface RegisterPayload {
 }
 
 /**
- * Data the Telegram Login Widget hands to its `data-onauth` callback - see
- * https://core.telegram.org/widgets/login#receiving-authorization-data. Field names match
- * Telegram's own naming (snake_case) and the backend's `TelegramAuthDto`, so the widget's
- * callback payload can be posted to `/auth/telegram` as-is.
- */
-export interface TelegramAuthPayload {
-  /**
-   * Numeric Telegram account id.
-   */
-  id: number;
-
-  /**
-   * Telegram first name.
-   */
-  first_name: string;
-
-  /**
-   * Telegram last name, if set.
-   */
-  last_name?: string;
-
-  /**
-   * Telegram username, if set.
-   */
-  username?: string;
-
-  /**
-   * URL of the Telegram avatar, if set.
-   */
-  photo_url?: string;
-
-  /**
-   * Unix timestamp (seconds) of when the widget issued this data.
-   */
-  auth_date: number;
-
-  /**
-   * HMAC-SHA256 signature Telegram computed over the other fields.
-   */
-  hash: string;
-}
-
-/**
  * Response returned after a successful authentication request.
  */
 interface AccessTokenResponse {
@@ -98,6 +57,25 @@ interface AccessTokenResponse {
    * JWT access token issued for the authenticated user.
    */
   accessToken: string;
+}
+
+/**
+ * Ответ `POST /auth/telegram/link/start`.
+ */
+interface TelegramLinkStartResponse {
+  /**
+   * Адрес авторизации в Telegram.
+   */
+  url: string;
+}
+
+/**
+ * Достаёт адрес Telegram из ответа начала привязки.
+ * @param {AxiosResponse<TelegramLinkStartResponse>} response - Ответ axios.
+ * @returns {string} Адрес авторизации.
+ */
+function extractUrl(response: AxiosResponse<TelegramLinkStartResponse>): string {
+  return response.data.url;
 }
 
 /**
@@ -112,17 +90,14 @@ export const authApi = {
     return httpClient.post<AccessTokenResponse>("/auth/register", payload).then((res) => res.data);
   },
 
-  telegramLogin(payload: TelegramAuthPayload): Promise<AccessTokenResponse> {
-    return httpClient.post<AccessTokenResponse>("/auth/telegram", payload).then((res) => res.data);
-  },
-
   /**
-   * Привязывает Telegram к текущему аккаунту (`POST /auth/telegram/link`).
-   * @param {TelegramAuthPayload} payload - Подписанные данные Telegram Login Widget.
-   * @returns {Promise<void>} Завершается после привязки.
+   * Начинает привязку Telegram к текущему аккаунту (`POST /auth/telegram/link/start`).
+   * Ответ содержит адрес Telegram, на который нужно перейти всей страницей.
+   * @param {string} returnPath - Внутренний путь, куда вернуть пользователя после привязки.
+   * @returns {Promise<string>} Адрес авторизации в Telegram.
    */
-  linkTelegram(payload: TelegramAuthPayload): Promise<void> {
-    return httpClient.post("/auth/telegram/link", payload).then(() => undefined);
+  startTelegramLink(returnPath: string): Promise<string> {
+    return httpClient.post<TelegramLinkStartResponse>("/auth/telegram/link/start", { returnPath }).then(extractUrl);
   },
 
   logout(): Promise<void> {

@@ -297,6 +297,14 @@ export const messages = {
       ru: "не удалось зарегистрироваться. проверьте данные",
       en: "couldn't sign up. check your details",
     },
+    telegramDenied: {
+      ru: "вход через Telegram отменён",
+      en: "Telegram sign-in was cancelled",
+    },
+    telegramUnavailable: {
+      ru: "вход через Telegram сейчас недоступен. попробуйте позже или войдите по email",
+      en: "Telegram sign-in is unavailable right now. try later or sign in with email",
+    },
     telegramLoginError: {
       ru: "не удалось войти через Telegram. попробуйте ещё раз",
       en: "couldn't sign in with Telegram. try again",
@@ -711,7 +719,13 @@ export const messages = {
       en: "The bot will message you when a session starts or someone responds to your profile.",
     },
     linked: { ru: "Telegram привязан", en: "Telegram linked" },
+    link: { ru: "привязать Telegram", en: "link Telegram" },
     unlink: { ru: "отвязать", en: "unlink" },
+    errDenied: { ru: "Привязка Telegram отменена.", en: "Telegram linking was cancelled." },
+    errUnavailable: {
+      ru: "Привязка Telegram сейчас недоступна. Попробуйте позже.",
+      en: "Telegram linking is unavailable right now. Try again later.",
+    },
     errTaken: {
       ru: "Этот Telegram уже привязан к другому аккаунту.",
       en: "This Telegram account is already linked to another user.",
