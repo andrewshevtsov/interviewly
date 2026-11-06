@@ -6,7 +6,7 @@
 
 `PATCH /users/me` принимает `firstName`, `lastName`, `telegramUsername`, `timeZone`. Пустая строка в `lastName` и `telegramUsername` очищает поле (в базе `null`). Ник вводится вручную, `@` срезается, формат 5-32 символа `[A-Za-z0-9_]`.
 
-Ник только отображается. Уведомления в Telegram идут по `telegramId`, который задаётся входом через Telegram (`POST /auth/telegram/link`); ручной ввод ника его не меняет.
+Ник только отображается. Уведомления в Telegram идут по `telegramId`, который задаётся входом через Telegram (`POST /auth/telegram/link/start`); ручной ввод ника его не меняет.
 
 ## Смена email с подтверждением
 

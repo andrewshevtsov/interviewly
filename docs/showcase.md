@@ -165,5 +165,5 @@ POST /showcase/responses/:id/messages/read      204: отметить чат п�
 ссылка на комнату пропадают. Кнопки «моя карточка» на витрине нет: профиль доступен из шапки, а карточку скрывают
 переключателем в профиле.
 
-Пока не сделано: **привязка Telegram из интерфейса** (backend `POST /auth/telegram/link` готов, во frontend
-есть только вход через Telegram), поэтому подсказка про Telegram пока информационная.
+Привязка Telegram делается в профиле («Telegram-уведомления»): кнопка ведёт на Telegram по OIDC, подробности в
+[notifications.md](notifications.md).

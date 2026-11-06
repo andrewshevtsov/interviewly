@@ -7,11 +7,8 @@ import { UsersService } from '../users/users.service.ts';
 import { UserEntity } from '../users/entities/user-entity.ts';
 import { LoginDto } from './dto/login.dto.ts';
 import { RegisterDto } from './dto/register.dto.ts';
-import { TelegramAuthDto } from './dto/telegram-auth.dto.ts';
 import { AuthTokens, JwtPayload, RefreshPayload } from './auth.types.ts';
-import { TELEGRAM_AUTH_MAX_AGE_SECONDS } from './auth.constants.ts';
 import type { TelegramProfile } from './telegram-oidc.service.ts';
-import { isTelegramAuthFresh, isValidTelegramAuth } from './utils/telegram-auth.util.ts';
 
 const SALT_ROUNDS = 12;
 
@@ -21,7 +18,6 @@ export class AuthService {
   private readonly accessExpiresIn: JwtSignOptions['expiresIn'];
   private readonly refreshSecret: string;
   private readonly refreshExpiresIn: JwtSignOptions['expiresIn'];
-  private readonly telegramBotToken: string;
 
   constructor(
     private readonly usersService: UsersService,
@@ -39,7 +35,6 @@ export class AuthService {
       'JWT_REFRESH_EXPIRES_IN',
       '7d',
     ) as JwtSignOptions['expiresIn'];
-    this.telegramBotToken = configService.getOrThrow<string>('TELEGRAM_BOT_TOKEN');
   }
 
   /**
@@ -118,26 +113,15 @@ export class AuthService {
     return { success: true };
   }
 
-  /**
-   * Логин или регистрация через Telegram Login Widget: проверяет подпись и
-   * свежесть данных, затем ищет пользователя по `telegramId` - если такого
-   * ещё нет, заводит нового без email/пароля (см. `UsersService.createFromTelegram`).
-   */
-  async loginWithTelegram(dto: TelegramAuthDto): Promise<AuthTokens> {
-    this.verifyTelegramPayload(dto);
-
-    return this.loginWithTelegramProfile({
-      telegramId: String(dto.id),
-      username: dto.username,
-      firstName: dto.first_name,
-      lastName: dto.last_name,
-    });
-  }
-
-  /** Вход или регистрация по уже проверенному профилю Telegram (OIDC и виджет) */
+  /** Вход или регистрация по уже проверенному профилю Telegram (OIDC) */
   async loginWithTelegramProfile(profile: TelegramProfile): Promise<AuthTokens> {
     const existingUser = await this.usersService.findByTelegramId(profile.telegramId);
-    const user = existingUser ?? (await this.usersService.createFromTelegram(profile));
+    const user = existingUser ?? (await this.usersService.createFromTelegram({
+        telegramId: profile.telegramId,
+        telegramUsername: profile.username,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+      }));
     if (!existingUser) this.metrics.countEvent('user_registered');
 
     return this.issueTokens(user);
@@ -149,29 +133,6 @@ export class AuthService {
       telegramId: profile.telegramId,
       telegramUsername: profile.username,
     });
-  }
-
-  /**
-   * Привязывает Telegram к уже залогиненному аккаунту — второй способ входа
-   * в дополнение к email/паролю.
-   */
-  async linkTelegram(userId: string, dto: TelegramAuthDto): Promise<void> {
-    this.verifyTelegramPayload(dto);
-
-    await this.linkTelegramProfile(userId, {
-      telegramId: String(dto.id),
-      username: dto.username,
-      firstName: dto.first_name,
-    });
-  }
-
-  private verifyTelegramPayload(dto: TelegramAuthDto): void {
-    if (!isValidTelegramAuth(dto, this.telegramBotToken)) {
-      throw new UnauthorizedException('Invalid Telegram authentication data');
-    }
-    if (!isTelegramAuthFresh(dto.auth_date, TELEGRAM_AUTH_MAX_AGE_SECONDS)) {
-      throw new UnauthorizedException('Telegram authentication data has expired');
-    }
   }
 
   private async issueTokens(user: UserEntity, rememberMe = true): Promise<AuthTokens> {

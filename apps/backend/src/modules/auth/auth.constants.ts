@@ -13,13 +13,6 @@ export const REFRESH_TOKEN_COOKIE = 'refreshToken';
  */
 export const LEGACY_REFRESH_TOKEN_COOKIE_PATH = '/auth';
 
-/**
- * Максимальный возраст `auth_date` из данных Telegram Login Widget, после
- * которого запрос отклоняется как просроченный (защита от replay готового
- * набора полей). Значение - рекомендация из документации виджета.
- */
-export const TELEGRAM_AUTH_MAX_AGE_SECONDS = 24 * 60 * 60;
-
 export function refreshTokenCookieOptions(): CookieOptions {
   const frontendUrl = process.env.FRONTEND_URL ?? '';
   const secure =

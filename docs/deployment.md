@@ -129,7 +129,7 @@ Push в `dev` на сервер не попадает.
 - `ghcr.io/<owner>/interviewly-backend:<tag>`
 
 Frontend build-args: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_COLLABORATION_URL`,
-`NEXT_PUBLIC_TELEGRAM_BOT_USERNAME`, `NEXT_PUBLIC_SENTRY_DSN`
+`NEXT_PUBLIC_SENTRY_DSN`
 (переменные репозитория `vars.*` или дефолты для `interviewly.top`).
 
 Клон на сервере после выкладки стоит в detached HEAD на теге. Скрипт [`infra/deploy/server.sh`](../infra/deploy/server.sh) готовит сервер и
