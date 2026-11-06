@@ -27,13 +27,15 @@ Backend отправляет уведомления о матчах из [вит
 5. Пользователь вошёл через Telegram и реального email у него нет (`tg-<id>@telegram.interviewly.local`) -
    писать некуда, сообщение пропускается с записью в лог.
 
-Писать пользователю бот может, только если он вошёл или привязал Telegram через Telegram Login Widget
-(виджет просит право писать, `data-request-access="write"`) или сам нажал `/start` у бота.
+Писать пользователю бот может, только если он вошёл или привязал Telegram через OIDC (scope
+`telegram:bot_access` даёт право писать) или сам нажал `/start` у бота.
 
 ## Привязка Telegram
 
-- В личном кабинете (блок «Telegram-уведомления») виджет вызывает `POST /auth/telegram/link`; 409 - этот
-  Telegram уже привязан к другому аккаунту.
+- В личном кабинете (блок «Telegram-уведомления») кнопка вызывает `POST /auth/telegram/link/start`,
+  получает адрес Telegram и уводит на него; после подтверждения Telegram возвращает на
+  `GET /auth/telegram/callback`, а оттуда пользователь попадает обратно в профиль. Если этот Telegram уже
+  привязан к другому аккаунту, профиль откроется с `?telegramError=taken`.
 - Отвязка: `DELETE /users/me/telegram`, дальше уведомления идут на почту. 409, если у аккаунта только
   служебный адрес `tg-<id>@telegram.interviewly.local` (иначе пропал бы единственный вход).
 
@@ -101,10 +103,9 @@ pnpm back-dev
 
 ### Проверка с настоящим ботом
 
-Через ngrok (туннели на фронт и бэк - как в
-[telegram-auth-tunnel-testing.md](dev/telegram-auth-tunnel-testing.md), дополнительно задайте
-`TELEGRAM_WEBHOOK_SECRET` и `TELEGRAM_WEBHOOK_URL=https://<домен-туннеля-бэкенда>/telegram/webhook`):
+Через ngrok по пошаговой инструкции [dev/telegram-notifications-testing.md](dev/telegram-notifications-testing.md)
+(туннели на фронт и бэк, `TELEGRAM_WEBHOOK_*`, OIDC-переменные и Redirect URI в BotFather):
 
-1. Войдите по email, откройте личный кабинет через домен фронт-туннеля и привяжите Telegram виджетом.
+1. Войдите по email, откройте личный кабинет через домен фронт-туннеля и привяжите Telegram кнопкой «привязать Telegram».
 2. Напишите боту `/start` - придёт подсказка (проверка webhook).
 3. Запустите сценарий (принять / отклонить отклик, отменить встречу): сообщение придёт в Telegram.
