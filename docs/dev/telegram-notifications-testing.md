@@ -3,8 +3,8 @@
 Единая инструкция: от нуля до проверки всех сценариев. Что именно отправляется - в
 [docs/notifications.md](../notifications.md).
 
-Схема: бот шлёт уведомления через очередь (Redis), привязка и вход идут через Telegram Login Widget
-(нужен домен, поэтому ngrok). `/start` обрабатывает webhook (если задан `TELEGRAM_WEBHOOK_URL`) или
+Схема: бот шлёт уведомления через очередь (Redis), привязка и вход идут через Telegram OIDC
+(Telegram возвращает пользователя на зарегистрированный в BotFather redirect URI, поэтому нужен публичный адрес backend - ngrok). `/start` обрабатывает webhook (если задан `TELEGRAM_WEBHOOK_URL`) или
 long polling без ngrok. Если `api.telegram.org` недоступен — задайте `TG_PROXY=user:pass@host:port`
 в `.env` (исходящий HTTP CONNECT-прокси).
 
@@ -17,7 +17,7 @@ long polling без ngrok. Если `api.telegram.org` недоступен — 
    ngrok update
    ```
 3. **Статический домен** для фронта: [dashboard.ngrok.com/domains](https://dashboard.ngrok.com/domains) → Create Domain.
-4. **Привязать домен к боту**: `@BotFather` → `/setdomain` → dev-бот → домен без `https://`.
+4. **OIDC для dev-бота**: BotFather → мини-приложение → бот → Login Widget → «Switch to OpenID Connect Login». Сохраните Client ID и Client Secret. Redirect URI добавляется после запуска туннеля backend (см. раздел 2).
 5. База и сид (если ещё не делали):
    ```bash
    cp .env.example .env && pnpm i
@@ -49,11 +49,14 @@ FRONTEND_URL=https://<фронт-домен> \
 JWT_ACCESS_SECRET=dev-access-secret-change-me JWT_ACCESS_EXPIRES_IN=15m \
 JWT_REFRESH_SECRET=dev-refresh-secret-change-me JWT_REFRESH_EXPIRES_IN=7d \
 TELEGRAM_BOT_TOKEN=<токен-бота> \
+TELEGRAM_CLIENT_ID=<client-id> TELEGRAM_CLIENT_SECRET=<client-secret> \
+TELEGRAM_OAUTH_REDIRECT_URI=https://<домен-туннеля-backend>/auth/telegram/callback \
 TG_PROXY=<user:pass@host:port-если-нужен> \
 TELEGRAM_WEBHOOK_SECRET=<любая-случайная-строка> \
 TELEGRAM_WEBHOOK_URL=https://<домен-туннеля-backend>/telegram/webhook \
 pnpm --filter @app/backend run start:dev
 ```
+Тот же `TELEGRAM_OAUTH_REDIRECT_URI` добавьте в BotFather → Login Widget → Redirect URIs (точное совпадение; при смене домена туннеля обновляйте и там).
 В логе должно быть `Telegram bot ready: @...` и `Telegram webhook set to ...`.
 Без `TELEGRAM_WEBHOOK_URL` backend сам поднимет long polling — `/start` всё равно ответит.
 Redis по умолчанию `localhost:6379`, SMTP - Mailpit.
@@ -62,20 +65,19 @@ Redis по умолчанию `localhost:6379`, SMTP - Mailpit.
 ```bash
 cat > apps/frontend/.env.local << 'EOF'
 NEXT_PUBLIC_API_URL=https://<домен-туннеля-backend>
-NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=<username-бота>
 DEV_TUNNEL_ORIGIN=<фронт-домен>
 EOF
 pnpm --filter @app/frontend run dev
 ```
 Формат значений: `NEXT_PUBLIC_API_URL` - `https://` + домен, **без** пути (`/telegram/webhook` нужен только
-backend'у); username бота - **без** `@`; `DEV_TUNNEL_ORIGIN` - только хост, **без** `https://`.
+backend'у); `DEV_TUNNEL_ORIGIN` - только хост, **без** `https://`.
 `FRONTEND_URL` у backend, наоборот, с `https://` и без `/` в конце.
 `.env.local` читается при старте: поменяли домен - перезапустите `next dev`.
 
 > Backend-домен меняется при каждом запуске ngrok, поэтому `TELEGRAM_WEBHOOK_URL` и
 > `NEXT_PUBLIC_API_URL` нужно обновлять каждый раз и перезапускать backend и frontend.
 
-Открывайте **только** `https://<фронт-домен>/ru/...`, не `localhost:3000`: иначе виджет не увидит домен бота.
+Открывайте **только** `https://<фронт-домен>/ru/...`, не `localhost:3000`: иначе кука сессии после возврата с Telegram не совпадёт по сайту с фронтом.
 
 ## 3. Проверка
 
@@ -90,8 +92,8 @@ backend'у); username бота - **без** `@`; `DEV_TUNNEL_ORIGIN` - толь�
 
 ### 3.2 Привязка
 1. Войдите как **А** → `https://<фронт-домен>/ru/profile`.
-2. В блоке «Telegram-уведомления» нажмите кнопку Telegram-виджета, подтвердите в приложении.
-3. Блок покажет «Telegram привязан @ник» и кнопку «отвязать».
+2. В блоке «Telegram-уведомления» нажмите «привязать Telegram», подтвердите вход на странице Telegram.
+3. Вас вернёт в профиль, блок покажет «Telegram привязан @ник» и кнопку «отвязать».
 
 Если у вас уже есть другой аккаунт с этим Telegram: привязка вернёт «уже привязан к другому аккаунту».
 
@@ -130,7 +132,7 @@ await q.close();"
 3. Telegram вернёт 403, backend отправит то же сообщение письмом А (Mailpit).
 
 ### 3.8 Отвязка
-В профиле А нажмите «отвязать» → блок снова показывает виджет; следующие уведомления идут на почту.
+В профиле А нажмите «отвязать» → блок снова показывает кнопку «привязать Telegram»; следующие уведомления идут на почту.
 Для аккаунта, который вошёл через Telegram и не имеет настоящей почты, отвязка вернёт ошибку «сначала добавьте почту».
 
 ## 4. Если не работает
@@ -140,7 +142,8 @@ await q.close();"
 | `ERR_NGROK_123` | почта в ngrok не подтверждена, либо локальный authtoken от другого аккаунта |
 | `ERR_NGROK_121` | устаревший агент: `ngrok update` |
 | Через ~15 минут выкидывает из аккаунта, `POST /auth/refresh` даёт 401 `Missing refresh token` | известное ограничение схемы с двумя ngrok-доменами: фронт и backend на разных сайтах, кука `SameSite=Lax` не отправляется. Для проверки уведомлений хватает 15 минут; потом войдите заново |
-| Виджета нет на странице | открыт `localhost`, а не домен туннеля; не задан `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME`; не сделан `/setdomain` |
+| «redirect_uri required» на странице Telegram | в BotFather → Redirect URIs нет точного значения `TELEGRAM_OAUTH_REDIRECT_URI` |
+| Возврат на `/auth?telegramError=unavailable` | не заданы `TELEGRAM_CLIENT_ID`, `TELEGRAM_CLIENT_SECRET`, `TELEGRAM_OAUTH_REDIRECT_URI` |
 | «Не удалось войти/привязать», в консоли mixed content | `NEXT_PUBLIC_API_URL` указывает на `http://localhost:4000` вместо HTTPS-туннеля backend |
 | CORS-ошибка | `FRONTEND_URL` у backend не равен `https://<фронт-домен>` (без `/` на конце) |
 | `Blocked cross-origin request to Next.js dev resource` | не задан `DEV_TUNNEL_ORIGIN` или не перезапущен `next dev` |

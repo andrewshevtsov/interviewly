@@ -54,8 +54,8 @@ export class UsersService {
   }
 
   /**
-   * Заводит пользователя из данных Telegram Login Widget. Проверка подписи -
-   * забота вызывающего кода (`AuthService`), сюда попадают уже доверенные
+   * Заводит пользователя из профиля Telegram. Проверка `id_token` - забота
+   * вызывающего кода (`TelegramOidcService`), сюда попадают уже доверенные
    * данные. У Telegram нет email, поэтому используется детерминированный
    * плейсхолдер `tg-<telegramId>@telegram.interviewly.local` - не идёт
    * пользователю на почту и не считается подтверждённым (`registrationCompleted:
