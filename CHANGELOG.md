@@ -1,3 +1,10 @@
+## [0.2.1](https://github.com/andrewshevtsov/interviewly/compare/v0.2.0...v0.2.1) (2026-11-06)
+
+
+### Bug Fixes
+
+* **BE-19-cleanup-fix:** Remove Telegram widget login, fix username on signup ([db87441](https://github.com/andrewshevtsov/interviewly/commit/db87441d83317f777ea61f2ca4d532ca46df0078))
+
 # [0.2.0](https://github.com/andrewshevtsov/interviewly/compare/v0.1.1...v0.2.0) (2026-11-05)
 
 
