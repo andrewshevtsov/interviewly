@@ -35,7 +35,7 @@ describe('ProgrammingTasksService', () => {
   beforeEach(() => {
     repository = {
       findActiveHarnessTemplate: vi.fn(),
-      delete: vi.fn(),
+      deactivate: vi.fn(),
       deleteVariant: vi.fn(),
       completeVariantVerification: vi.fn(),
     } as unknown as Mocked<ProgrammingTasksRepository>;
@@ -61,6 +61,28 @@ describe('ProgrammingTasksService', () => {
     await expect(
       service.getHarnessTemplate(EditorLanguage.PYTHON),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('деактивирует задачу и передаёт дату изменения в repository', async () => {
+    repository.findById = vi
+      .fn()
+      .mockResolvedValue({ id: 'task-id', slug: 'sum' });
+
+    await service.deactivate('task-id');
+
+    expect(repository.deactivate).toHaveBeenCalledWith(
+      'task-id',
+      expect.any(Date),
+    );
+  });
+
+  it('не деактивирует отсутствующую задачу', async () => {
+    repository.findById = vi.fn().mockResolvedValue(null);
+
+    await expect(service.deactivate('task-id')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(repository.deactivate).not.toHaveBeenCalled();
   });
 
   it('сохраняет основные данные задачи отдельно от верификации', async () => {
@@ -199,7 +221,7 @@ describe('ProgrammingTasksService', () => {
     expect(firstAttempt.slug).not.toBe(secondAttempt.slug);
   });
 
-  it('откатывает только что созданную задачу, если очередь недоступна', async () => {
+  it('деактивирует только что созданную задачу, если очередь недоступна', async () => {
     repository.createWithVariant = vi.fn().mockResolvedValue({
       id: 'task-id',
       slug: 'sum',
@@ -211,13 +233,16 @@ describe('ProgrammingTasksService', () => {
         },
       ],
     });
-    repository.delete = vi.fn().mockResolvedValue({ id: 'task-id' });
+    repository.deactivate = vi.fn().mockResolvedValue({ id: 'task-id' });
     queue.add.mockRejectedValue(new Error('Redis unavailable'));
 
     await expect(
       service.createAndVerify('author-id', input),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
-    expect(repository.delete).toHaveBeenCalledWith('task-id');
+    expect(repository.deactivate).toHaveBeenCalledWith(
+      'task-id',
+      expect.any(Date),
+    );
     expect(repository.completeVariantVerification).not.toHaveBeenCalled();
   });
 
@@ -259,7 +284,7 @@ describe('ProgrammingTasksService', () => {
     await expect(
       service.updateAndVerify('task-id', 'variant-id', input),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
-    expect(repository.delete).not.toHaveBeenCalled();
+    expect(repository.deactivate).not.toHaveBeenCalled();
     expect(repository.deleteVariant).not.toHaveBeenCalled();
     expect(repository.completeVariantVerification).not.toHaveBeenCalled();
   });

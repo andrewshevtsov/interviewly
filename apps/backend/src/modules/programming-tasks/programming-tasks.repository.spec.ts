@@ -75,18 +75,19 @@ describe('ProgrammingTasksRepository visibility', () => {
 });
 
 describe('ProgrammingTasksRepository writes', () => {
-  it('удаляет задачу мягко - isActive: false, а не настоящий DELETE', async () => {
+  it('деактивирует задачу и фиксирует дату изменения без настоящего DELETE', async () => {
     const update = vi.fn().mockResolvedValue({ id: 'task-id', isActive: false });
     const deleteMock = vi.fn();
+    const updatedAt = new Date('2026-11-11T10:00:00.000Z');
     const repository = new ProgrammingTasksRepository({
       programmingTask: { update, delete: deleteMock },
     } as unknown as PrismaService);
 
-    await repository.delete('task-id');
+    await repository.deactivate('task-id', updatedAt);
 
     expect(update).toHaveBeenCalledWith({
       where: { id: 'task-id' },
-      data: { isActive: false },
+      data: { isActive: false, updatedAt },
     });
     expect(deleteMock).not.toHaveBeenCalled();
   });

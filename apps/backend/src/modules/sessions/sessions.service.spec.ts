@@ -142,8 +142,26 @@ describe('SessionsService', () => {
       );
       const [createData] = repository.create.mock.calls[0]!;
       expect(createData.programmingTaskSnapshot).toMatchObject({
+        source: 'BANK',
         slug: 'sum-all-numbers',
         language: EditorLanguage.JAVASCRIPT,
+      });
+    });
+
+    it('сохраняет введённый текст как starterCode snapshot своей задачи', async () => {
+      repository.create.mockResolvedValue(session as never);
+
+      await service.create(OWNER_ID, {
+        task: 'Реализуйте собственное решение',
+        editorLanguage: EditorLanguage.TYPESCRIPT,
+        access: SessionAccess.OPEN,
+      });
+
+      const [createData] = repository.create.mock.calls[0]!;
+      expect(createData.programmingTaskSnapshot).toEqual({
+        source: 'CUSTOM',
+        language: EditorLanguage.TYPESCRIPT,
+        starterCode: 'Реализуйте собственное решение',
       });
     });
   });
@@ -156,6 +174,15 @@ describe('SessionsService', () => {
           description: 'Найдите сумму всех чисел.',
           language: EditorLanguage.JAVASCRIPT,
           starterCode: 'function solve(params) {}',
+          harnessCode: 'solve(input);',
+          testCases: [
+            {
+              position: 0,
+              name: 'Пример',
+              input: { numbers: [1, 2] },
+              expectedOutput: 3,
+            },
+          ],
         },
       } as never);
 
@@ -171,6 +198,15 @@ describe('SessionsService', () => {
           description: 'Отсортируйте массив.\nВерните новый массив.',
           language: EditorLanguage.PYTHON,
           starterCode: 'def solve(params):\n    pass',
+          harnessCode: 'solve(input)',
+          testCases: [
+            {
+              position: 0,
+              name: 'Пример',
+              input: [2, 1],
+              expectedOutput: [1, 2],
+            },
+          ],
         },
       } as never);
 
@@ -179,7 +215,22 @@ describe('SessionsService', () => {
       );
     });
 
-    it('возвращает null для своей задачи', async () => {
+    it('возвращает введённый текст из snapshot своей задачи', async () => {
+      repository.findById.mockResolvedValue({
+        ...session,
+        programmingTaskSnapshot: {
+          source: 'CUSTOM',
+          language: EditorLanguage.TYPESCRIPT,
+          starterCode: 'Реализуйте собственное решение',
+        },
+      } as never);
+
+      await expect(service.getDocumentStarterCode(SESSION_ID)).resolves.toBe(
+        'Реализуйте собственное решение',
+      );
+    });
+
+    it('возвращает null для старой своей задачи без snapshot', async () => {
       repository.findById.mockResolvedValue({
         ...session,
         programmingTaskSnapshot: null,
