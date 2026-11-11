@@ -80,9 +80,11 @@ export class ProgrammingTasksAdminController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Удалить задачу со всеми языковыми вариантами' })
+  @ApiOperation({
+    summary: 'Деактивировать задачу, сохранив её варианты и тест-кейсы',
+  })
   delete(@Param('id', new ParseUUIDPipe()) id: string): Promise<void> {
-    return this.service.delete(id);
+    return this.service.deactivate(id);
   }
 
   @Get('harness-templates/:language')
