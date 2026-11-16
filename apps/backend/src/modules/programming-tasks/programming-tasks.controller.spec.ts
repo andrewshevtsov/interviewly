@@ -39,7 +39,7 @@ describe('Programming task controllers', () => {
       addVariantAndVerify: vi.fn(),
       updateAndVerify: vi.fn(),
       updateDetails: vi.fn(),
-      delete: vi.fn(),
+      deactivate: vi.fn(),
       getHarnessTemplate: vi.fn(),
       findForEditing: vi.fn(),
       findAvailable: vi.fn(),
@@ -106,6 +106,6 @@ describe('Programming task controllers', () => {
       EditorLanguage.JAVASCRIPT,
     );
     expect(service.findForEditing).toHaveBeenCalledWith('task-id');
-    expect(service.delete).toHaveBeenCalledWith('task-id');
+    expect(service.deactivate).toHaveBeenCalledWith('task-id');
   });
 });

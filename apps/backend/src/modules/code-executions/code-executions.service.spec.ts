@@ -108,6 +108,35 @@ describe('CodeExecutionsService', () => {
     );
   });
 
+  it('runs a custom-task snapshot as ordinary code without test cases', async () => {
+    sessions.findById.mockResolvedValue({
+      status: SessionStatus.ACTIVE,
+      editorLanguage: 'TYPESCRIPT',
+      programmingTaskSnapshot: {
+        source: 'CUSTOM',
+        language: 'TYPESCRIPT',
+        starterCode: 'Реализуйте собственное решение',
+      },
+    });
+
+    await service.enqueue('session-id', 'user-id', {
+      language: 'typescript',
+      code: 'console.log(1)',
+      stdin: 'input',
+    });
+
+    expect(queue.add).toHaveBeenCalledWith(
+      'execute-code',
+      expect.objectContaining({
+        kind: 'custom',
+        code: 'console.log(1)',
+        stdin: 'input',
+      }),
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      expect.objectContaining({ jobId: expect.any(String) }),
+    );
+  });
+
   it('retries publishing the queued state without removing the job', async () => {
     collaboration.updateExecution
       .mockRejectedValueOnce(new Error('temporary failure'))
@@ -128,7 +157,9 @@ describe('CodeExecutionsService', () => {
       status: SessionStatus.ACTIVE,
       editorLanguage: 'TYPESCRIPT',
       programmingTaskSnapshot: {
+        source: 'BANK',
         language: 'TYPESCRIPT',
+        starterCode: 'function solve(params) { return 3; }',
         harnessCode: '\nrunHarness();',
         testCases: [
           {

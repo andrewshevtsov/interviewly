@@ -96,9 +96,9 @@ export class ProgrammingTasksService {
     try {
       await this.enqueueVerification(variant.id, variant.updatedAt);
     } catch (error) {
-      // Очередь недоступна сразу после создания: откатываем только что
-      // созданную задачу, чтобы повторный POST не породил дубль с другим slug.
-      await this.repository.delete(task.id);
+      // Очередь недоступна сразу после создания: скрываем незавершённую задачу,
+      // чтобы она не могла попасть в банк или новую сессию.
+      await this.repository.deactivate(task.id, new Date());
       throw error;
     }
 
@@ -242,13 +242,13 @@ export class ProgrammingTasksService {
     };
   }
 
-  async delete(id: string): Promise<void> {
+  async deactivate(id: string): Promise<void> {
     const task = await this.repository.findById(id);
     if (!task) {
       throw new NotFoundException('Programming task was not found');
     }
 
-    await this.repository.delete(id);
+    await this.repository.deactivate(id, new Date());
   }
 
   async findAvailable(

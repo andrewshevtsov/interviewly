@@ -38,6 +38,12 @@ import { NotificationsService } from '../notifications/notifications.service.ts'
 import { SESSION_PERMISSIONS } from './sessions.permissions.ts';
 import { SessionsRepository } from './sessions.repository.ts';
 import { ProgrammingTasksService } from '../programming-tasks/programming-tasks.service.ts';
+import {
+  createBankSessionTaskSnapshot,
+  createCustomSessionTaskSnapshot,
+  parseSessionTaskSnapshot,
+  SessionTaskSnapshotSource,
+} from './session-task-snapshot.ts';
 
 const PASSWORD_SALT_ROUNDS = 12;
 
@@ -92,25 +98,23 @@ export class SessionsService {
     const bankTaskVariant = bankTask?.variants[0];
     const programmingTaskSnapshot =
       bankTask && bankTaskVariant
-        ? (JSON.parse(
-            JSON.stringify({
-              taskId: bankTask.id,
-              slug: bankTask.slug,
-              title: bankTask.title,
-              description: bankTask.description,
-              difficulty: bankTask.difficulty,
-              language: dto.editorLanguage,
-              starterCode: bankTaskVariant.starterCode,
-              harnessCode: bankTaskVariant.harnessCode,
-              testCases: bankTaskVariant.testCases.map((testCase) => ({
-                position: testCase.position,
-                name: testCase.name,
-                input: testCase.input,
-                expectedOutput: testCase.expectedOutput,
-              })),
-            }),
-          ) as Prisma.InputJsonValue)
-        : undefined;
+        ? createBankSessionTaskSnapshot({
+            taskId: bankTask.id,
+            slug: bankTask.slug,
+            title: bankTask.title,
+            description: bankTask.description,
+            difficulty: bankTask.difficulty,
+            language: dto.editorLanguage,
+            starterCode: bankTaskVariant.starterCode,
+            harnessCode: bankTaskVariant.harnessCode,
+            testCases: bankTaskVariant.testCases.map((testCase) => ({
+              position: testCase.position,
+              name: testCase.name,
+              input: testCase.input,
+              expectedOutput: testCase.expectedOutput,
+            })),
+          })
+        : createCustomSessionTaskSnapshot(dto.editorLanguage, dto.task!);
 
     const passwordHash =
       access === SessionAccess.PASSWORD && dto.password
@@ -703,34 +707,29 @@ export class SessionsService {
   }
 
   private getStarterCode(snapshot: Prisma.JsonValue): string | null {
-    if (
-      typeof snapshot !== 'object' ||
-      snapshot === null ||
-      Array.isArray(snapshot)
-    ) {
+    const parsed = parseSessionTaskSnapshot(snapshot);
+    if (!parsed) {
       return null;
     }
 
-    const starterCode = snapshot.starterCode;
-    if (typeof starterCode !== 'string') {
-      return null;
+    if (parsed.source === SessionTaskSnapshotSource.CUSTOM) {
+      return parsed.starterCode;
     }
 
-    const description = snapshot.description;
-    const language = snapshot.language;
-    if (typeof description !== 'string' || typeof language !== 'string') {
-      return starterCode;
+    if (!parsed.description) {
+      return parsed.starterCode;
     }
 
-    const commentPrefix = language === EditorLanguage.PYTHON ? '#' : '//';
-    const commentedDescription = description
+    const commentPrefix =
+      parsed.language === EditorLanguage.PYTHON ? '#' : '//';
+    const commentedDescription = parsed.description
       .split(/\r?\n/)
       .map((line) =>
         line.length > 0 ? `${commentPrefix} ${line}` : commentPrefix,
       )
       .join('\n');
 
-    return `${commentedDescription}\n\n${starterCode}`;
+    return `${commentedDescription}\n\n${parsed.starterCode}`;
   }
 
   /**

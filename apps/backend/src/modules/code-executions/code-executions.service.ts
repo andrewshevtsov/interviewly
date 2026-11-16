@@ -11,8 +11,12 @@ import {
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
 import { randomUUID } from 'node:crypto';
-import type { Prisma, Session } from '../../prisma/generated/client.ts';
+import type { Session } from '../../prisma/generated/client.ts';
 import { EditorLanguage, SessionStatus } from '../../prisma/generated/enums.ts';
+import {
+  parseSessionTaskSnapshot,
+  SessionTaskSnapshotSource,
+} from '../sessions/session-task-snapshot.ts';
 import { SessionsRepository } from '../sessions/sessions.repository.ts';
 import {
   CODE_EXECUTIONS_QUEUE,
@@ -26,7 +30,6 @@ import type { CreateCodeExecutionDto } from './dto/create-code-execution.dto.ts'
 import type {
   CodeExecutionJob,
   TaskCodeExecutionJob,
-  TestCaseDefinition,
 } from './code-executions.types.ts';
 import { CollaborationClientService } from './collaboration-client.service.ts';
 import { CodeExecutionLockService } from './code-execution-lock.service.ts';
@@ -44,12 +47,6 @@ const LANGUAGE_BY_EDITOR_LANGUAGE = {
   [EditorLanguage.JAVASCRIPT]: 'javascript',
   [EditorLanguage.TYPESCRIPT]: 'typescript',
 } as const;
-
-interface ProgrammingTaskExecutionSnapshot {
-  language: EditorLanguage;
-  harnessCode: string;
-  testCases: TestCaseDefinition[];
-}
 
 @Injectable()
 export class CodeExecutionsService {
@@ -105,9 +102,15 @@ export class CodeExecutionsService {
       executionStartedAt: queuedAt,
       queuedAt,
     };
-    const taskSnapshot = this.parseTaskSnapshot(
-      session.programmingTaskSnapshot,
-    );
+    const storedSnapshot = session.programmingTaskSnapshot;
+    const parsedSnapshot = parseSessionTaskSnapshot(storedSnapshot);
+    if (storedSnapshot !== null && !parsedSnapshot) {
+      throw new ConflictException('Programming task snapshot is invalid');
+    }
+    const taskSnapshot =
+      parsedSnapshot?.source === SessionTaskSnapshotSource.BANK
+        ? parsedSnapshot
+        : null;
     if (taskSnapshot && taskSnapshot.language !== session.editorLanguage) {
       throw new ConflictException(
         'Programming task language does not match session language',
@@ -231,50 +234,4 @@ export class CodeExecutionsService {
       : data.executionId;
   }
 
-  private parseTaskSnapshot(
-    value: Prisma.JsonValue,
-  ): ProgrammingTaskExecutionSnapshot | null {
-    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-      return null;
-    }
-    if (
-      typeof value.harnessCode !== 'string' ||
-      typeof value.language !== 'string' ||
-      !Object.values(EditorLanguage).includes(
-        value.language as EditorLanguage,
-      ) ||
-      !Array.isArray(value.testCases)
-    ) {
-      throw new ConflictException('Programming task snapshot is invalid');
-    }
-
-    const testCases = value.testCases.map((testCase) => {
-      if (
-        typeof testCase !== 'object' ||
-        testCase === null ||
-        Array.isArray(testCase) ||
-        typeof testCase.position !== 'number' ||
-        typeof testCase.name !== 'string' ||
-        !('input' in testCase) ||
-        !('expectedOutput' in testCase)
-      ) {
-        throw new ConflictException('Programming task test case is invalid');
-      }
-      return {
-        position: testCase.position,
-        name: testCase.name,
-        input: testCase.input as Prisma.JsonValue,
-        expectedOutput: testCase.expectedOutput as Prisma.JsonValue,
-      } satisfies TestCaseDefinition;
-    });
-    if (testCases.length === 0) {
-      throw new ConflictException('Programming task has no test cases');
-    }
-
-    return {
-      language: value.language as EditorLanguage,
-      harnessCode: value.harnessCode,
-      testCases,
-    };
-  }
 }

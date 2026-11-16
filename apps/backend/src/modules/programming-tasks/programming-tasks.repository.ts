@@ -25,13 +25,12 @@ export class ProgrammingTasksRepository {
     });
   }
 
-  // Soft-delete: задача и её варианты/тесты остаются в базе, просто пропадают
-  // из findAvailable/findActiveForSession - можно восстановить, в отличие от
-  // настоящего DELETE.
-  delete(id: string) {
+  // Задача и её варианты/тесты остаются в базе, но больше не попадают
+  // в findAvailable/findActiveForSession.
+  deactivate(id: string, updatedAt: Date) {
     return this.prisma.programmingTask.update({
       where: { id },
-      data: { isActive: false },
+      data: { isActive: false, updatedAt },
     });
   }
 
