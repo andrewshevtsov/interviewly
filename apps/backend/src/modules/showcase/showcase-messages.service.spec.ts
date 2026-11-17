@@ -15,6 +15,7 @@ describe('ShowcaseMessagesService', () => {
       findResponse: vi.fn().mockResolvedValue(chat('ACCEPTED')),
       findRecent: vi.fn().mockResolvedValue([]),
       create: vi.fn(),
+      countSentSince: vi.fn().mockResolvedValue(0),
       countUnread: vi.fn(),
       markRead: vi.fn(),
     } as unknown as Mocked<ShowcaseMessagesRepository>;
@@ -66,6 +67,34 @@ describe('ShowcaseMessagesService', () => {
 
     expect(repository.create).toHaveBeenCalledWith({ responseId: 'r', senderId: 'owner', text: 'hi' });
     expect(sent).toMatchObject({ text: 'hi', mine: true });
+  });
+
+  it('помечает хосты ссылок в сообщении, обычный текст оставляет без пометки', async () => {
+    repository.findRecent.mockResolvedValue([
+      { id: 'm1', senderId: 'owner', text: 'Вход тут: https://evil.com/login', createdAt: new Date(0) },
+      { id: 'm2', senderId: 'owner', text: 'Поговорим про Node.js', createdAt: new Date(1) },
+    ] as never);
+
+    const messages = await service.list('responder', 'r');
+
+    expect(messages.map((message) => message.linkHosts)).toEqual([['evil.com'], []]);
+  });
+
+  it('сверх лимита сообщений за минуту: 429, сообщение не сохраняется', async () => {
+    repository.countSentSince.mockResolvedValue(10);
+
+    await expect(service.send('owner', 'r', 'hi')).rejects.toMatchObject({ status: 429 });
+    expect(repository.create).not.toHaveBeenCalled();
+  });
+
+  it('лимит считается за последнюю минуту', async () => {
+    vi.useFakeTimers({ now: new Date('2026-11-16T12:00:00.000Z') });
+    repository.create.mockResolvedValue({ id: 'm', senderId: 'owner', text: 'hi', createdAt: new Date(0) } as never);
+
+    await service.send('owner', 'r', 'hi');
+
+    expect(repository.countSentSince).toHaveBeenCalledWith('owner', new Date('2026-11-16T11:59:00.000Z'));
+    vi.useRealTimers();
   });
 });
 

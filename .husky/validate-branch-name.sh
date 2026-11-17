@@ -30,7 +30,8 @@ validate_branch_name() {
     return 0
   fi
 
-  if echo "$branch" | grep -qE '^[a-zA-Z0-9_-]+$'; then
+  # Без префикса живут только постоянные ветки; рабочая ветка вида `BE-14` не проходит
+  if [ "$branch" = "main" ] || [ "$branch" = "dev" ]; then
     return 0
   fi
 
@@ -44,7 +45,10 @@ validate_branch_name() {
   echo "  chore/<название>        — рутинные задачи"
   echo "  infra/<название>        — инфраструктура и CI/CD"
   echo "  <клиент>/dev            — клиентская ветка"
-  echo "  <название>              — без префикса (не рекомендуется)"
+  echo "  main, dev               — постоянные ветки"
+  echo ""
+  echo "Префикс обязателен: вместо BE-14 назовите ветку feature/BE-14 или bugfix/BE-14"
+  echo "Переименовать: git branch -m <новое-имя>"
   echo ""
   echo "Название: латиница, цифры, _, - (без пробелов и русских символов)"
   return 1

@@ -124,4 +124,34 @@ describe('шаблоны сообщений', () => {
     expect(text).toContain('интервьюер');
     expect(text).toContain('15:00');
   });
+
+  it('ссылки и упоминания из имени и причины некликабельны, своя ссылка на комнату остаётся', () => {
+    const rejected = responseRejectedMessage({
+      ownerName: 'Support evil.com',
+      scheduledAt: AT,
+      timeZone: null,
+      reason: 'Подтвердите аккаунт: https://evil.com/login или напишите @fake_bot',
+      timeMismatch: false,
+      retryAt: null,
+    });
+    const cancelled = sessionCancelledMessage({
+      cancellerName: 'Clara',
+      scheduledAt: null,
+      timeZone: null,
+      reason: 'перенос, детали на t.me/fake',
+    });
+    const reminder = sessionReminderMessage({
+      partnerName: 'www.evil.com',
+      role: 'CANDIDATE',
+      scheduledAt: AT,
+      timeZone: null,
+      roomUrl: 'http://localhost:3000/sessions/abc',
+    });
+
+    expect(rejected.text).toContain('Support evil[.]com не сможет');
+    expect(rejected.text).toContain('https[://]evil[.]com/login или напишите @ fake_bot');
+    expect(cancelled.text).toContain('t[.]me/fake');
+    expect(reminder.text).toContain('Партнёр: www[.]evil[.]com.');
+    expect(reminder.text).toContain('http://localhost:3000/sessions/abc');
+  });
 });

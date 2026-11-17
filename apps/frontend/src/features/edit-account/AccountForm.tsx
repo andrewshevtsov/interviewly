@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { SubmitEvent } from "react";
 
 import { getHttpMessage } from "@/shared/api/http-client";
+import { useLinksError } from "@/shared/api/use-links-error";
 import { useTranslations } from "@/shared/i18n-context";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -50,6 +51,7 @@ export function AccountForm() {
       queryClient.setQueryData(CURRENT_USER_QUERY_KEY, saved);
     },
   });
+  const linksError = useLinksError(saveMutation.error);
 
   if (!currentUser.data) {
     return null;
@@ -112,7 +114,7 @@ export function AccountForm() {
 
         {saveMutation.isError && (
           <p className="text-sm text-destructive">
-            {isTelegramUsernameError(saveMutation.error) ? t("saveErrorTelegram") : t("saveError")}
+            {linksError ?? (isTelegramUsernameError(saveMutation.error) ? t("saveErrorTelegram") : t("saveError"))}
           </p>
         )}
         {saveMutation.isSuccess && <p className="text-sm text-muted-foreground">{t("saved")}</p>}

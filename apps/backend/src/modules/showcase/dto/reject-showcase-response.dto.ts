@@ -5,6 +5,7 @@ import {
   REJECTION_REASON_MAX_LENGTH,
   REJECTION_REASON_MIN_LENGTH,
 } from '../showcase.constants.ts';
+import { NoLinks } from '../../../shared/utils/no-links.decorator.ts';
 
 export class RejectShowcaseResponseDto {
   @ApiProperty({
@@ -16,6 +17,7 @@ export class RejectShowcaseResponseDto {
   @IsString()
   @MinLength(REJECTION_REASON_MIN_LENGTH)
   @MaxLength(REJECTION_REASON_MAX_LENGTH)
+  @NoLinks()
   reason!: string;
 
   @ApiPropertyOptional({

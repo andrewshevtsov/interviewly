@@ -8,6 +8,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Check, ChevronDown } from "lucide-react";
 
 import { getLocalizedHref } from "@/shared/i18n";
+import { useLinksError } from "@/shared/api/use-links-error";
 import { useLocale, useTranslations } from "@/shared/i18n-context";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -206,6 +207,7 @@ export function CreateSessionForm(props: CreateSessionFormProps) {
     mutationFn: sessionApi.create,
     onSuccess: openCreatedSession,
   });
+  const linksError = useLinksError(createMutation.error);
   const isPasswordTooShort = isPrivate && password.length < MIN_PASSWORD_LENGTH;
   const isLanguageMissing = editorLanguage === "";
   const isBankTaskMissing = !isCustomTask && !programmingTaskId;
@@ -383,7 +385,7 @@ export function CreateSessionForm(props: CreateSessionFormProps) {
           {createMutation.isPending ? t("launchingSession") : t("launchSession")}
         </Button>
 
-        {createMutation.isError && <p className="text-sm text-destructive">{t("createError")}</p>}
+        {createMutation.isError && <p className="text-sm text-destructive">{linksError ?? t("createError")}</p>}
       </form>
     </Card>
   );

@@ -6,6 +6,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { NoLinks } from '../../../shared/utils/no-links.decorator.ts';
 
 export class RegisterDto {
   @ApiProperty({
@@ -38,6 +39,7 @@ export class RegisterDto {
   @IsString()
   @MinLength(1)
   @MaxLength(255)
+  @NoLinks()
   firstName!: string;
 
   @ApiPropertyOptional({
@@ -48,5 +50,6 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   @MaxLength(255)
+  @NoLinks()
   lastName?: string;
 }
