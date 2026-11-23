@@ -17,3 +17,7 @@ export const MAX_LEAD_DAYS = 30;
 // Сообщения в чате по отклику: чат не realtime, клиент опрашивает список
 export const MESSAGE_MAX_LENGTH = 1000;
 export const MESSAGES_LIST_LIMIT = 100;
+
+// Не больше N сообщений от одного пользователя за окно во всех чатах: защита от рассылки
+export const MESSAGE_RATE_LIMIT = 10;
+export const MESSAGE_RATE_WINDOW_SECONDS = 60;

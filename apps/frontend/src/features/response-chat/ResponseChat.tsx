@@ -4,12 +4,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type SubmitEvent } from "react";
 
+import { getHttpStatus } from "@/shared/api/http-client";
 import { useLocale, useTranslations } from "@/shared/i18n-context";
 import { cn } from "@/shared/lib/cn";
 import { formatDateTime } from "@/shared/lib/format-date-time";
 import { Button } from "@/shared/ui/button";
 import { CountBadge } from "@/shared/ui/count-badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/shared/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/shared/ui/dialog";
 import { Textarea } from "@/shared/ui/textarea";
 import {
   MESSAGE_MAX_LENGTH,
@@ -20,6 +28,7 @@ import {
 } from "@/entities/showcase-response";
 
 const POLL_INTERVAL_MS = 10_000;
+const HTTP_TOO_MANY_REQUESTS = 429;
 
 /**
  * Пропсы {@link ChatPanel}.
@@ -121,7 +130,10 @@ function ChatPanel(props: ChatPanelProps) {
     body = (
       <ul className="space-y-3">
         {messagesQuery.data.map((message: ChatMessage) => (
-          <li key={message.id} className={cn("flex flex-col", message.mine ? "items-end" : "items-start")}>
+          <li
+            key={message.id}
+            className={cn("flex flex-col", message.mine ? "items-end" : "items-start")}
+          >
             <span
               className={cn(
                 "max-w-[85%] whitespace-pre-wrap break-words rounded-lg px-3 py-2 text-sm",
@@ -130,8 +142,14 @@ function ChatPanel(props: ChatPanelProps) {
             >
               {message.text}
             </span>
+            {!message.mine && message.linkHosts.length > 0 && (
+              <span className="mt-1 max-w-[85%] break-words text-xs text-destructive" role="note">
+                {t("chatLinkWarning")}: {message.linkHosts.join(", ")}. {t("chatLinkAdvice")}
+              </span>
+            )}
             <span className="mt-1 text-[10px] text-muted-foreground">
-              {message.mine ? t("chatYou") : t("chatPartner")} · {formatDateTime(message.createdAt, locale)}
+              {message.mine ? t("chatYou") : t("chatPartner")} ·{" "}
+              {formatDateTime(message.createdAt, locale)}
             </span>
           </li>
         ))}
@@ -157,7 +175,9 @@ function ChatPanel(props: ChatPanelProps) {
         />
         {sendMutation.isError && (
           <p className="text-sm text-destructive" role="alert">
-            {t("chatSendError")}
+            {getHttpStatus(sendMutation.error) === HTTP_TOO_MANY_REQUESTS
+              ? t("chatRateLimited")
+              : t("chatSendError")}
           </p>
         )}
         <Button type="submit" isLoading={sendMutation.isPending} disabled={text.trim() === ""}>

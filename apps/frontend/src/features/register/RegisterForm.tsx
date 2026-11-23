@@ -7,6 +7,7 @@ import { useState, type SubmitEvent } from "react";
 
 import { authApi } from "@/shared/api/auth-api";
 import { getLocalizedHref } from "@/shared/i18n";
+import { useLinksError } from "@/shared/api/use-links-error";
 import { useLocale, useTranslations } from "@/shared/i18n-context";
 import { DEFAULT_AFTER_AUTH_PATH } from "@/shared/lib/return-path";
 import { useAuthStore } from "@/shared/model/auth-store";
@@ -50,6 +51,7 @@ export function RegisterForm(props: RegisterFormProps) {
       router.push(getLocalizedHref(returnPath ?? DEFAULT_AFTER_AUTH_PATH, locale));
     },
   });
+  const linksError = useLinksError(registerMutation.error);
 
   /**
    * Validates the password confirmation and submits the registration form.
@@ -137,7 +139,7 @@ export function RegisterForm(props: RegisterFormProps) {
       </div>
 
       {passwordMismatch && <p className="text-sm text-destructive">{auth("passwordMismatch")}</p>}
-      {registerMutation.isError && <p className="text-sm text-destructive">{auth("registerError")}</p>}
+      {registerMutation.isError && <p className="text-sm text-destructive">{linksError ?? auth("registerError")}</p>}
 
       <Button type="submit" className="w-full" isLoading={registerMutation.isPending}>
         {registerMutation.isPending ? auth("registerPending") : auth("register")}

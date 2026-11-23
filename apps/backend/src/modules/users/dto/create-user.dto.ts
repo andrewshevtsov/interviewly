@@ -9,6 +9,7 @@ import {
 } from 'class-validator';
 import { UserStatus } from '../../../prisma/generated/enums.ts';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { NoLinks } from '../../../shared/utils/no-links.decorator.ts';
 
 /**
  * Тело запроса на создание пользователя. `passwordHash` формируется на сервере
@@ -33,6 +34,7 @@ export class CreateUserDto {
   @IsString()
   @MinLength(1)
   @MaxLength(255)
+  @NoLinks()
   firstName!: string;
 
   @ApiPropertyOptional({
@@ -43,6 +45,7 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   @MaxLength(255)
+  @NoLinks()
   lastName?: string;
 
   @ApiPropertyOptional({

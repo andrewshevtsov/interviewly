@@ -4,6 +4,8 @@ export class ShowcaseMessageResponse {
   text!: string;
   createdAt!: Date;
   mine!: boolean;
+  /** Хосты ссылок из текста: клиент предупреждает о них получателя. Пусто, если ссылок нет */
+  linkHosts!: string[];
 
   constructor(partial: ShowcaseMessageResponse) {
     Object.assign(this, partial);

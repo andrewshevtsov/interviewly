@@ -1,6 +1,7 @@
 import { Transform } from 'class-transformer';
 import { IsOptional, IsString, MaxLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { NoLinks } from '../../../shared/utils/no-links.decorator.ts';
 
 const CANCEL_REASON_MAX_LENGTH = 500;
 
@@ -15,5 +16,6 @@ export class CancelSessionDto {
   )
   @IsString()
   @MaxLength(CANCEL_REASON_MAX_LENGTH)
+  @NoLinks()
   reason?: string;
 }

@@ -8,6 +8,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { SubmitEvent } from "react";
 
 import { getHttpMessage, getHttpStatus } from "@/shared/api/http-client";
+import { useLinksError } from "@/shared/api/use-links-error";
 import {
   PROFILE_FIELDS,
   STACK_OPTIONS,
@@ -98,6 +99,7 @@ export function ProfileForm(props: ProfileFormProps) {
       queryClient.setQueryData(["profile", "me"], saved);
     },
   });
+  const linksError = useLinksError(saveMutation.error);
 
   /**
    * Reads the whole card from the native form and submits it.
@@ -212,7 +214,7 @@ export function ProfileForm(props: ProfileFormProps) {
 
         {saveMutation.isError && (
           <p className="text-sm text-destructive">
-            {isShowcaseRequirementError(saveMutation.error) ? t("saveErrorShowcase") : t("saveError")}
+            {linksError ?? (isShowcaseRequirementError(saveMutation.error) ? t("saveErrorShowcase") : t("saveError"))}
           </p>
         )}
         {saveMutation.isSuccess && <p className="text-sm text-muted-foreground">{t("saveSuccess")}</p>}

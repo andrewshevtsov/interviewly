@@ -18,6 +18,7 @@ import {
   SessionParticipantRole,
   SessionType,
 } from '../../../prisma/generated/enums.ts';
+import { NoLinks } from '../../../shared/utils/no-links.decorator.ts';
 
 export class CreateSessionParticipantDto {
   @ApiProperty({
@@ -55,6 +56,7 @@ export class CreateSessionDto {
   @Transform(trimToUndefined)
   @IsString()
   @MaxLength(SESSION_TITLE_MAX_LENGTH)
+  @NoLinks()
   title?: string;
 
   @ApiPropertyOptional({

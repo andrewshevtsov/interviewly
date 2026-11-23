@@ -1,4 +1,5 @@
 import { SessionParticipantRole } from '../../prisma/generated/enums.ts';
+import { defangLinks } from '../../shared/utils/links.ts';
 
 export interface NotificationMessage {
   subject: string;
@@ -6,6 +7,9 @@ export interface NotificationMessage {
 }
 
 const DEFAULT_TIME_ZONE = 'UTC';
+
+// Имена и причины пишут пользователи: Telegram и почта сделали бы ссылку в них кликабельной от имени сервиса
+const userText = defangLinks;
 
 /** Дата и время в часовом поясе получателя; без настроенного пояса - UTC с пометкой */
 export function formatDateTime(date: Date, timeZone: string | null): string {
@@ -44,7 +48,7 @@ export function responseCreatedMessage(params: {
   return {
     subject: 'Новый отклик на вашу карточку',
     text: [
-      `${params.responderName} откликнулся(ась) на вашу карточку на витрине.`,
+      `${userText(params.responderName)} откликнулся(ась) на вашу карточку на витрине.`,
       `Предлагает встречу ${formatDateTime(params.scheduledAt, params.timeZone)}: он(а) будет ${roleLabel(params.responderRole)}, вы - ${roleLabel(ownerRole)}.`,
       'Откройте входящие отклики, чтобы принять или отклонить его.',
     ].join('\n'),
@@ -60,7 +64,7 @@ export function responseAcceptedMessage(params: {
   return {
     subject: 'Ваш отклик принят',
     text: [
-      `${params.ownerName} принял(а) ваш отклик. Встреча назначена на ${formatDateTime(params.scheduledAt, params.timeZone)}.`,
+      `${userText(params.ownerName)} принял(а) ваш отклик. Встреча назначена на ${formatDateTime(params.scheduledAt, params.timeZone)}.`,
       `Ваша роль: ${roleLabel(params.responderRole)}.`,
       'За 2 часа до начала бот пришлёт ссылку на видеокомнату.',
     ].join('\n'),
@@ -84,8 +88,8 @@ export function responseRejectedMessage(params: {
   return {
     subject: 'Ваш отклик отклонён',
     text: [
-      `${params.ownerName} не сможет провести встречу ${formatDateTime(params.scheduledAt, params.timeZone)}.`,
-      `Причина: ${params.reason}`,
+      `${userText(params.ownerName)} не сможет провести встречу ${formatDateTime(params.scheduledAt, params.timeZone)}.`,
+      `Причина: ${userText(params.reason)}`,
       followUp,
     ]
       .filter(Boolean)
@@ -103,7 +107,10 @@ export function sessionCancelledMessage(params: {
 
   return {
     subject: 'Встреча отменена',
-    text: [`${params.cancellerName} отменил(а) встречу${when}.`, params.reason ? `Причина: ${params.reason}` : '']
+    text: [
+      `${userText(params.cancellerName)} отменил(а) встречу${when}.`,
+      params.reason ? `Причина: ${userText(params.reason)}` : '',
+    ]
       .filter(Boolean)
       .join('\n'),
   };
@@ -120,7 +127,7 @@ export function sessionReminderMessage(params: {
     subject: 'Скоро интервью',
     text: [
       `Начало: ${formatDateTime(params.scheduledAt, params.timeZone)}.`,
-      `Партнёр: ${params.partnerName}. Ваша роль: ${roleLabel(params.role)}.`,
+      `Партнёр: ${userText(params.partnerName)}. Ваша роль: ${roleLabel(params.role)}.`,
       `Ссылка на видеокомнату: ${params.roomUrl}`,
     ].join('\n'),
   };

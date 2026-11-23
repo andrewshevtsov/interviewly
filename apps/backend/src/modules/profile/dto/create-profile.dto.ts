@@ -1,5 +1,6 @@
 import { IsString, IsOptional, IsArray, IsEnum, IsBoolean } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { NoLinks } from '../../../shared/utils/no-links.decorator.ts';
 
 export enum ProfessionLevel {
   junior = 'junior',
@@ -13,6 +14,7 @@ export class CreateProfileDto {
     example: 'Разработчик программного обеспечения',
   })
   @IsString()
+  @NoLinks()
   role!: string;
 
   @ApiProperty({
@@ -39,6 +41,7 @@ export class CreateProfileDto {
   })
   @IsOptional()
   @IsString()
+  @NoLinks()
   bio?: string;
 
   @ApiProperty({
