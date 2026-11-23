@@ -1,3 +1,10 @@
+# [0.3.0](https://github.com/andrewshevtsov/interviewly/compare/v0.2.1...v0.3.0) (2026-11-23)
+
+
+### Features
+
+* **BE-20:** Block links in user content ([ee3af6e](https://github.com/andrewshevtsov/interviewly/commit/ee3af6e380264e99ccd7da6e8ac838271af7a579))
+
 ## [0.2.1](https://github.com/andrewshevtsov/interviewly/compare/v0.2.0...v0.2.1) (2026-11-06)
 
 
