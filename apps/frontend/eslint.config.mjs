@@ -440,6 +440,7 @@ export default tseslint.config(
     files: [
       "src/app/**/{page,layout,loading,error,not-found,template,default,global-error}.tsx",
       "src/app/**/route.ts",
+      "src/app/manifest.ts",
     ],
     rules: { "no-restricted-exports": "off" },
   },
