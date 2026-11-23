@@ -14,7 +14,8 @@ export type ShowcaseResponseStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "CANC
 /**
  * Статус сессии, созданной при принятии отклика.
  */
-export type MatchSessionStatus = "DRAFT" | "SCHEDULED" | "READY" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "EXPIRED";
+export type MatchSessionStatus =
+  "DRAFT" | "SCHEDULED" | "READY" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "EXPIRED";
 
 /**
  * Сообщение в чате по отклику.
@@ -39,6 +40,11 @@ export interface ChatMessage {
    * Сообщение написал я.
    */
   mine: boolean;
+
+  /**
+   * Хосты ссылок, найденных в тексте на backend.
+   */
+  linkHosts: string[];
 }
 
 /**

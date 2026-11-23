@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, type SubmitEvent } from "react";
 
 import { getHttpMessage, getHttpStatus } from "@/shared/api/http-client";
+import { useLinksError } from "@/shared/api/use-links-error";
 import { useTranslations } from "@/shared/i18n-context";
 import { cn } from "@/shared/lib/cn";
 import { Button } from "@/shared/ui/button";
@@ -81,6 +82,7 @@ function RejectForm(props: RejectFormProps) {
     },
   });
 
+  const linksError = useLinksError(rejectMutation.error);
   const length = reason.trim().length;
   const isValid = isReasonLengthValid(reason);
   const errorKey = rejectMutation.isError
@@ -135,7 +137,7 @@ function RejectForm(props: RejectFormProps) {
 
       {errorKey && (
         <p className="text-sm text-destructive" role="alert">
-          {t(REVIEW_ERROR_KEYS[errorKey])}
+          {linksError ?? t(REVIEW_ERROR_KEYS[errorKey])}
         </p>
       )}
 

@@ -66,6 +66,11 @@ export class ShowcaseMessagesRepository {
     });
   }
 
+  /** Сколько сообщений пользователь отправил с указанного момента во всех чатах */
+  countSentSince(senderId: string, since: Date): Promise<number> {
+    return this.prisma.showcaseMessage.count({ where: { senderId, createdAt: { gte: since } } });
+  }
+
   create(data: { responseId: string; senderId: string; text: string }): Promise<ShowcaseMessage> {
     return this.prisma.showcaseMessage.create({ data });
   }

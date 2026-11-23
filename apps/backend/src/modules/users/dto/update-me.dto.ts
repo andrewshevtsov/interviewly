@@ -1,6 +1,7 @@
 import { Transform } from 'class-transformer';
 import { IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { NoLinks } from '../../../shared/utils/no-links.decorator.ts';
 
 const emptyToNull = (value: unknown) => (typeof value === 'string' && value.trim() === '' ? null : value);
 
@@ -20,6 +21,7 @@ export class UpdateMeDto {
   @IsString()
   @MinLength(1)
   @MaxLength(255)
+  @NoLinks()
   firstName?: string;
 
   @ApiPropertyOptional({ maxLength: 255, example: 'Иванов', nullable: true })
@@ -27,6 +29,7 @@ export class UpdateMeDto {
   @IsOptional()
   @IsString()
   @MaxLength(255)
+  @NoLinks()
   lastName?: string | null;
 
   /**

@@ -28,6 +28,10 @@ export const messages = {
     cancel: { ru: "отмена", en: "cancel" },
     save: { ru: "сохранить", en: "save" },
     loading: { ru: "Загрузка...", en: "Loading..." },
+    linksNotAllowed: {
+      ru: "Ссылки в этом тексте запрещены. Уберите ссылку и попробуйте снова.",
+      en: "Links are not allowed in this text. Remove the links and try again.",
+    },
     email: { ru: "email", en: "email" },
     telegram: { ru: "telegram", en: "telegram" },
     difficultyEasy: { ru: "легкий", en: "easy" },
@@ -555,6 +559,18 @@ export const messages = {
     chatSendError: { ru: "Не удалось отправить сообщение.", en: "Couldn't send the message." },
     chatYou: { ru: "вы", en: "you" },
     chatPartner: { ru: "собеседник", en: "partner" },
+    chatRateLimited: {
+      ru: "Слишком много сообщений подряд.",
+      en: "Too many messages in a row. Wait a minute.",
+    },
+    chatLinkWarning: {
+      ru: "Осторожно, ссылка на сторонний сайт",
+      en: "Careful, a link to an external site",
+    },
+    chatLinkAdvice: {
+      ru: "Interviewly никогда не просит вводить пароль на других сайтах.",
+      en: "Interviewly never asks you to enter your password on other sites.",
+    },
   },
   livePreview: {
     title: { ru: "видеосессии", en: "video sessions" },
